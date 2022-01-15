@@ -6,7 +6,7 @@ global version := "0.8.1"
 
 ; === some global variables ===
 global outArray := {}
-global outArrayCount := 0
+;global outArrayCount := 0
 global rescan := ""
 global x_start := 0
 global y_start := 0
@@ -513,7 +513,6 @@ return
 
 count:
     ;rememberSession()
-    
 return
 
 craft:
@@ -625,25 +624,25 @@ ClearRow:
     rememberSession()
 return
 
-Aug_Post:
-    buttonHold("augPost", "resources\postA")
-    createPost("Aug")
-return
+; Aug_Post:
+    ; buttonHold("augPost", "resources\postA")
+    ; createPost("Aug")
+; return
 
-Rem_post:
-    buttonHold("remPost", "resources\postR")
-    createPost("Rem")
-return
+; Rem_post:
+    ; buttonHold("remPost", "resources\postR")
+    ; createPost("Rem")
+; return
 
-RemAdd_post:
-    buttonHold("remAddPost", "resources\postRA")
-    createPost("Rem/Add")
-return
+; RemAdd_post:
+    ; buttonHold("remAddPost", "resources\postRA")
+    ; createPost("Rem/Add")
+; return
 
-Other_post:
-    buttonHold("otherPost", "resources\postO")
-    createPost("Other")
-return
+; Other_post:
+    ; buttonHold("otherPost", "resources\postO")
+    ; createPost("Other")
+; return
 
 Post_all:
     ;buttonHold("postAll", "resources\postAll")
@@ -1450,7 +1449,7 @@ processCrafts(file) {
 
     Arrayed := getCraftsPlus(temp[1], temp[2])
     outArray := {}
-    outArrayCount := 0
+    ;outArrayCount := 0
     for index in Arrayed {  
         craftText := Trim(Arrayed[index])
         ;StrLen("Set an item to six sockets") = 26. its min length for craft
@@ -1496,7 +1495,8 @@ updateCraftTable(ar) {
                 insertIntoRow(A_Index, tempC, tempLvl, tempType)
                 isNeedSort := True
                 break
-            } else if (craftInGui == tempC and lvlInGui == tempLvl) {
+            }
+            if (craftInGui == tempC and lvlInGui == tempLvl) {
                 GuiControlGet, craftCount,, count_%A_index%
                 craftCount += 1 
                 GuiControl,, count_%A_Index%, %craftCount%
@@ -1536,36 +1536,38 @@ sortCraftTable() {
     }
 }
 
-firstEmptyRow() {
-    loop, %MaxRowsCraftTable% {
-        GuiControlGet, craftInGui,, craft_%A_Index%, value
-        if (craftInGui == "") {
-            return %A_Index%
-            break
-        }
-    }
-}
+; firstEmptyRow() {
+    ; loop, %MaxRowsCraftTable% {
+        ; GuiControlGet, craftInGui,, craft_%A_Index%, value
+        ; if (craftInGui == "") {
+            ; return %A_Index%
+            ; break
+        ; }
+    ; }
+; }
 
 detectType(craft, row) {
-    if (craft = "") {
+    if (craft == "") {
         guicontrol,, type_%row%,
+        return
     } 
-    else if (inStr(craft, "Augment") = 1 ) {
+    if (inStr(craft, "Augment") = 1 ) {
         guicontrol,, type_%row%, Aug
+        return
     } 
-    else if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
+    if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
         guicontrol,, type_%row%, Rem
+        return
     } 
-    else if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 and instr(craft, "non") = 0) {
+    if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
+        and instr(craft, "non") = 0) {
         guicontrol,, type_%row%, Rem/Add
+        return
     }
-    else {
-        guicontrol,, type_%row%, Other
-    }
+    guicontrol,, type_%row%, Other
 }
 
 insertIntoRow(rowCounter, craft, lvl, type) {    
-   
     GuiControl,, craft_%rowCounter%, %craft%
     GuiControl,, count_%rowCounter%, 1
     guicontrol,, lvl_%rowCounter%, %lvl%
@@ -1895,7 +1897,7 @@ getRow(elementVariable) {
 
 getLVL(craft) {
     map_levels := {"S1": "81", "Sz": "82", "SQ": "80", "8i": "81"}
-    lvlpos := RegExMatch(craft, "Oi)L[BEeOo]V[BEeOo][lI1] *(\w\w)", matchObj) ; + 6    
+    lvlpos := RegExMatch(craft, "O)L[BEeOo]v[BEeOo][lI1] *(\w\w).*$", matchObj)   
     lv := matchObj[1]
     if RegExMatch(lv, "\d\d") > 0 {
         if (lv < 37) { ;ppl wouldn't sell lv 30 crafts, but sometimes OCR mistakes 8 for a 3 this just bumps it up for the 76+ rule
