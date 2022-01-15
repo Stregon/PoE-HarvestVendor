@@ -1172,7 +1172,7 @@ Handle_Sacrifice(craftText, ByRef out) {
     }
     ;div cards gambling
     if TagExist(craftText, "Divination") { 
-        if TemplateExist(craftText, "half+.a+.stack") {
+        if TemplateExist(craftText, "half.+a.+stack") {
             out.push(["Sacrifice half stack for 0-2x return"
                 , getLVL(craftText)
                 , "Other"])
