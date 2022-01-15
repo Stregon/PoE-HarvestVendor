@@ -19,7 +19,6 @@ global maxLengths := {}
 global seenInstructions := 0
 global sessionLoading := False
 global MaxRowsCraftTable := 20
-global HeightCraft := 0
 global PID := DllCall("Kernel32\GetCurrentProcessId")
 
 EnvGet, dir, USERPROFILE
@@ -1369,19 +1368,18 @@ Handle_Split(craftText, ByRef out) {
 
 ; === my functions ===
 
-;function for "tessedit_pageseg_mode 3" or "tessedit_pageseg_mode 6"
+;function for "tessedit_pageseg_mode 3" or "tessedit_pageseg_mode 4"
 ;3 = Fully automatic page segmentation, but no OSD(Orientation and script detection).
-;6 = Assume a single uniform block of text.
-getCraftsPlus(temp) {
+getCraftsPlus(craftsText, levelsText) {
     template := "Leve[l1]"
-    posLevel := RegExMatch(temp, "Leve[l1]")
-    tempLevels := SubStr(temp, posLevel)
-    tempLevels := RegExReplace(tempLevels, "(" . template . ")", "#$1")
+    tempLevels := RegExReplace(levelsText, "(" . template . ")", "#$1")
     tempLevels := SubStr(tempLevels, inStr(tempLevels, "#") + 1)
     ArrayedLevels := StrSplit(tempLevels, "#")
-    tempCrafts := SubStr(temp, 1, posLevel - 1)
-        
-    NewLined := RegExReplace(tempCrafts, TemplateForCrafts, "#$1")
+    
+    craftsText := RegExReplace(craftsText, "[\.\,]+", " ") ;remove all "," and "."
+    craftsText := RegExReplace(craftsText, " +?[^a1234567890] +?", " ") ;remove all single symbols except "a" and digits
+    craftsText := Trim(RegExReplace(craftsText, " +", " ")) ;remove possible double spaces    
+    NewLined := RegExReplace(craftsText, TemplateForCrafts, "#$1")
     NewLined := SubStr(NewLined, inStr(NewLined, "#") + 1) ; remove all before "#" and "#" too
     
     arr := {}
@@ -1431,6 +1429,7 @@ processCrafts(file) {
         . x_areaLevelStart . " " . y_end . """" ; 82% of the area for "Craft"
     screen_rect_Level := " -s """ . x_areaLevelStart . " " . y_start . " " 
     . x_end . " " . y_end . """" ;  18% of the area for "Level"
+    temp := {}
     for k, v in [screen_rect_Craft, screen_rect_Level] {
         command := Capture2TextExe . v . Capture2TextOptions
         RunWait, %command%,,Hide
@@ -1440,20 +1439,16 @@ processCrafts(file) {
             return false
         }
         FileRead, curtemp, %file%
-        temp .= curtemp
+        temp.push(curtemp)
     }
-    FileDelete, %file%
-    FileAppend, %temp%, %file%
-    
     WinActivate, ahk_pid %PID%
     Tooltip
+    ;add craftsText and levelsText in temp.txt
+    FileDelete, %file%
+    FileAppend, % temp[1] . temp[2], %file%
     ;FileRead, temp, test2.txt
-    
-    temp := RegExReplace(temp, "[\.\,]+", " ") ;remove all "," and "."
-    temp := RegExReplace(temp, " +?[^a1234567890] +?", " ") ;remove all single symbols except "a" and digits
-    temp := Trim(RegExReplace(temp, " +", " ")) ;remove possible double spaces
-    
-    Arrayed := getCraftsPlus(temp)
+
+    Arrayed := getCraftsPlus(temp[1], temp[2])
     outArray := {}
     outArrayCount := 0
     for index in Arrayed {  
@@ -1869,23 +1864,6 @@ getRowData(group, row) {
     return [tempCount, tempCraft, tempPrice, tempCheck, tempType, tempLvl]
 }
 
-; getMaxLenghts(group) {
-    ; loop, %MaxRowsCraftTable% {
-        ; GuiControlGet, craftForLen,, craft_%A_Index%, value
-        ; GuiControlGet, type,, type_%A_Index%, value
-        ; if (group == "All"){
-            ; if (StrLen(craftForLen) > MaxLen) {
-                ; MaxLen := StrLen(craftForLen)
-            ; }
-        ; } else
-        ; if (type == group) {
-            ; if (StrLen(craftForLen) > MaxLen) {
-                ; MaxLen := StrLen(craftForLen)
-            ; }
-        ; }
-    ; }
-; }
-
 getMaxLenghtColunm(column) {
     MaxLen_column := 0
     loop, %MaxRowsCraftTable% {
@@ -1918,7 +1896,7 @@ getRow(elementVariable) {
 getLVL(craft) {
     map_levels := {"S1": "81", "Sz": "82", "SQ": "80", "8i": "81"}
     lvlpos := RegExMatch(craft, "Oi)L[BEeOo]V[BEeOo][lI1] *(\w\w)", matchObj) ; + 6    
-    lv := matchObj[1] ;substr(craft, lvlpos, 2)
+    lv := matchObj[1]
     if RegExMatch(lv, "\d\d") > 0 {
         if (lv < 37) { ;ppl wouldn't sell lv 30 crafts, but sometimes OCR mistakes 8 for a 3 this just bumps it up for the 76+ rule
             lv += 50
