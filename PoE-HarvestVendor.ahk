@@ -205,6 +205,7 @@ saveWindowPosition() {
 
 showGUI() {
     if (firstGuiOpen) {
+        firstGuiOpen := False
         IniRead, newX, %SettingsPath%, window position, gui_position_x
         IniRead, newY, %SettingsPath%, window position, gui_position_y
         if (newX == "ERROR" or newY == "ERROR")
@@ -223,13 +224,14 @@ showGUI() {
 }
 
 OpenGui: ;ctrl+shift+g opens the gui, yo go from there
-    loadLastSession()
+    if (firstGuiOpen) {
+        loadLastSession()
+    }
     if (version != getVersion()) {
         guicontrol, HarvestUI:Show, versionText
         guicontrol, HarvestUI:Show, versionLink
     }
     showGUI()
-    firstGuiOpen := False
     OnMessage(0x200, "WM_MOUSEMOVE")
     
 Return
@@ -237,12 +239,11 @@ Return
 Scan: ;ctrl+g launches straight into the capture, opens gui afterwards
     rescan := ""
     _wasVisible := IsGuiVisible("HarvestUI")
-    if (processCrafts(TempPath)) {  
-        showGUI()
+    if (processCrafts(TempPath)) {
         if (firstGuiOpen) {
             loadLastSession()
-            firstGuiOpen := False
         }
+        showGUI()
         OnMessage(0x200, "WM_MOUSEMOVE") ;activates tooltip function
         updateCraftTable(outArray)
         rememberSession()
@@ -250,11 +251,10 @@ Scan: ;ctrl+g launches straight into the capture, opens gui afterwards
         ; If processCrafts failed (e.g. the user pressed Escape), we should show the
         ; HarvestUI only if it was visible to the user before they pressed Ctrl+G
         if (_wasVisible) {
-            showGUI()
             if (firstGuiOpen) {
                 loadLastSession()
-                firstGuiOpen := False
             }
+            showGUI()
         }
     }
 return
