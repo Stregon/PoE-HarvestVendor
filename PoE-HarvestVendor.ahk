@@ -477,7 +477,7 @@ Up:
     GuiControlget, tempCount,, count_%tempRow%
     tempCount += 1
     GuiControl,, count_%tempRow%, %tempCount%
-    sumTypes()
+    ;sumTypes()
     rememberSession()
 return
 
@@ -489,7 +489,7 @@ Dn:
         tempCount -= 1
         GuiControl,, count_%tempRow%, %tempCount%
     }
-    sumTypes()
+    ;sumTypes()
     rememberSession()
 return
 
@@ -549,6 +549,8 @@ Price:
         if (craftName != "") {
             iniWrite, %craftPrice%, %PricesPath%, Prices, %craftName%
         }
+    } else if (priceFieldArray[1] == "count") {
+        sumTypes()
     }
     if (craftPrice != "") {
         sumPrices()
