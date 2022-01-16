@@ -497,8 +497,8 @@ Add_crafts:
     buttonHold("addCrafts", "resources\addCrafts")
     GuiControlGet, rescan, name, %A_GuiControl% 
     if (processCrafts(TempPath)) {
-        showGUI()
         updateCraftTable(outArray)
+        showGUI()
         rememberSession()
     } else {
         showGUI()
@@ -1524,7 +1524,7 @@ sortCraftTable() {
        }
     }
     craftsArr := sortBy(craftsArr, "craft")
-    clearAll()
+    ;insert a new sorted crafts
     for k, v in craftsArr {
         tempCraft := v["craft"]
         tempC := v["count"]
@@ -1539,17 +1539,13 @@ sortCraftTable() {
        
         GuiControl, harvestUI: , price_%k% , %tempPrice%
     }
+    ;clear old crafts
+    index := craftsArr.Length()
+    loop, % MaxRowsCraftTable - craftsArr.Length() {
+        index++
+        clearRowData(index)
+    }
 }
-
-; firstEmptyRow() {
-    ; loop, %MaxRowsCraftTable% {
-        ; GuiControlGet, craftInGui,, craft_%A_Index%, value
-        ; if (craftInGui == "") {
-            ; return %A_Index%
-            ; break
-        ; }
-    ; }
-; }
 
 detectType(craft, row) {
     if (craft == "") {
@@ -2064,13 +2060,17 @@ loadLastSession() {
     sessionLoading := False
 }
 
+clearRowData(rowIndex) {
+    GuiControl,, craft_%rowIndex%      
+    GuiControl,, count_%rowIndex%, 0        
+    GuiControl,, price_%rowIndex%
+    GuiControl,, type_%rowIndex%    
+    guiControl,, lvl_%rowIndex%    
+}
+
 clearAll() {
     loop, %MaxRowsCraftTable% {
-        GuiControl,, craft_%A_Index%      
-        GuiControl,, count_%A_Index%, 0        
-        GuiControl,, price_%A_Index%
-        GuiControl,, type_%A_Index%    
-        guiControl,, lvl_%A_Index%    
+        clearRowData(A_Index)  
     }
     outArray := []
     outArrayCount := 0
