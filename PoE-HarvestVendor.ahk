@@ -1142,6 +1142,12 @@ Handle_Change(craftText, ByRef out) {
             , "Other"])
         return
     }
+    if TagExist(craftText, "Delirium") {
+        out.push(["Change a stack of Delirium Orbs"
+            , getLVL(craftText)
+            , "Other"])
+        return
+    } 
     ; ignore others ?
 }
 
