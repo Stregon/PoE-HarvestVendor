@@ -20,6 +20,7 @@ global seenInstructions := 0
 global sessionLoading := False
 global MaxRowsCraftTable := 20
 global CraftTable := []
+global needToChangeModel := True
 loop, %MaxRowsCraftTable% {
     CraftTable.push({"count": 0, "craft": "", "price": ""
         , "lvl": "", "type": ""})
@@ -517,7 +518,9 @@ Count:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, tempCount,, count_%tempRow%, value
-    CraftTable[tempRow].count := tempCount
+    if (needToChangeModel) {
+        CraftTable[tempRow].count := tempCount
+    }
     sumTypes()
     sumPrices()
 return
@@ -526,8 +529,9 @@ craft:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, tempCraft,, craft_%tempRow%, value
-    CraftTable[tempRow].craft := tempCraft
-    
+    if (needToChangeModel) {
+        CraftTable[tempRow].craft := tempCraft
+    }
     detectType(tempCraft, tempRow)
 return
 
@@ -535,15 +539,18 @@ lvl:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, tempLvl,, lvl_%tempRow%, value
-    CraftTable[tempRow].lvl := tempLvl
+    if (needToChangeModel) {
+        CraftTable[tempRow].lvl := tempLvl
+    }
 return
 
 type:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, tempType,, type_%tempRow%, value
-    CraftTable[tempRow].type := tempType
-    
+    if (needToChangeModel) {
+        CraftTable[tempRow].type := tempType
+    }
     sumTypes()
 return
 
@@ -551,10 +558,14 @@ Price:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, tempPrice,, price_%tempRow%, value
-    CraftTable[tempRow].price := tempPrice
-    craftName := CraftTable[tempRow].craft
-    if (craftName != "") {
-        iniWrite, %tempPrice%, %PricesPath%, Prices, %craftName%
+    if (needToChangeModel) {
+        CraftTable[tempRow].price := tempPrice
+        craftName := CraftTable[tempRow].craft
+        if (craftName != "" and tempPrice != "") {
+            iniWrite, %tempPrice%, %PricesPath%, Prices, %craftName%
+        }
+    } else {
+        tempPrice := CraftTable[tempRow].price
     }
     if (tempPrice != "") {
         sumPrices()
@@ -1494,10 +1505,8 @@ updateCraftTable(ar) {
             craftInGui := CraftTable[A_Index].craft
             lvlInGui := CraftTable[A_Index].lvl
             if (craftInGui == tempC and lvlInGui == tempLvl) {
-                craftCount := CraftTable[A_Index].count
-                craftCount += 1
-                CraftTable[A_Index].count := craftCount
-                GuiControl,, count_%A_Index%, %craftCount%
+                CraftTable[A_Index].count := CraftTable[A_Index].count + 1
+                updateUIRow(k)
                 break
             }
             if (craftInGui == "") {
@@ -1563,11 +1572,13 @@ insertIntoRow(rowCounter, craft, lvl, type) {
 
 updateUIRow(rowCounter) {
     row := CraftTable[rowCounter]
+    needToChangeModel := False
     GuiControl,HarvestUI:, craft_%rowCounter%, % row.craft
     GuiControl,HarvestUI:, count_%rowCounter%, % row.count
     GuiControl,HarvestUI:, lvl_%rowCounter%, % row.lvl
     GuiControl,HarvestUI:, type_%rowCounter%, % row.type
     GuiControl,HarvestUI:, price_%rowCounter%, % row.price
+    needToChangeModel := True
 }
 
 ; === Discord message creation ===
