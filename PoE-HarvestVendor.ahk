@@ -1499,7 +1499,7 @@ updateCraftTable(ar) {
     for k, v in ar {   
         tempC := v[1]
         tempLvl := v[2] 
-        tempType :=v[3]
+        tempType := v[3]
 
         loop, %MaxRowsCraftTable% {
             craftInGui := CraftTable[A_Index].craft
@@ -1913,8 +1913,7 @@ getLVL(craft) {
             lv += 50
         }
         return lv > 86 ? "" : lv
-    } 
-    else {
+    } else {
         for k, v in map_levels {
             if (k == lv) {
                 return v
@@ -2288,7 +2287,7 @@ Options: (White space separated)
         loop, parse, Options, %A_Space% 
         {
             Field := A_LoopField
-            FirstChar := SubStr(Field,1,1)
+            FirstChar := SubStr(Field, 1, 1)
             if (FirstChar contains c,t,g,m) {
                 StringTrimLeft, Field, Field, 1
                 %FirstChar% := Field
@@ -2348,8 +2347,7 @@ WM_MOUSEMOVE() {
     static CurrControl, PrevControl, _TT  ; _TT is kept blank for use by the ToolTip command below.
     CurrControl := A_GuiControl
     
-    If (CurrControl <> PrevControl and not InStr(CurrControl, " "))
-    {
+    if (CurrControl != PrevControl and !InStr(CurrControl, " ")) {
         ToolTip,,,,2  ; Turn off any previous tooltip.
         SetTimer, DisplayToolTip, 500
         PrevControl := CurrControl
@@ -2369,8 +2367,8 @@ WM_MOUSEMOVE() {
 }
 
 ;==== JSON PARSER FROM https://github.com/cocobelgica/AutoHotkey-JSON ====
-Jxon_Load(ByRef src, args*)
-{
+Jxon_Load(ByRef src, args*) {
+   
     static q := Chr(34)
 
     key := "", is_key := false
@@ -2386,7 +2384,7 @@ Jxon_Load(ByRef src, args*)
         if !InStr(next, ch, true)
         {
             ln := ObjLength(StrSplit(SubStr(src, 1, pos), "`n"))
-            col := pos - InStr(src, "`n",, -(StrLen(src)-pos+1))
+            col := pos - InStr(src, "`n",, -(StrLen(src) - pos + 1))
 
             msg := Format("{}: line {} col {} (char {})"
             ,   (next == "")      ? ["Extra data", ch := SubStr(src, pos)][1]
@@ -2398,7 +2396,7 @@ Jxon_Load(ByRef src, args*)
               : (next == ",}")    ? "Expecting ',' delimiter or object closing '}'"
               : (next == ",]")    ? "Expecting ',' delimiter or array closing ']'"
               : [ "Expecting JSON value(string, number, [true, false, null], object or array)"
-                , ch := SubStr(src, pos, (SubStr(src, pos)~="[\]\},\s]|$")-1) ][1]
+                , ch := SubStr(src, pos, (SubStr(src, pos)~="[\]\},\s]|$") - 1) ][1]
             , ln, col, pos)
 
             throw Exception(msg, -1, ch)
@@ -2419,7 +2417,7 @@ Jxon_Load(ByRef src, args*)
         else if InStr("}]", ch)
         {
             ObjRemoveAt(stack, 1)
-            next := stack[1]==tree ? "" : is_arr[stack[1]] ? ",]" : ",}"
+            next := stack[1] == tree ? "" : is_arr[stack[1]] ? ",]" : ",}"
         }
 
         else if InStr(",:", ch)
@@ -2433,9 +2431,9 @@ Jxon_Load(ByRef src, args*)
             if (ch == q) ; string
             {
                 i := pos
-                while i := InStr(src, q,, i+1)
+                while i := InStr(src, q,, i + 1)
                 {
-                    val := StrReplace(SubStr(src, pos+1, i-pos-1), "\\", "\u005C")
+                    val := StrReplace(SubStr(src, pos + 1, i - pos - 1), "\\", "\u005C")
                     static end := A_AhkVersion<"2" ? 0 : -1
                     if (SubStr(val, end) != "\")
                         break
@@ -2454,15 +2452,15 @@ Jxon_Load(ByRef src, args*)
                 , val := StrReplace(val,    "\t", "`t")
 
                 i := 0
-                while i := InStr(val, "\",, i+1)
+                while i := InStr(val, "\",, i + 1)
                 {
-                    if (SubStr(val, i+1, 1) != "u") ? (pos -= StrLen(SubStr(val, i)), next := "\") : 0
+                    if (SubStr(val, i + 1, 1) != "u") ? (pos -= StrLen(SubStr(val, i)), next := "\") : 0
                         continue 2
 
                     ; \uXXXX - JSON unicode escape sequence
-                    xxxx := Abs("0x" . SubStr(val, i+2, 4))
+                    xxxx := Abs("0x" . SubStr(val, i + 2, 4))
                     if (A_IsUnicode || xxxx < 0x100)
-                        val := SubStr(val, 1, i-1) . Chr(xxxx) . SubStr(val, i+6)
+                        val := SubStr(val, 1, i - 1) . Chr(xxxx) . SubStr(val, i + 6)
                 }
 
                 if is_key
@@ -2474,7 +2472,7 @@ Jxon_Load(ByRef src, args*)
 
             else ; number | true | false | null
             {
-                val := SubStr(src, pos, i := RegExMatch(src, "[\]\},\s]|$",, pos)-pos)
+                val := SubStr(src, pos, i := RegExMatch(src, "[\]\},\s]|$",, pos) - pos)
             
             ; For numerical values, numerify integers and keep floats as is.
             ; I'm not yet sure if I should numerify floats in v2.0-a ...
@@ -2501,19 +2499,17 @@ Jxon_Load(ByRef src, args*)
             }
             
             is_array? ObjPush(obj, val) : obj[key] := val
-            next := obj==tree ? "" : is_array ? ",]" : ",}"
+            next := (obj == tree) ? "" : is_array ? ",]" : ",}"
         }
     }
 
     return tree[1]
 }
 
-Jxon_Dump(obj, indent:="", lvl:=1)
-{
+Jxon_Dump(obj, indent:="", lvl:=1) {
     static q := Chr(34)
 
-    if IsObject(obj)
-    {
+    if (IsObject(obj)) {
         static Type := Func("Type")
         if Type ? (Type.Call(obj) != "Object") : (ObjGetCapacity(obj) == "")
             throw Exception("Object type not supported.", -1, Format("<Object at 0x{:p}>", &obj))
@@ -2524,8 +2520,7 @@ Jxon_Dump(obj, indent:="", lvl:=1)
         until !is_array
 
         static integer := "integer"
-        if indent is %integer%
-        {
+        if (indent is %integer%) {
             if (indent < 0)
                 throw Exception("Indent parameter must be a postive integer.", -1, indent)
             spaces := indent, indent := ""
@@ -2537,8 +2532,7 @@ Jxon_Dump(obj, indent:="", lvl:=1)
             indt .= indent
 
         lvl += 1, out := "" ; Make #Warn happy
-        for k, v in obj
-        {
+        for k, v in obj {
             if IsObject(k) || (k == "")
                 throw Exception("Invalid object key.", -1, k ? Format("<Object at 0x{:p}>", &obj) : "<blank>")
             
@@ -2549,11 +2543,10 @@ Jxon_Dump(obj, indent:="", lvl:=1)
                 .  ( indent ? ",`n" . indt : "," ) ; token + indent
         }
 
-        if (out != "")
-        {
+        if (out != "") {
             out := Trim(out, ",`n" . indent)
             if (indent != "")
-                out := "`n" . indt . out . "`n" . SubStr(indt, StrLen(indent)+1)
+                out := "`n" . indt . out . "`n" . SubStr(indt, StrLen(indent) + 1)
         }
         
         return is_array ? "[" . out . "]" : "{" . out . "}"
@@ -2564,8 +2557,7 @@ Jxon_Dump(obj, indent:="", lvl:=1)
         return obj
 
     ; String (null -> not supported by AHK)
-    if (obj != "")
-    {
+    if (obj != "") {
           obj := StrReplace(obj,  "\",    "\\")
         , obj := StrReplace(obj,  "/",    "\/")
         , obj := StrReplace(obj,    q, "\" . q)
@@ -2575,7 +2567,7 @@ Jxon_Dump(obj, indent:="", lvl:=1)
         , obj := StrReplace(obj, "`r",    "\r")
         , obj := StrReplace(obj, "`t",    "\t")
 
-        static needle := (A_AhkVersion<"2" ? "O)" : "") . "[^\x20-\x7e]"
+        static needle := (A_AhkVersion < "2" ? "O)" : "") . "[^\x20-\x7e]"
         while RegExMatch(obj, needle, m)
             obj := StrReplace(obj, m[0], Format("\u{:04X}", Ord(m[0])))
     }
@@ -2613,3 +2605,4 @@ WebPic(WB, Website, Options := "") {
     WB.Navigate("about:" HTML_Page)
     Return HTML_Page
 }
+
