@@ -1,0 +1,7 @@
+load_system_dawg F
+load_freq_dawg F
+user_words_suffix user-words
+user_patterns_suffix user-patterns
+#preserve_interword_spaces  1
+#tessedit_ocr_engine_mode  1
+tessedit_pageseg_mode  4
