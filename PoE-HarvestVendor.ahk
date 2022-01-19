@@ -1506,7 +1506,7 @@ updateCraftTable(ar) {
             lvlInGui := CraftTable[A_Index].lvl
             if (craftInGui == tempC and lvlInGui == tempLvl) {
                 CraftTable[A_Index].count := CraftTable[A_Index].count + 1
-                updateUIRow(k)
+                updateUIRow(A_Index)
                 break
             }
             if (craftInGui == "") {
