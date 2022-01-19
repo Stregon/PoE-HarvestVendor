@@ -1564,7 +1564,7 @@ detectType(craft, row) {
 }
 
 insertIntoRow(rowCounter, craft, lvl, type) {    
-    tempP := updatePriceInUI(craft)
+    tempP := getPriceFor(craft)
     CraftTable[rowCounter] := {"count": 1, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
     updateUIRow(rowCounter)
@@ -1885,13 +1885,18 @@ getMaxLenghtColunm(column) {
     return MaxLen_column
 }
 ;============================================================
-
-updatePriceInUI(craft) {    
-    iniRead, tempP, %PricesPath%, Prices, %craft%
-    if (tempP == "ERROR") {
-        tempP := ""
+getPriceFor(craft) {
+    while (True) {
+        iniRead, tempP, %PricesPath%, Prices, %craft%
+        if (tempP == "ERROR") {
+            return ""
+        }
+        if (tempP != "") {
+            return tempP
+        }
+        ;Delete craft with blank price
+        iniDelete, %PricesPath%, Prices, %craft%
     }
-    return tempP
 }
 
 getRow(elementVariable) {
@@ -2048,7 +2053,7 @@ loadLastSessionCraft(row) {
         ccount := split[3]
         type := split[4]
 
-        tempP := updatePriceInUI(craft)
+        tempP := getPriceFor(craft)
         CraftTable[row] := {"count": ccount, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
     }
