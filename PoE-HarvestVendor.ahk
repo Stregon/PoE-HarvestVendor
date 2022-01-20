@@ -1330,28 +1330,28 @@ Handle_Exchange(craftText, ByRef out) {
 
 Handle_Upgrade(craftText, ByRef out) {
     if TagExist(craftText, "Rare") {
-        if TemplateExist(craftText, "two.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 2 mods"
-                , getLVL(craftText)
-                , "Other"])
-        } else if TemplateExist(craftText, "two.+random.+high-tier.+modifiers") {
+        if TemplateExist(craftText, "two.+random.+high-tier.+modifiers") {
             out.push(["Upgrade Magic to Rare adding 2 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
-        } else if TemplateExist(craftText, "three.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 3 mods"
+        } else if TemplateExist(craftText, "two.+random.+modifiers") {
+            out.push(["Upgrade Magic to Rare adding 2 mods"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, "three.+random.+high-tier+modifiers") {
             out.push(["Upgrade Magic to Rare adding 3 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
-        } else if TemplateExist(craftText, "four.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 4 mods"
+        } else if TemplateExist(craftText, "three.+random.+modifiers") {
+            out.push(["Upgrade Magic to Rare adding 3 mods"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, "four.+random.+high-tier.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 4 high-tier mods"
+                    out.push(["Upgrade Magic to Rare adding 4 high-tier mods"
+                        , getLVL(craftText)
+                        , "Other"])
+        } else if TemplateExist(craftText, "four.+random.+modifiers") {
+            out.push(["Upgrade Magic to Rare adding 4 mods"
                 , getLVL(craftText)
                 , "Other"])
         }
