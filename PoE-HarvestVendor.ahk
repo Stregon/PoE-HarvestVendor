@@ -56,6 +56,7 @@ global Capture2TextOptions := " -o " . TempPath
     ; . " --scale-factor " . scale_factor
 global LangDict := {}
 langfile := A_ScriptDir . "\" . Lang . ".dict" 
+StringCaseSense, On
 Loop, read, %langfile%
 {
     obj := StrSplit(Trim(A_LoopReadLine), "=")
@@ -71,7 +72,7 @@ global CraftNames := ["Reforge"
     , "Attempt", "Set"
     , "Sacrifice", "Improves"
     , "Synthesise", "Remove"
-    , "Randomise", "Add"
+    , "Randomise", "Add2"
     , "Augment", "Fracture"
     , "Corrupt", "Exchange"
     , "Upgrade", "Split"]
@@ -443,7 +444,6 @@ gui, Font, s11 cA38D6D
     gui add, text, x%xColumn5% y%row%, Price
 
 ; === table ===
-    ;outside loop. its not change
     count_ := getImgWidth(A_ScriptDir . "\resources\count.png")
     craft_ := getImgWidth(A_ScriptDir . "\resources\craft.png")
     lvl_ := getImgWidth(A_ScriptDir . "\resources\lvl.png")  
@@ -620,18 +620,17 @@ ClearRow:
         fileLine := A_YYYY . "-" . A_MM . "-" . A_DD . ";" . A_Hour . ":" . A_Min . ";" . league . ";" . row.craft . ";" . row.price . "`r`n"
 
         FileAppend, %fileLine%, %LogPath%
-        cnt := row.count
-        if (cnt > 1) {
-            cnt -= 1
-            Guicontrol,, count_%tempRow%, %cnt%
+        if (row.count > 1) {
+            CraftTable[tempRow].count := row.count - 1
         } else {
             clearRowData(tempRow)
-            sortCraftTable()
+            ;sortCraftTable()
         }
     } else {
         clearRowData(tempRow)
-        sortCraftTable()
+        ;sortCraftTable()
     }
+    updateUIRow(tempRow)
 return
 
 ; Aug_Post:
@@ -859,9 +858,17 @@ translate(keyword) {
     return keyword
 }
 
+TagExist(text, tag) {
+    return InStr(text, tag) > 0
+}
+
+TemplateExist(text, template) {
+    return RegExMatch(text, template) > 0
+}
+
 Handle_Augment(craftText, ByRef out) {
-    mod := (RegExMatch(craftText, translate("Lucky")) > 0) ? " Lucky" : ""
-    if (RegExMatch(craftText, translate("non-Influenced")) > 0) {
+    mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
+    if TemplateExist(craftText, translate("non-Influenced")) {
         augments := ["Caster"
             , "Physical"
             , "Fire"
@@ -875,7 +882,7 @@ Handle_Augment(craftText, ByRef out) {
             , "Critical"
             , "a new modifier"]
         for k, v in augments {
-            if (RegExMatch(craftText, translate(v)) > 0) {
+            if TemplateExist(craftText, translate(v)) {
                 out.push(["Augment non-influenced - " . v . mod
                         , getLVL(craftText)
                         , "Aug"])
@@ -890,14 +897,13 @@ Handle_Augment(craftText, ByRef out) {
 }
 
 Handle_Remove(craftText, ByRef out) {
-    if (RegExMatch(craftText, translate("Influenced")) > 0 
-        or RegExMatch(craftText, translate("influenced")) > 0) {
-        if RegExMatch(craftText, translate("add")) > 0 {
+    if TemplateExist(craftText, translate("Influenced")) {
+        if TemplateExist(craftText, translate("add")) {
             removes := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical"]
-            mod := (RegExMatch(craftText, translate("non")) > 0) ? "non-" : ""
+            mod := TemplateExist(craftText, translate("non")) ? "non-" : ""
             for k, v in removes {
-                if RegExMatch(craftText, translate(v)) > 0  {
+                if TemplateExist(craftText, translate(v)) {
                     out.push(["Remove " . mod . v . " add " . v
                         , getLVL(craftText)
                         , "Other"])
@@ -908,7 +914,7 @@ Handle_Remove(craftText, ByRef out) {
             augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
             for k, v in augments {
-                if RegExMatch(craftText, translate(v)) > 0 {
+                if TemplateExist(craftText, translate(v)) {
                     out.push(["Remove " . v
                         , getLVL(craftText)
                         , "Rem"])
@@ -918,8 +924,8 @@ Handle_Remove(craftText, ByRef out) {
         }
         return
     }
-    if (RegExMatch(craftText, translate("add")) > 0) {
-        mod := (RegExMatch(craftText, translate("non")) > 0) ? "non-" : ""
+    if TemplateExist(craftText, translate("add")) {
+        mod := TemplateExist(craftText, translate("non")) ? "non-" : ""
         out.push(["Remove " . mod . "Influence add Influence"
             , getLVL(craftText)
             , "Rem"])
@@ -932,16 +938,16 @@ Handle_Remove(craftText, ByRef out) {
 
 Handle_Reforge(craftText, ByRef out) {
     ;prefixes
-    if RegExMatch(craftText, translate("Prefix")) > 0 {
-        mod := (RegExMatch(craftText, translate("Lucky")) > 0) ? " Lucky" : ""
+    if TemplateExist(craftText, translate("Prefix")) {
+        mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
         out.push(["Reforge keep Prefixes" . mod
             , getLVL(craftText)
             , "Other"])
         return
     }
     ;suffixes
-    if RegExMatch(craftText, translate("Suffix")) > 0 {
-        mod := (RegExMatch(craftText, translate("Lucky")) > 0) ? " Lucky" : ""
+    if TemplateExist(craftText, translate("Suffix")) {
+        mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
         out.push(["Reforge keep Suffixes" . mod
             , getLVL(craftText)
             , "Other"])
@@ -960,10 +966,10 @@ Handle_Reforge(craftText, ByRef out) {
         , "Chaos"
         , "Critical"
         , "Influence"]
-    if (RegExMatch(craftText, translate("including")) > 0) { ; 'including' text appears only in reforge rares
+    if TemplateExist(craftText, translate("including")) { ; 'including' text appears only in reforge rares
         for k, v in remAddsClean {
-            if (RegExMatch(craftText, translate(v)) > 0) {
-                mod := (RegExMatch(craftText, translate("more")) > 0 ) ? " more common" : ""
+            if TemplateExist(craftText, translate(v)) {
+                mod := TemplateExist(craftText, translate("more")) ? " more common" : ""
                 out.push(["Reforge Rare - " . v . mod
                         , getLVL(craftText)
                         , "Other"])
@@ -984,26 +990,29 @@ Handle_Reforge(craftText, ByRef out) {
     ;   }
     ;} 
     ;reforge same mod
-    if (RegExMatch(craftText, translate("less likely")) > 0) {
+    if TemplateExist(craftText, translate("less likely")) {
         out.push(["Reforge Rare - Less Likely"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if (RegExMatch(craftText, translate("more likely")) > 0) {
+    if TemplateExist(craftText, translate("more likely")) {
         out.push(["Reforge Rare - More Likely"
             , getLVL(craftText)
             , "Other"])
         return
     }
+    if TemplateExist(craftText, translate("10 times")) {
+        ;Reforge the links between sockets/links on an item 10 times
+        return
+    }
     ;links
-    if (RegExMatch(craftText, translate("links")) > 0 
-        and RegExMatch(craftText, translate("10 times")) = 0) {
-        if RegExMatch(craftText, translate("six")) > 0 {
+    if TemplateExist(craftText, translate("links")) {
+        if TemplateExist(craftText, translate("six")) {
             out.push(["Six link (6-link)"
                 , getLVL(craftText)
                 , "Other"])
-        } else if RegExMatch(craftText, translate("five")) > 0 {
+        } else if TemplateExist(craftText, translate("five")) {
             out.push(["Five link (5-link)"
                 , getLVL(craftText)
                 , "Other"])
@@ -1011,12 +1020,11 @@ Handle_Reforge(craftText, ByRef out) {
         return
     }
     ;colour
-    if (RegExMatch(craftText, translate("colour")) > 0 
-        and RegExMatch(craftText, translate("10 times")) = 0) {
-        if RegExMatch(craftText, translate("non")) > 0 {
+    if TemplateExist(craftText, translate("colour")) {
+        if TemplateExist(craftText, translate("non")) {
             reforgeNonColor := ["Red", "Blue", "Green"]
             for k, v in reforgeNonColor {
-                if RegExMatch(craftText, translate(v)) > 0 {
+                if TemplateExist(craftText, translate(v)) {
                     out.push(["Reforge Colour: non-" . k . " into " . k
                         , getLVL(craftText)
                         , "Other"])
@@ -1025,15 +1033,15 @@ Handle_Reforge(craftText, ByRef out) {
             }
             return
         }
-        if RegExMatch(craftText, translate("White")) > 0 {
+        if TemplateExist(craftText, translate("White")) {
             out.push(["Reforge Colour: into White"
                     , getLVL(craftText)
                     , "Other"])
             return
         }
-        redVal := RegExMatch(craftText, translate("Red")) > 0
-        blueVal := RegExMatch(craftText, translate("Blue")) > 0
-        greenVal := RegExMatch(craftText, translate("Green")) > 0
+        redVal := TemplateExist(craftText, translate("Red"))
+        blueVal := TemplateExist(craftText, translate("Blue"))
+        greenVal := TemplateExist(craftText, translate("Green"))
         if (redVal and blueVal and greenVal) {
             out.push(["Reforge Colour: into Red, Blue and Green"
                     , getLVL(craftText)
@@ -1060,7 +1068,7 @@ Handle_Reforge(craftText, ByRef out) {
         }
         return
     }
-    if InStr(craftText, translate("Influence")) > 0 {
+    if TemplateExist(craftText, translate("Influence")) {
         out.push(["Reforge with Influence mod more common"
             , getLVL(craftText)
             , "Other"])
@@ -1070,11 +1078,11 @@ Handle_Reforge(craftText, ByRef out) {
 
 Handle_Enchant(craftText, ByRef out) {
     ;weapon
-    if RegExMatch(craftText, translate("Weapon")) > 0 {
+    if TemplateExist(craftText, translate("Weapon")) {
         weapEnchants := ["Critical Strike Chance", "Accuracy", "Attack Speed"
             , "+1 Weapon Range", "Elemental Damage", "Area of Effect"]
         for k, enchant in weapEnchants {
-            if RegExMatch(craftText, translate(enchant)) > 0 {
+            if TemplateExist(craftText, translate(enchant)) {
                 ; OCR was failing to detect "Elemental Damage" properly, but "Elemental" is unique enough for detection, just gotta add "damage" for the output
                 ;tempEnch := (enchant == "Elemental") ? "Elemental Damage" : enchant
                 out.push(["Enchant Weapon: " . enchant
@@ -1086,11 +1094,11 @@ Handle_Enchant(craftText, ByRef out) {
         return
     }
     ;body armour
-    if RegExMatch(craftText, translate("Armour")) > 0 { 
+    if TemplateExist(craftText, translate("Armour")) { 
         bodyEnchants := ["Maximum Life", "Maximum Mana", "Strength", "Dexterity"
             , "Intelligence", "Fire Resistance", "Cold Resistance", "Lightning Resistance"]
         for k, bodyEnchant in bodyEnchants {
-            if RegExMatch(craftText, translate(bodyEnchant)) > 0 {
+            if TemplateExist(craftText, translate(bodyEnchant)) {
                 out.push(["Enchant Body: " . bodyEnchant
                     , getLVL(craftText)
                     , "Other"])
@@ -1100,18 +1108,18 @@ Handle_Enchant(craftText, ByRef out) {
         return
     }
     ;Map
-    if RegExMatch(craftText, translate("Sextant")) > 0 {
+    if TemplateExist(craftText, translate("Sextant")) {
         out.push(["Enchant Map: no Sextant use"
             , getLVL(craftText)
             , "Other"])
         return
     }
     ;flask
-    if RegExMatch(craftText, translate("Flask")) > 0 {
+    if TemplateExist(craftText, translate("Flask")) {
         flaskEnchants := {"Duration": "inc", "Effect": "inc"
             , "Maximum Charges": "inc", "Charges used": "reduced"}
         for flaskEnchant, mod in flaskEnchants {
-            if RegExMatch(craftText, translate(flaskEnchant)) > 0 {
+            if TemplateExist(craftText, translate(flaskEnchant)) {
                 out.push(["Enchant Flask: " . mod . " " . flaskEnchant
                     , getLVL(craftText)
                     , "Other"])
@@ -1120,7 +1128,7 @@ Handle_Enchant(craftText, ByRef out) {
         }
         return
     }
-    if RegExMatch(craftText, translate("Tormented")) > 0 {
+    if TemplateExist(craftText, translate("Tormented")) {
         out.push(["Enchant Map: surrounded by Tormented Spirits"
             , getLVL(craftText)
             , "Other"])
@@ -1130,14 +1138,14 @@ Handle_Enchant(craftText, ByRef out) {
 
 Handle_Attempt(craftText, ByRef out) {
     ;awaken
-    if RegExMatch(craftText, translate("Awaken")) > 0 {
+    if TemplateExist(craftText, translate("Awaken")) {
         out.push(["Attempt to Awaken a level 20 Support Gem"
             , getLVL(craftText)
             , "Other"])
         return
     }
     ;scarab upgrade
-    if RegExMatch(craftText, translate("Scarab")) > 0 { 
+    if TemplateExist(craftText, translate("Scarab")) { 
         out.push(["Attempt to upgrade a Scarab"
             , getLVL(craftText)
             , "Other"])
@@ -1147,37 +1155,37 @@ Handle_Attempt(craftText, ByRef out) {
 
 Handle_Change(craftText, ByRef out) {
     ; res mods
-    if RegExMatch(craftText, translate("Resistance")) > 0 {
-        fireVal := RegExMatch(craftText, translate("Fire"))
-        coldVal := RegExMatch(craftText, translate("Cold"))
-        lightVal := RegExMatch(craftText, translate("Lightning"))
-        maxVal := max(fireVal, coldVal, lightVal)
-        if (maxVal == fireVal) {
-            if (coldVal > 0) {
+    if TemplateExist(craftText, translate("Resistance")) {
+        firePos := RegExMatch(craftText, translate("Fire"))
+        coldPos := RegExMatch(craftText, translate("Cold"))
+        lightPos := RegExMatch(craftText, translate("Lightning"))
+        rightMostPos := max(firePos, coldPos, lightPos)
+        if (rightMostPos == firePos) {
+            if (coldPos > 0) {
                 out.push(["Change Resist: Cold to Fire"
                     , getLVL(craftText)
                     , "Other"])
-            } else if (lightVal > 0) {
+            } else if (lightPos > 0) {
                 out.push(["Change Resist: Lightning to Fire"
                     , getLVL(craftText)
                     , "Other"])
             }
-        } else if (maxVal == coldVal) {
-            if (fireVal > 0) {
+        } else if (rightMostPos == coldPos) {
+            if (firePos > 0) {
                 out.push(["Change Resist: Fire to Cold"
                     , getLVL(craftText)
                     , "Other"])
-            } else if (lightVal > 0) {
+            } else if (lightPos > 0) {
                 out.push(["Change Resist: Lightning to Cold"
                     , getLVL(craftText)
                     , "Other"])
             }
-        } else if (maxVal == lightVal) {
-            if (fireVal > 0) {
+        } else if (rightMostPos == lightPos) {
+            if (firePos > 0) {
                 out.push(["Change Resist: Fire to Lightning"
                     , getLVL(craftText)
                     , "Other"])
-            } else if (coldVal > 0) {
+            } else if (coldPos > 0) {
                 out.push(["Change Resist: Cold to Lightning"
                     , getLVL(craftText)
                     , "Other"])
@@ -1185,14 +1193,14 @@ Handle_Change(craftText, ByRef out) {
         }
         return
     }
-    if (RegExMatch(craftText, translate("Bestiary")) > 0 
-        or RegExMatch(craftText, translate("Lures")) > 0) {
+    if (TemplateExist(craftText, translate("Bestiary")) 
+        or TemplateExist(craftText, translate("Lures"))) {
         out.push(["Change Unique Bestiary item or item with Aspect into Lures"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if RegExMatch(craftText, translate("Delirium")) > 0 {
+    if TemplateExist(craftText, translate("Delirium")) {
         out.push(["Change a stack of Delirium Orbs"
             , getLVL(craftText)
             , "Other"])
@@ -1203,15 +1211,15 @@ Handle_Change(craftText, ByRef out) {
 
 Handle_Sacrifice(craftText, ByRef out) {
     ;gem for gcp/xp
-    if RegExMatch(craftText, translate("Gem")) > 0 {
+    if TemplateExist(craftText, translate("Gem")) {
         gemPerc := ["20%", "30%", "40%", "50%"]
         for k, v in gemPerc {
-            if RegExMatch(craftText, v) > 0 {
-                if RegExMatch(craftText, translate("quality")) > 0 {
+            if TemplateExist(craftText, v) {
+                if TemplateExist(craftText, translate("quality")) {
                     out.push(["Sacrifice gem, get " . v . " qual as GCP"
                         , getLVL(craftText)
                         , "Other"])
-                } else if RegExMatch(craftText, translate("experience")) > 0 {
+                } else if TemplateExist(craftText, translate("experience")) {
                     out.push(["Sacrifice gem, get " . v . " exp as Lens"
                         , getLVL(craftText)
                         , "Other"])
@@ -1222,8 +1230,8 @@ Handle_Sacrifice(craftText, ByRef out) {
         return
     }
     ;div cards gambling
-    if RegExMatch(craftText, translate("Divination")) > 0 { 
-        if RegExMatch(craftText, translate("half a stack")) > 1 {
+    if TemplateExist(craftText, translate("Divination")) { 
+        if TemplateExist(craftText, translate("half a stack")) {
             out.push(["Sacrifice half stack for 0-2x return"
                 , getLVL(craftText)
                 , "Other"])
@@ -1245,13 +1253,13 @@ Handle_Sacrifice(craftText, ByRef out) {
 }
 
 Handle_Improves(craftText, ByRef out) {
-    if RegExMatch(craftText, translate("Flask")) > 0 {
+    if TemplateExist(craftText, translate("Flask")) {
         out.push(["Improves the Quality of a Flask"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if RegExMatch(craftText, translate("Gem")) > 0 {
+    if TemplateExist(craftText, translate("Gem")) {
         out.push(["Improves the Quality of a Gem"
             , getLVL(craftText)
             , "Other"])
@@ -1262,7 +1270,7 @@ Handle_Improves(craftText, ByRef out) {
 Handle_Fracture(craftText, ByRef out) {
     fracture := {"modifier": "1/5", "Suffix": "1/3", "Prefix": "1/3"}
     for k, v in fracture {
-        if RegExMatch(craftText, translate(k)) > 0 {
+        if TemplateExist(craftText, translate(k)) {
             out.push(["Fracture " . v . " " . k
                 , getLVL(craftText)
                 , "Other"])
@@ -1272,8 +1280,8 @@ Handle_Fracture(craftText, ByRef out) {
 }
 
 Handle_Reroll(craftText, ByRef out) {
-    prefVal := RegExMatch(craftText, translate("Prefix")) > 0
-    suffVal := RegExMatch(craftText, translate("Suffix")) > 0
+    prefVal := TemplateExist(craftText, translate("Prefix"))
+    suffVal := TemplateExist(craftText, translate("Suffix"))
     ;if RegExMatch(craftText, translate("Implicit")) > 0 {
     if (prefVal and suffVal) {
         out.push(["Reroll All Lucky"
@@ -1296,17 +1304,17 @@ Handle_Reroll(craftText, ByRef out) {
 }
 
 Handle_Randomise(craftText, ByRef out) {
-    if RegExMatch(craftText, translate("Influence")) > 0 { 
+    if TemplateExist(craftText, translate("Influence")) { 
         addInfluence := ["Weapon", "Armour", "Jewellery"]
         for k, v in addInfluence {
-            if RegExMatch(craftText, translate(v)) > 0 {
+            if TemplateExist(craftText, translate(v)) {
                 out.push(["Randomise Influence - " . v
                     , getLVL(craftText)
                     , "Other"])
                 return
             }
         }
-        if RegExMatch(craftText, translate("numeric values")) > 0 {
+        if TemplateExist(craftText, translate("numeric values")) {
             out.push(["Randomise the numeric values of the random Influence modifiers"
                 , getLVL(craftText)
                 , "Other"])
@@ -1316,7 +1324,7 @@ Handle_Randomise(craftText, ByRef out) {
     augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
         , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
     for k, v in augments {
-        if RegExMatch(craftText, translate(v)) > 0 {
+        if TemplateExist(craftText, translate(v)) {
             out.push(["Randomise values of " . v . " mods"
                 , getLVL(craftText)
                 , "Other"])
@@ -1328,7 +1336,7 @@ Handle_Randomise(craftText, ByRef out) {
 Handle_Add(craftText, ByRef out) {
     addInfluence := ["Weapon", "Armour", "Jewellery"]
     for k, v in addInfluence {
-        if RegExMatch(craftText, translate(v)) > 0 {
+        if TemplateExist(craftText, translate(v)) {
             out.push(["Add Influence to " . v
                 , getLVL(craftText)
                 , "Other"])
@@ -1338,20 +1346,20 @@ Handle_Add(craftText, ByRef out) {
 }
 
 Handle_Set(craftText, ByRef out) {
-    if RegExMatch(craftText, translate("Prismatic")) > 0 {
+    if TemplateExist(craftText, translate("Prismatic")) {
         out.push(["Set Implicit Basic Jewel"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if (RegExMatch(craftText, translate("Timeless")) > 0 
-        or RegExMatch(craftText, translate("Abyss")) > 0) {
+    if (TemplateExist(craftText, translate("Timeless")) 
+        or TemplateExist(craftText, translate("Abyss"))) {
         out.push(["Set Implicit Abyss/Timeless Jewel"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if RegExMatch(craftText, translate("Cluster")) > 0 {
+    if TemplateExist(craftText, translate("Cluster")) {
         out.push(["Set Implicit Cluster Jewel"
             , getLVL(craftText)
             , "Other"])
@@ -1374,19 +1382,19 @@ Handle_Exchange(craftText, ByRef out) {
 }
 
 Handle_Upgrade(craftText, ByRef out) {
-    if RegExMatch(craftText, translate("Normal")) > 0 {
-        if RegExMatch(craftText, translate("one random ")) > 0 {
+    if TemplateExist(craftText, translate("Normal")) {
+        if TemplateExist(craftText, translate("one random ")) {
             out.push(["Upgrade Normal to Magic adding 1 high-tier mod"
                 , getLVL(craftText)
                 , "Other"])
-        } else if RegExMatch(craftText, translate("two random ")) > 0 {
+        } else if TemplateExist(craftText, translate("two random ")) {
             out.push(["Upgrade Normal to Magic adding 2 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
         }
         return
     }
-    if RegExMatch(craftText, "Rare") > 0 {
+    if TemplateExist(craftText, translate("Rare")) {
         mods := {"two random modifiers" : "Upgrade Magic to Rare adding 2 mods"
             , "two random high-tier modifiers": "Upgrade Magic to Rare adding 2 high-tier mods"
             , "three random modifiers" : "Upgrade Magic to Rare adding 3 mods"
@@ -1394,10 +1402,10 @@ Handle_Upgrade(craftText, ByRef out) {
             , "four random modifiers" : "Upgrade Magic to Rare adding 4 mods"
             , "four random high-tier modifiers": "Upgrade Magic to Rare adding 4 high-tier mods"}
         for k, v in mods {
-            if RegExMatch(craftText, translate(k)) > 0 {
+            if TemplateExist(craftText, translate(k)) {
                 out.push([v
-                , getLVL(craftText)
-                , "Other"])
+                    , getLVL(craftText)
+                    , "Other"])
                 return
             }
         }
@@ -1500,8 +1508,9 @@ processCrafts(file) {
         }
         for k, v in CraftNames {
             newK := translate(v)
-            if RegExMatch(craftText, newK) > 0 {
+            if TemplateExist(craftText, newK) {
                 if IsFunc("Handle_" . v) {
+                    MsgBox, %v%, %newK%
                     Handle_%v%(craftText, outArray)
                 }
                 break
@@ -1540,6 +1549,7 @@ updateCraftTable(ar) {
             }
             if (craftInGui == "") {
                 insertIntoRow(A_Index, tempC, tempLvl, tempType)
+                updateUIRow(A_Index)
                 ;isNeedSort := True
                 break
             }
@@ -1596,7 +1606,6 @@ insertIntoRow(rowCounter, craft, lvl, type) {
     tempP := getPriceFor(craft)
     CraftTable[rowCounter] := {"count": 1, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
-    updateUIRow(rowCounter)
 }
 
 updateUIRow(rowCounter) {
@@ -1971,7 +1980,7 @@ sumPrices() {
     tempSumEx := 0
     loop, %MaxRowsCraftTable% {
         craftRow := CraftTable[A_Index]
-        if (craftRow.craft == ""){
+        if (craftRow.craft == "") {
             continue
         }
         priceCraft := craftRow.price
