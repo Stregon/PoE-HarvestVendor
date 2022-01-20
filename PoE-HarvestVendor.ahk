@@ -515,61 +515,68 @@ Clear_all:
 return
 
 Count:
+    oldCount := CraftTable[tempRow].count
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    guiControlGet, tempCount,, count_%tempRow%, value
+    guiControlGet, newCount,, count_%tempRow%, value
+    if (oldCount == newCount and !sessionLoading) {
+        return
+    }
     if (needToChangeModel) {
-        CraftTable[tempRow].count := tempCount
+        CraftTable[tempRow].count := newCount
     }
     sumTypes()
     sumPrices()
 return
 
 craft:
+    oldCraft := CraftTable[tempRow].craft
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    guiControlGet, tempCraft,, craft_%tempRow%, value
-    if (needToChangeModel) {
-        CraftTable[tempRow].craft := tempCraft
+    guiControlGet, newCraft,, craft_%tempRow%, value
+    if (oldCraft == newCraft and !sessionLoading) {
+        return
     }
-    detectType(tempCraft, tempRow)
-return
-
-lvl:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, tempLvl,, lvl_%tempRow%, value
     if (needToChangeModel) {
-        CraftTable[tempRow].lvl := tempLvl
-    }
-return
-
-type:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, tempType,, type_%tempRow%, value
-    if (needToChangeModel) {
-        CraftTable[tempRow].type := tempType
+        CraftTable[tempRow].craft := newCraft
+        CraftTable[tempRow].Price := getPriceFor(newCraft)
+        updateUIRow(tempRow, "price")
+        CraftTable[tempRow].type := getTypeFor(newCraft)
+        updateUIRow(tempRow, "type")
     }
     sumTypes()
 return
 
-Price:
+lvl:
+    if (!needToChangeModel) {
+        return
+    }
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    guiControlGet, tempPrice,, price_%tempRow%, value
+    guiControlGet, tempLvl,, lvl_%tempRow%, value
+    CraftTable[tempRow].lvl := tempLvl
+return
+
+type:
+    
+return
+
+Price:
+    oldPrice := CraftTable[tempRow].price
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    guiControlGet, newPrice,, price_%tempRow%, value
+    if (oldPrice == newPrice and !sessionLoading) {
+        return
+    }
     if (needToChangeModel) {
-        CraftTable[tempRow].price := tempPrice
+        CraftTable[tempRow].price := newPrice
         craftName := CraftTable[tempRow].craft
-        if (craftName != "" and tempPrice != "") {
-            iniWrite, %tempPrice%, %PricesPath%, Prices, %craftName%
+        if (craftName != "") {
+            iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
         }
-    } else {
-        tempPrice := CraftTable[tempRow].price
     }
-    if (tempPrice != "") {
-        sumPrices()
-    }
+    sumPrices()
 return
 
 Can_stream:
@@ -618,7 +625,7 @@ ClearRow:
         FileAppend, %fileLine%, %LogPath%
         if (row.count > 1) {
             CraftTable[tempRow].count := row.count - 1
-            updateUIRow(tempRow)
+            updateUIRow(tempRow, "count")
         } else {
             clearRowData(tempRow)
             sortCraftTable()
@@ -1505,12 +1512,11 @@ updateCraftTable(ar) {
             lvlInGui := CraftTable[A_Index].lvl
             if (craftInGui == tempC and lvlInGui == tempLvl) {
                 CraftTable[A_Index].count := CraftTable[A_Index].count + 1
-                updateUIRow(A_Index)
+                updateUIRow(A_Index, "count")
                 break
             }
             if (craftInGui == "") {
                 insertIntoRow(A_Index, tempC, tempLvl, tempType)
-                ;updateUIRow(A_Index)
                 isNeedSort := True
                 break
             }
@@ -1542,25 +1548,42 @@ sortCraftTable() {
     }
 }
 
-detectType(craft, row) {
+; detectType(craft, row) {
+    ; if (craft == "") {
+        ; guicontrol,, type_%row%,
+        ; return
+    ; } 
+    ; if (inStr(craft, "Augment") = 1 ) {
+        ; guicontrol,, type_%row%, Aug
+        ; return
+    ; } 
+    ; if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
+        ; guicontrol,, type_%row%, Rem
+        ; return
+    ; } 
+    ; if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
+        ; and instr(craft, "non") = 0) {
+        ; guicontrol,, type_%row%, Rem/Add
+        ; return
+    ; }
+    ; guicontrol,, type_%row%, Other
+; }
+
+getTypeFor(craft) {
     if (craft == "") {
-        guicontrol,, type_%row%,
-        return
+        return ""
     } 
     if (inStr(craft, "Augment") = 1 ) {
-        guicontrol,, type_%row%, Aug
-        return
+        return "Aug"
     } 
     if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
-        guicontrol,, type_%row%, Rem
-        return
+        return "Rem"
     } 
     if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
         and instr(craft, "non") = 0) {
-        guicontrol,, type_%row%, Rem/Add
-        return
+        return "Rem/Add"
     }
-    guicontrol,, type_%row%, Other
+    return "Other"
 }
 
 insertIntoRow(rowCounter, craft, lvl, type) {    
@@ -1569,14 +1592,20 @@ insertIntoRow(rowCounter, craft, lvl, type) {
             , "lvl": lvl, "type": type}
 }
 
-updateUIRow(rowCounter) {
+updateUIRow(rowCounter, parameter:="All") {
     row := CraftTable[rowCounter]
     needToChangeModel := False
-    GuiControl,HarvestUI:, craft_%rowCounter%, % row.craft
-    GuiControl,HarvestUI:, count_%rowCounter%, % row.count
-    GuiControl,HarvestUI:, lvl_%rowCounter%, % row.lvl
-    GuiControl,HarvestUI:, type_%rowCounter%, % row.type
-    GuiControl,HarvestUI:, price_%rowCounter%, % row.price
+    if (parameter == "All") {
+        GuiControl,HarvestUI:, craft_%rowCounter%, % row.craft
+        GuiControl,HarvestUI:, count_%rowCounter%, % row.count
+        GuiControl,HarvestUI:, lvl_%rowCounter%, % row.lvl
+        GuiControl,HarvestUI:, type_%rowCounter%, % row.type
+        GuiControl,HarvestUI:, price_%rowCounter%, % row.price
+    } else {
+        if (row.HasKey(parameter)) {
+            GuiControl,HarvestUI:, %parameter%_%rowCounter%, % row[parameter]
+        }
+    }
     needToChangeModel := True
 }
 
@@ -1885,6 +1914,9 @@ getMaxLenghtColunm(column) {
 }
 ;============================================================
 getPriceFor(craft) {
+    if (craft == "") {
+        return ""
+    }
     while (True) {
         iniRead, tempP, %PricesPath%, Prices, %craft%
         if (tempP == "ERROR") {
@@ -1927,7 +1959,7 @@ sumPrices() {
     tempSumEx := 0
     loop, %MaxRowsCraftTable% {
         craftRow := CraftTable[A_Index]
-        if (craftRow.craft == "") {
+        if (craftRow.craft == "" or craftRow.price == "") {
             continue
         }
         priceCraft := craftRow.price
@@ -1943,7 +1975,6 @@ sumPrices() {
             tempSumEx += priceCraft * countCraft
         }
     }
-    ;tempSumChaos := tempSumChaos
     tempSumEx := round(tempSumEx, 1)
     GuiControl,,sumChaos, %tempSumChaos%
     GuiControl,,sumEx, %tempSumEx%
@@ -1956,8 +1987,11 @@ sumTypes() {
     Ocounter := 0
     Allcounter := 0
     loop, %MaxRowsCraftTable% {
-        tempType := CraftTable[A_Index].type
         tempAmount := CraftTable[A_Index].count
+        if (tempAmount == "") {
+            continue
+        }
+        tempType := CraftTable[A_Index].type
         if (tempType == "Aug") {
             Acounter += tempAmount
         }
@@ -2052,6 +2086,9 @@ loadLastSessionCraft(row) {
         type := split[4]
 
         tempP := getPriceFor(craft)
+        if (type == "") {
+            type := getTypeFor(craft)
+        }
         CraftTable[row] := {"count": ccount, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
     }
