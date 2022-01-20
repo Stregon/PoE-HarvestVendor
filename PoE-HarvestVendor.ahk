@@ -1510,6 +1510,7 @@ updateCraftTable(ar) {
             }
             if (craftInGui == "") {
                 insertIntoRow(A_Index, tempC, tempLvl, tempType)
+                ;updateUIRow(A_Index)
                 isNeedSort := True
                 break
             }
@@ -1566,7 +1567,6 @@ insertIntoRow(rowCounter, craft, lvl, type) {
     tempP := getPriceFor(craft)
     CraftTable[rowCounter] := {"count": 1, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
-    updateUIRow(rowCounter)
 }
 
 updateUIRow(rowCounter) {
@@ -1927,7 +1927,7 @@ sumPrices() {
     tempSumEx := 0
     loop, %MaxRowsCraftTable% {
         craftRow := CraftTable[A_Index]
-        if (craftRow.craft == ""){
+        if (craftRow.craft == "") {
             continue
         }
         priceCraft := craftRow.price
