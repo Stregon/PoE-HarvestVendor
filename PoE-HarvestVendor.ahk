@@ -6,7 +6,6 @@ global version := "0.8.2 korean"
 
 ; === some global variables ===
 global outArray := {}
-;global outArrayCount := 0
 global rescan := ""
 global x_start := 0
 global y_start := 0
@@ -21,10 +20,6 @@ global sessionLoading := False
 global MaxRowsCraftTable := 20
 global CraftTable := []
 global needToChangeModel := True
-loop, %MaxRowsCraftTable% {
-    CraftTable.push({"count": 0, "craft": "", "price": ""
-        , "lvl": "", "type": ""})
-}
 global PID := DllCall("Kernel32\GetCurrentProcessId")
 
 EnvGet, dir, USERPROFILE
@@ -56,15 +51,13 @@ global Capture2TextOptions := " -o " . TempPath
     ; . " --scale-factor " . scale_factor
 global LangDict := {}
 langfile := A_ScriptDir . "\" . Lang . ".dict" 
-StringCaseSense, On
+;StringCaseSense, On
 Loop, read, %langfile%
 {
     obj := StrSplit(Trim(A_LoopReadLine), "=")
     key := obj[1]
     value := obj[2]
     LangDict[key] := value
-    ;MsgBox, % LangDict[key]
-    
 }
 global CraftNames := ["Reforge"
     , "Reroll"
@@ -76,11 +69,11 @@ global CraftNames := ["Reforge"
     , "Augment", "Fracture"
     , "Corrupt", "Exchange"
     , "Upgrade", "Split"]
-global RegexpTemplateForCraft := "("
-for k, v in CraftNames {
-    RegexpTemplateForCraft .= translate(v) . "|"
-}
-RegexpTemplateForCraft := RTrim(RegexpTemplateForCraft, "|") . ")"
+; global RegexpTemplateForCraft := "("
+; for k, v in CraftNames {
+    ; RegexpTemplateForCraft .= translate(v) . "|"
+; }
+; RegexpTemplateForCraft := RTrim(RegexpTemplateForCraft, "|") . ")"
 
 ; detecting mouse button swap
 ;swapped := DllCall("GetSystemMetrics", UInt, "23")
@@ -95,6 +88,11 @@ iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
         IniWrite, 20, %SettingsPath%, Other, MaxRowsCraftTable
         IniRead, MaxRowsCraftTable, %SettingsPath%, Other, MaxRowsCraftTable
     }
+loop, %MaxRowsCraftTable% {
+    CraftTable.push({"count": 0, "craft": "", "price": ""
+        , "lvl": "", "type": ""})
+}
+
 iniRead, seenInstructions,  %SettingsPath%, Other, seenInstructions
     if (seenInstructions == "ERROR" or seenInstructions == "") {
         IniWrite, 0, %SettingsPath%, Other, seenInstructions
@@ -520,61 +518,68 @@ Clear_all:
 return
 
 Count:
+    oldCount := CraftTable[tempRow].count
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    guiControlGet, tempCount,, count_%tempRow%, value
+    guiControlGet, newCount,, count_%tempRow%, value
+    if (oldCount == newCount and !sessionLoading) {
+        return
+    }
     if (needToChangeModel) {
-        CraftTable[tempRow].count := tempCount
+        CraftTable[tempRow].count := newCount
     }
     sumTypes()
     sumPrices()
 return
 
 craft:
+    oldCraft := CraftTable[tempRow].craft
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    guiControlGet, tempCraft,, craft_%tempRow%, value
-    if (needToChangeModel) {
-        CraftTable[tempRow].craft := tempCraft
+    guiControlGet, newCraft,, craft_%tempRow%, value
+    if (oldCraft == newCraft and !sessionLoading) {
+        return
     }
-    detectType(tempCraft, tempRow)
-return
-
-lvl:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, tempLvl,, lvl_%tempRow%, value
     if (needToChangeModel) {
-        CraftTable[tempRow].lvl := tempLvl
-    }
-return
-
-type:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, tempType,, type_%tempRow%, value
-    if (needToChangeModel) {
-        CraftTable[tempRow].type := tempType
+        CraftTable[tempRow].craft := newCraft
+        CraftTable[tempRow].Price := getPriceFor(newCraft)
+        updateUIRow(tempRow, "price")
+        CraftTable[tempRow].type := getTypeFor(newCraft)
+        updateUIRow(tempRow, "type")
     }
     sumTypes()
 return
 
-Price:
+lvl:
+    if (!needToChangeModel) {
+        return
+    }
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    guiControlGet, tempPrice,, price_%tempRow%, value
+    guiControlGet, tempLvl,, lvl_%tempRow%, value
+    CraftTable[tempRow].lvl := tempLvl
+return
+
+type:
+    
+return
+
+Price:
+    oldPrice := CraftTable[tempRow].price
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    guiControlGet, newPrice,, price_%tempRow%, value
+    if (oldPrice == newPrice and !sessionLoading) {
+        return
+    }
     if (needToChangeModel) {
-        CraftTable[tempRow].price := tempPrice
+        CraftTable[tempRow].price := newPrice
         craftName := CraftTable[tempRow].craft
-        if (craftName != "" and tempPrice != "") {
-            iniWrite, %tempPrice%, %PricesPath%, Prices, %craftName%
+        if (craftName != "") {
+            iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
         }
-    } else {
-        tempPrice := CraftTable[tempRow].price
     }
-    if (tempPrice != "") {
-        sumPrices()
-    }
+    sumPrices()
 return
 
 Can_stream:
@@ -1510,7 +1515,7 @@ processCrafts(file) {
             newK := translate(v)
             if TemplateExist(craftText, newK) {
                 if IsFunc("Handle_" . v) {
-                    MsgBox, %v%, %newK%
+                    ;MsgBox, %v%, %newK%
                     Handle_%v%(craftText, outArray)
                 }
                 break
@@ -1544,7 +1549,7 @@ updateCraftTable(ar) {
             lvlInGui := CraftTable[A_Index].lvl
             if (craftInGui == tempC and lvlInGui == tempLvl) {
                 CraftTable[A_Index].count := CraftTable[A_Index].count + 1
-                updateUIRow(A_Index)
+                updateUIRow(A_Index, "count")
                 break
             }
             if (craftInGui == "") {
@@ -1602,20 +1607,43 @@ detectType(craft, row) {
     guicontrol,, type_%row%, Other
 }
 
+getTypeFor(craft) {
+    if (craft == "") {
+        return ""
+    } 
+    if (inStr(craft, "Augment") = 1 ) {
+        return "Aug"
+    } 
+    if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
+        return "Rem"
+    } 
+    if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
+        and instr(craft, "non") = 0) {
+        return "Rem/Add"
+    }
+    return "Other"
+}
+
 insertIntoRow(rowCounter, craft, lvl, type) {    
     tempP := getPriceFor(craft)
     CraftTable[rowCounter] := {"count": 1, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
 }
 
-updateUIRow(rowCounter) {
+updateUIRow(rowCounter, parameter:="All") {
     row := CraftTable[rowCounter]
     needToChangeModel := False
-    GuiControl,HarvestUI:, craft_%rowCounter%, % row.craft
-    GuiControl,HarvestUI:, count_%rowCounter%, % row.count
-    GuiControl,HarvestUI:, lvl_%rowCounter%, % row.lvl
-    GuiControl,HarvestUI:, type_%rowCounter%, % row.type
-    GuiControl,HarvestUI:, price_%rowCounter%, % row.price
+    if (parameter == "All") {
+        GuiControl,HarvestUI:, craft_%rowCounter%, % row.craft
+        GuiControl,HarvestUI:, count_%rowCounter%, % row.count
+        GuiControl,HarvestUI:, lvl_%rowCounter%, % row.lvl
+        GuiControl,HarvestUI:, type_%rowCounter%, % row.type
+        GuiControl,HarvestUI:, price_%rowCounter%, % row.price
+    } else {
+        if (row.HasKey(parameter)) {
+            GuiControl,HarvestUI:, %parameter%_%rowCounter%, % row[parameter]
+        }
+    }
     needToChangeModel := True
 }
 
@@ -1937,6 +1965,9 @@ getMaxLenghtColunm(column) {
 }
 ;============================================================
 getPriceFor(craft) {
+    if (craft == "") {
+        return ""
+    }
     while (True) {
         iniRead, tempP, %PricesPath%, Prices, %craft%
         if (tempP == "ERROR") {
@@ -1980,7 +2011,7 @@ sumPrices() {
     tempSumEx := 0
     loop, %MaxRowsCraftTable% {
         craftRow := CraftTable[A_Index]
-        if (craftRow.craft == "") {
+        if (craftRow.craft == "" or craftRow.price == "") {
             continue
         }
         priceCraft := craftRow.price
@@ -1996,7 +2027,6 @@ sumPrices() {
             tempSumEx += priceCraft * countCraft
         }
     }
-    ;tempSumChaos := tempSumChaos
     tempSumEx := round(tempSumEx, 1)
     GuiControl,,sumChaos, %tempSumChaos%
     GuiControl,,sumEx, %tempSumEx%
@@ -2009,8 +2039,11 @@ sumTypes() {
     Ocounter := 0
     Allcounter := 0
     loop, %MaxRowsCraftTable% {
-        tempType := CraftTable[A_Index].type
         tempAmount := CraftTable[A_Index].count
+        if (tempAmount == "") {
+            continue
+        }
+        tempType := CraftTable[A_Index].type
         if (tempType == "Aug") {
             Acounter += tempAmount
         }
@@ -2105,6 +2138,9 @@ loadLastSessionCraft(row) {
         type := split[4]
 
         tempP := getPriceFor(craft)
+        if (type == "") {
+            type := getTypeFor(craft)
+        }
         CraftTable[row] := {"count": ccount, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
     }
