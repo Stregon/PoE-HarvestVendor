@@ -616,10 +616,9 @@ ClearRow:
         fileLine := A_YYYY . "-" . A_MM . "-" . A_DD . ";" . A_Hour . ":" . A_Min . ";" . league . ";" . row.craft . ";" . row.price . "`r`n"
 
         FileAppend, %fileLine%, %LogPath%
-        cnt := row.count
-        if (cnt > 1) {
-            cnt -= 1
-            Guicontrol,, count_%tempRow%, %cnt%
+        if (row.count > 1) {
+            CraftTable[tempRow].count := row.count - 1
+            updateUIRow(tempRow)
         } else {
             clearRowData(tempRow)
             sortCraftTable()
