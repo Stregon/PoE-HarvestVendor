@@ -626,6 +626,8 @@ ClearRow:
         if (row.count > 1) {
             CraftTable[tempRow].count := row.count - 1
             updateUIRow(tempRow, "count")
+            sumTypes()
+            sumPrices()
         } else {
             clearRowData(tempRow)
             sortCraftTable()
