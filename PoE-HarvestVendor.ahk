@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.2 korean"
+global version := "0.8.2 beta korean"
 #include <class_iAutoComplete>
 ; === some global variables ===
 global outArray := {}
@@ -440,8 +440,9 @@ gui, Font, s11 cA38D6D
         if (tempCustomText == "ERROR") { 
             tempCustomText := "" 
         }
+        tempCustomText := StrReplace(tempCustomText, "||", "`n") ;support multilines in custom text
         gui, Font, s11 cA38D6D
-            Gui Add, Edit, x%xEditOffset7% y505 w113 h65 -E0x200 +BackgroundTrans vcustomText gCustom_text -VScroll -WantReturn, %tempCustomText%
+            Gui Add, Edit, x%xEditOffset7% y505 w113 h65 -E0x200 +BackgroundTrans vcustomText gCustom_text -VScroll, %tempCustomText%
         gui, Font, s11 cFFC555
     ; ============================
     ;gui add, picture, x%xColumn7% y366, resources\leagueHeader.png
@@ -611,6 +612,7 @@ return
 
 Custom_text:
     guiControlGet, cust,,customText, value
+    cust := StrReplace(cust, "`n", "||") ;support multilines in custom text
     iniWrite, %cust%, %SettingsPath%, Other, customText
     guicontrol,, customText_cb, 1
 
