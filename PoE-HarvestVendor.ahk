@@ -3,7 +3,7 @@
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
 global version := "0.8.2 korean"
-
+#include <class_iAutoComplete>
 ; === some global variables ===
 global outArray := {}
 global rescan := ""
@@ -59,13 +59,23 @@ Loop, read, %langfile%
     value := obj[2]
     LangDict[key] := value
 }
-global CraftNames := ["Reforge"
+global IAutoComplete_Crafts := []
+craftListFile := A_ScriptDir . "\craftlist.txt"
+global CraftList := []
+Loop, read, %craftListFile%
+{
+    line := Trim(A_LoopReadLine)
+    if (line != "") {
+        CraftList.push(line)
+    }
+}
+global CraftNames := ["Randomise", "Reforge"
     , "Reroll"
     , "Change", "Enchant"
     , "Attempt", "Set"
     , "Sacrifice", "Improves"
     , "Synthesise", "Remove"
-    , "Randomise", "Add2"
+    , "Add2"
     , "Augment", "Fracture"
     , "Corrupt", "Exchange"
     , "Upgrade", "Split"]
@@ -186,6 +196,10 @@ return
 
 
 ExitFunc(ExitReason, ExitCode) {
+    for k, v in IAutoComplete_Crafts {
+        v.Disable()
+        IAutoComplete_Crafts[k] := ""
+    }
     rememberSession()
     saveWindowPosition()
     return 0
@@ -465,7 +479,10 @@ gui, Font, s11 cA38D6D
             gui add, picture, x%xColumnUpDn% y%row2dn% gDn vDn_%A_Index%, % "HBITMAP:*" dn_pic
 
         gui add, picture, x%xColumn3% y%row2% w%craft_% h-1 AltSubmit , % "HBITMAP:*" craft_pic ;resources\craft.png
-            gui add, edit, x%xEditOffset3% y%row2p% w295 h18 -E0x200 +BackgroundTrans vcraft_%A_Index% gcraft        
+            gui add, edit, x%xEditOffset3% y%row2p% w295 h18 -E0x200 +BackgroundTrans vcraft_%A_Index% gcraft HwndhCraft_%A_Index%
+            ia_craft := IAutoComplete_Create(hCraft_%A_Index%, CraftList
+                , ["WORD_FILTER", "AUTOSUGGEST"], True)
+            IAutoComplete_Crafts.push(ia_craft)
 
         gui add, picture, x%xColumn4% y%row2% w%lvl_% h-1 AltSubmit , % "HBITMAP:*" lvl_pic ;resources\lvl.png
             gui add, edit, x%xEditOffset4% y%row2p% w23 h18 -E0x200 +BackgroundTrans Center vlvl_%A_Index% glvl
@@ -636,6 +653,8 @@ ClearRow:
         ;sortCraftTable()
     }
     updateUIRow(tempRow)
+    sumTypes()
+    sumPrices()
 return
 
 ; Aug_Post:
