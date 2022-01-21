@@ -1504,6 +1504,7 @@ processCrafts(file) {
 updateCraftTable(ar) { 
     tempC := ""
     isNeedSort := False
+    uiRows := []
     for k, v in ar {   
         tempC := v[1]
         tempLvl := v[2] 
@@ -1514,7 +1515,7 @@ updateCraftTable(ar) {
             lvlInGui := CraftTable[A_Index].lvl
             if (craftInGui == tempC and lvlInGui == tempLvl) {
                 CraftTable[A_Index].count := CraftTable[A_Index].count + 1
-                updateUIRow(A_Index, "count")
+                uiRows.push(A_Index)
                 break
             }
             if (craftInGui == "") {
@@ -1526,7 +1527,13 @@ updateCraftTable(ar) {
     }
     if (isNeedSort) {
         sortCraftTable()
+    } else {
+        for k, v in uiRows {
+            updateUIRow(v, "count")  
+        }
     }
+    sumTypes()
+    sumPrices()
 }
 
 sortCraftTable() {
