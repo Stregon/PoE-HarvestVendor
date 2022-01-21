@@ -1584,6 +1584,8 @@ updateCraftTable(ar) {
     ;if (isNeedSort) {
     ;    sortCraftTable()
     ;}
+    sumTypes()
+    sumPrices()
 }
 
 sortCraftTable() {
