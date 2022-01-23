@@ -40,7 +40,7 @@ global LogPath := RoamingDir . "\log.csv"
 global TempPath := RoamingDir . "\temp.txt"
 
 global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe"
-whitelist := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,."
+whitelist := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,. "
 global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
 global Capture2TextOptions := " -o " . TempPath 
     . " -l English" 
@@ -512,6 +512,8 @@ return
 Clear_all:
     buttonHold("clearAll", "resources\clear")
     clearAll()
+    sumTypes()
+    sumPrices()
 return
 
 Count:
