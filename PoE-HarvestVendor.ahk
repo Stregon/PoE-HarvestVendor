@@ -265,7 +265,7 @@ gui, Font, s11 cA38D6D
     gui Font, s12
         gui add, text, x460 y10 cGreen vversionText, ! New Version Available !
     ;gui, Font, s11 cFFC555
-        gui add, Link, x550 y30 vversionLink c0x0d0d0d, <a href="http://github.com/esge/PoE-HarvestVendor/releases/latest">Github Link</a>
+        gui add, Link, x550 y30 vversionLink c0x0d0d0d, <a href="http://github.com/Stregon/PoE-HarvestVendor/releases/latest">Github Link</a>
         
     GuiControl, Hide, versionText
     GuiControl, Hide, versionLink
@@ -1268,7 +1268,7 @@ leagueList() {
 }
 
 getVersion() {
-    versionUrl :=  "https://raw.githubusercontent.com/esge/PoE-HarvestVendor/master/version.txt"
+    versionUrl :=  "https://raw.githubusercontent.com/Stregon/PoE-HarvestVendor/light/version.txt"
     if FileExist("curl.exe") {
         ; Hack for people with outdated certificates
         shell := ComObjCreate("WScript.Shell")
@@ -1276,7 +1276,7 @@ getVersion() {
         response := exec.StdOut.ReadAll()
     } else {
         ver := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-        ver.Open("GET", "https://raw.githubusercontent.com/esge/PoE-HarvestVendor/master/version.txt", false)
+        ver.Open("GET", versionUrl, false)
         ver.SetRequestHeader("Content-Type", "application/json")
         ver.Send()
         response := ver.ResponseText
@@ -1302,26 +1302,6 @@ winCheck() {
     }
 }
 
-monitorInfo(num) {
-   SysGet, Mon2, monitor, %num%
-  
-   x := Mon2Left
-   y := Mon2Top
-   height := abs(Mon2Top - Mon2Bottom)
-   width := abs(Mon2Left - Mon2Right)
-
-   return [x, y, height, width]
-}
-
-getMonCount() {
-   monOut := ""
-   sysGet, monCount, MonitorCount
-   loop, %monCount% {
-      monOut .= A_Index . "|"
-   }
-   return monOut
-}
-
 getImgWidth(img) {
     SplitPath, img, fn, dir
     objShell := ComObjCreate("Shell.Application")
@@ -1334,11 +1314,6 @@ getImgWidth(img) {
 ; ========================================================================
 ; ======================== stuff i copied from internet ==================
 ; ========================================================================
-
-global SelectAreaEscapePressed := false
-SelectAreaEscape:
-    SelectAreaEscapePressed := true
-return
 
 WM_MOUSEMOVE() {
     static CurrControl, PrevControl, _TT  ; _TT is kept blank for use by the ToolTip command below.
