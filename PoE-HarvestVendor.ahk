@@ -2,24 +2,18 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.2 beta korean"
+global version := "0.8.2 light"
 #include <class_iAutoComplete>
 ; === some global variables ===
-global outArray := {}
-global rescan := ""
-global x_start := 0
-global y_start := 0
-global x_end := 0
-global y_end := 0
 global firstGuiOpen := True
 global outString := ""
 global outStyle := 1
 global maxLengths := {}
-global seenInstructions := 0
 global sessionLoading := False
 global MaxRowsCraftTable := 20
 global CraftTable := []
 global needToChangeModel := True
+global isLoading := True
 global PID := DllCall("Kernel32\GetCurrentProcessId")
 
 EnvGet, dir, USERPROFILE
@@ -32,33 +26,9 @@ if !FileExist(RoamingDir) {
 global SettingsPath := RoamingDir . "\settings.ini"
 global PricesPath := RoamingDir . "\prices.ini"
 global LogPath := RoamingDir . "\log.csv"
-global TempPath := RoamingDir . "\temp.txt"
 
 FileEncoding, UTF-8
-global Lang := "Korean" ;"English" 
-global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe_kor"
-;whitelist := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,."
-blacklist := "."
-global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
-global Capture2TextOptions := " -o " . TempPath 
-    . " -l " . Lang
-    ;. " --blacklist """ . blacklist . """"
-    . " --tess-config-file """ . TessFile . """"
-    ;. " --deskew"
-    ;. " --whitelist """ . whitelist . """"
-    ;. " -b"
-    ;. " --trim-capture" 
-    ; . " --scale-factor " . scale_factor
-global LangDict := {}
-langfile := A_ScriptDir . "\" . Lang . ".dict" 
-;StringCaseSense, On
-Loop, read, %langfile%
-{
-    obj := StrSplit(Trim(A_LoopReadLine), "=")
-    key := obj[1]
-    value := obj[2]
-    LangDict[key] := value
-}
+
 global IAutoComplete_Crafts := []
 craftListFile := A_ScriptDir . "\craftlist.txt"
 global CraftList := []
@@ -69,24 +39,6 @@ Loop, read, %craftListFile%
         CraftList.push(line)
     }
 }
-global CraftNames := ["Randomise", "Reforge"
-    , "Reroll"
-    , "Change", "Enchant"
-    , "Attempt", "Set"
-    , "Sacrifice", "Improves"
-    , "Synthesise", "Remove"
-    , "Add2"
-    , "Augment", "Fracture"
-    , "Corrupt", "Exchange"
-    , "Upgrade", "Split"]
-; global RegexpTemplateForCraft := "("
-; for k, v in CraftNames {
-    ; RegexpTemplateForCraft .= translate(v) . "|"
-; }
-; RegexpTemplateForCraft := RTrim(RegexpTemplateForCraft, "|") . ")"
-
-; detecting mouse button swap
-;swapped := DllCall("GetSystemMetrics", UInt, "23")
 
 OnExit("ExitFunc")
 
@@ -94,7 +46,8 @@ tooltip, loading... Initializing Settings
 sleep, 250
 ; == init settings ==
 iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
-    if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == "") {
+    if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == ""
+        or MaxRowsCraftTable < 20 or MaxRowsCraftTable > 40) {
         IniWrite, 20, %SettingsPath%, Other, MaxRowsCraftTable
         IniRead, MaxRowsCraftTable, %SettingsPath%, Other, MaxRowsCraftTable
     }
@@ -102,12 +55,6 @@ loop, %MaxRowsCraftTable% {
     CraftTable.push({"count": 0, "craft": "", "price": ""
         , "lvl": "", "type": ""})
 }
-
-iniRead, seenInstructions,  %SettingsPath%, Other, seenInstructions
-    if (seenInstructions == "ERROR" or seenInstructions == "") {
-        IniWrite, 0, %SettingsPath%, Other, seenInstructions
-        IniRead, seenInstructions, %SettingsPath%, Other, seenInstructions
-    }
 
 IniRead, GuiKey, %SettingsPath%, Other, GuiKey
     checkValidChars := RegExMatch(GuiKey, "[a-zA-Z0-9]") > 0
@@ -121,35 +68,11 @@ IniRead, GuiKey, %SettingsPath%, Other, GuiKey
     }
 hotkey, %GuiKey%, OpenGui
 
-IniRead, ScanKey, %SettingsPath%, Other, ScanKey
-    checkValidChars := RegExMatch(ScanKey, "[a-zA-Z0-9]") > 0
-    if (ScanKey == "ERROR" or ScanKey == "" or !checkValidChars) {
-        IniWrite, ^g, %SettingsPath%, Other, ScanKey
-        sleep, 250
-        IniRead, ScanKey, %SettingsPath%, Other, ScanKey
-        ;ScanKey == "^g"
-        if (!checkValidChars) {
-            msgBox, Scan hotkey was set to a non latin letter or number, it was reset to ctrl+g
-        }
-    }
-hotkey, %ScanKey%, Scan
-
 IniRead, outStyle, %SettingsPath%, Other, outStyle
     if (outStyle == "ERROR") {
         IniWrite, 1, %SettingsPath%, Other, outStyle
         outStyle := 1
     }
-
-iniRead tempMon, %SettingsPath%, Other, mon
-if (tempMon == "ERROR") { 
-    tempMon := 1 
-    iniWrite, %tempMon%, %SettingsPath%, Other, mon
-}
-
-iniRead, sc, %SettingsPath%, Other, scale
-if (sc == "ERROR") {
-    iniWrite, 1, %SettingsPath%, Other, scale
-}
 
 checkfiles()
 winCheck()
@@ -189,9 +112,7 @@ tooltip, ready
 sleep, 500
 Tooltip
 
-if (seenInstructions == 0) {
-    goto help
-}
+isLoading := False
 return
 
 
@@ -250,6 +171,10 @@ showGUI() {
 }
 
 OpenGui: ;ctrl+shift+g opens the gui, yo go from there
+    if (isLoading) {
+        MsgBox, Please wait until the program is fully loaded
+        return
+    }
     if (firstGuiOpen) {
         loadLastSession()
     }
@@ -261,28 +186,6 @@ OpenGui: ;ctrl+shift+g opens the gui, yo go from there
     OnMessage(0x200, "WM_MOUSEMOVE")
     
 Return
-
-Scan: ;ctrl+g launches straight into the capture, opens gui afterwards
-    rescan := ""
-    _wasVisible := IsGuiVisible("HarvestUI")
-    if (processCrafts(TempPath)) {
-        if (firstGuiOpen) {
-            loadLastSession()
-        }
-        showGUI()
-        OnMessage(0x200, "WM_MOUSEMOVE") ;activates tooltip function
-        updateCraftTable(outArray)
-    } else {
-        ; If processCrafts failed (e.g. the user pressed Escape), we should show the
-        ; HarvestUI only if it was visible to the user before they pressed Ctrl+G
-        if (_wasVisible) {
-            if (firstGuiOpen) {
-                loadLastSession()
-            }
-            showGUI()
-        }
-    }
-return
 
 HarvestUIGuiEscape:
 HarvestUIGuiClose:
@@ -378,27 +281,14 @@ gui, Font, s11 cA38D6D
     guicontrol,,alwaysOnTop, %tempOnTop%
     setWindowState(tempOnTop)
     
-    addCrafts := getImgWidth(A_ScriptDir . "\resources\addCrafts.png")
-    gui add, picture, x%xColumn7% y114 w%addCrafts% h-1 gAdd_crafts vaddCrafts, resources\addCrafts.png
-    lastArea := getImgWidth(A_ScriptDir . "\resources\lastArea.png")
-    gui add, picture, x%xColumn7% y137 w%lastArea% h-1 gLast_Area vrescanButton, resources\lastArea.png
     clear := getImgWidth(A_ScriptDir . "\resources\clear.png")
-    gui add, picture, x%xColumn7% y160 w%clear% h-1 gClear_All vclearAll, resources\clear.png
+    gui add, picture, x%xColumn7% y120 w%clear% h-1 gClear_All vclearAll, resources\clear.png
     settings := getImgWidth(A_ScriptDir . "\resources\settings.png")
-    gui add, picture, x%xColumn7% y183 w%settings% h-1 gSettings vsettings, resources\settings.png
-    help := getImgWidth(A_ScriptDir . "\resources\help.png")
-    gui add, picture, x%xColumn7% y206 w%help% h-1 gHelp vhelp, resources\help.png
+    gui add, picture, x%xColumn7% y150 w%settings% h-1 gSettings vsettings, resources\settings.png
 
     ; === Post buttons ===
     createPost := getImgWidth(A_ScriptDir . "\resources\createPost.png")
     gui add, picture, x%xColumn7% y251 w%createPost% h-1 vpostAll gPost_all, resources\createPost.png
-
-    ;gui add, picture, x%xColumn7% y251 gAug_post vaugPost, resources\postA.png
-    ;gui add, picture, x%xColumn7% y274 gRem_post vremPost, resources\postR.png
-    ;gui add, picture, x%xColumn7% y297 gRemAdd_post vremAddPost, resources\postRA.png
-    ;gui add, picture, x%xColumn7% y320 gOther_post votherPost, resources\postO.png
-    ;gui add, picture, x%xColumn7% y343 vpostAll gPost_all, resources\postAll.png
-    ;    postAll_TT := "WARNING: Don't use this for Temporary SC league on TFT Discord"
 
     ; === League dropdown ===
     gui add, text, x%xColumn7% y370, League:
@@ -516,23 +406,11 @@ Dn:
     }
 return
 
-Add_crafts: 
-    buttonHold("addCrafts", "resources\addCrafts")
-    GuiControlGet, rescan, name, %A_GuiControl% 
-    if (processCrafts(TempPath)) {
-        updateCraftTable(outArray)
-    }
-    showGUI()
-return
-
-Last_area:
-    buttonHold("rescanButton", "resources\lastArea")
-    goto Add_crafts
-return
-
 Clear_all:
     buttonHold("clearAll", "resources\clear")
     clearAll()
+    sumTypes()
+    sumPrices()
 return
 
 Count:
@@ -615,16 +493,6 @@ Custom_text:
     cust := StrReplace(cust, "`n", "||") ;support multilines in custom text
     iniWrite, %cust%, %SettingsPath%, Other, customText
     guicontrol,, customText_cb, 1
-
-    ;if (RegExMatch(cust, "not|remove|aug|add") > 0) {
-    ;   gui, Font, cRed Bold
-    ;   guiControl, font, customText
-    ;   tooltip, This message might get blocked by the discord bot because it containts not|remove|aug|add
-    ;} else {
-    ;   gui, Font, s11 cA38D6D norm 
-    ;   guicontrol, font, customText
-    ;   tooltip
-    ;}
 return
 
 Custom_text_cb:
@@ -659,26 +527,6 @@ ClearRow:
     sumPrices()
 return
 
-; Aug_Post:
-    ; buttonHold("augPost", "resources\postA")
-    ; createPost("Aug")
-; return
-
-; Rem_post:
-    ; buttonHold("remPost", "resources\postR")
-    ; createPost("Rem")
-; return
-
-; RemAdd_post:
-    ; buttonHold("remAddPost", "resources\postRA")
-    ; createPost("Rem/Add")
-; return
-
-; Other_post:
-    ; buttonHold("otherPost", "resources\postO")
-    ; createPost("Other")
-; return
-
 Post_all:
     ;buttonHold("postAll", "resources\postAll")
     buttonHold("postAll", "resources\createPost")
@@ -710,10 +558,8 @@ setWindowState(onTop) {
 ;====================================================
 ; === Settings UI ===================================
 settings:
-    iniRead tempMon, %SettingsPath%, Other, mon 
     buttonHold("settings", "resources\settings")
     hotkey, %GuiKey%, off
-    hotkey, %ScanKey%, off
     gui Settings:new,, PoE-HarvestVendor - Settings
     gui, add, Groupbox, x5 y5 w400 h90, Message formatting
         Gui, add, text, x10 y25, Output message style:
@@ -722,47 +568,25 @@ settings:
         guicontrol, choose, outStyle, %tstyle%
         Gui, add, text, x20 y50, 1 - No Colors, No codeblock = Words are highlighted when using discord search
         Gui, add, text, x20 y70, 2 - Codeblock, Colors = Words aren't highlighetd when using discord search
-
-    gui, add, Groupbox, x5 y110 w400 h100, Monitor Settings
-        monitors := getMonCount()
-        Gui add, text, x10 y130, Select monitor:
-        Gui add, dropdownList, x85 y125 w30 vMonitors_v gMonitors, %monitors%
-            global Monitors_v_TT := "For when you aren't running PoE on main monitor"
-        guicontrol, choose, Monitors_v, %tempMon%
-
-        gui, add, text, x10 y150, Scale 
-        iniRead, tScale,  %SettingsPath%, Other, scale
-        gui, add, edit, x85 y150 w30 vScale gScale, %tScale% 
-        Gui, add, text, x20 y175, - use this when you are using Other than 100`% scale in windows display settings
-        Gui, add, text, x20 y195, - 100`% = 1, 150`% = 1.5 and so on
-
-    gui, add, groupbox, x5 y215 w400 h75, Hotkeys       
-        Gui, add, text, x10 y235, Open Harvest vendor: 
+    gui, add, groupbox, x5 y110 w400 h75, Hotkeys       
+        Gui, add, text, x10 y130, Open Harvest vendor: 
         iniRead, GuiKey,  %SettingsPath%, Other, GuiKey
-        gui,add, hotkey, x120 y230 vGuiKey_v gGuiKey_l, %GuiKey%
-        
-        Gui, add, text, x10 y260, Add crafts: 
-        iniRead, ScanKey,  %SettingsPath%, Other, ScanKey
-        gui, add, hotkey, x120 y255 vScanKey_v gScanKey_l, %ScanKey%
-
+        gui,add, hotkey, x120 y130 vGuiKey_v gGuiKey_l, %GuiKey%
     
-    gui, add, button, x10 y295 h30 w390 gOpenRoaming vSettingsFolder, Open Settings Folder
-    gui, add, button, x10 y335 h30 w390 gSettingsOK, Save
-    gui, Settings:Show, w410 h370
+    gui, add, button, x10 y195 h30 w390 gOpenRoaming vSettingsFolder, Open Settings Folder
+    gui, add, button, x10 y235 h30 w390 gSettingsOK, Save
+    gui, Settings:Show, w410 h270
     
 return
 
 SettingsGuiClose:
     hotkey, %GuiKey%, on
-    hotkey, %ScanKey%, on
+    ;hotkey, %ScanKey%, on
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
 return
 
 GuiKey_l:
-return
-
-ScanKey_l:
 return
 
 OpenRoaming:
@@ -775,788 +599,25 @@ outStyle:
     iniWrite, %os%, %SettingsPath%, Other, outStyle
 return
 
-Monitors:
-    guiControlGet, mon,,Monitors_v, value
-    iniWrite, %mon%, %SettingsPath%, Other, mon
-return
-
-Scale:
-    guiControlGet, sc,,Scale, value
-    iniWrite, %sc%, %SettingsPath%, Other, scale
-return
-
 SettingsOK:
     iniRead, GuiKey,  %SettingsPath%, Other, GuiKey
-    iniRead, ScanKey,  %SettingsPath%, Other, ScanKey
-
     guiControlGet, gk,, GuiKey_v, value
-    guiControlGet, sk,, ScanKey_v, value
-
     if (GuiKey != gk and gk != "ERROR" and gk != "") {
         hotkey, %GuiKey%, off
         iniWrite, %gk%, %SettingsPath%, Other, GuiKey
         hotkey, %gk%, OpenGui
     } 
-            
-    if (ScanKey != sk and sk != "ERROR" and sk != "") {
-        hotkey, %ScanKey%, off
-        iniWrite, %sk%, %SettingsPath%, Other, ScanKey
-        hotkey, %sk%, Scan
-    } 
-
     if (gk != "ERROR" and gk != "") {
         hotkey, %gk%, on
     } else {
         hotkey, %GuiKey%, on
     }
 
-    if (sk != "ERROR" and sk != "") {
-        hotkey, %sk%, on
-    } else {
-        hotkey, %ScanKey%, on
-    }
-
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
 return
 ;====================================================
-; === Help UI =======================================
-help:
-    buttonHold("help", "resources\help")
-    IniWrite, 1, %SettingsPath%, Other, seenInstructions 
-    gui Help:new,, PoE-HarvestVendor Help
-
-gui, font, s14
-    Gui, add, text, x5 y5, Step 1
-    gui, add, text, x5 y80, Step 2
-    gui, add, text, x5 y380, Step 3
-    Gui, add, text, x5 y450, Step 4
-gui, font
-
-gui, font, s10
-;step 1
-    gui, add, text, x15 y30, Default Hotkey to open the UI = Ctrl + Shift + G`r`nDefault Hotkey to start capture = Ctrl + G`r`nHotkeys can be changed in settings
-
-;step 2 
-    gui, add, text, x15 y110, Start the capture by either clicking Add Crafts button, `r`nor pressing the Capture hotkey.`r`nSelect the area with crafts:
-    Gui, Add, ActiveX, x5 y120 w290 h240 vArea, Shell2.Explorer
-    Area.document.body.style.overflow := "hidden"
-    Edit := WebPic(Area, "https://github.com/esge/PoE-HarvestVendor/blob/master/examples/snapshotArea_s.png?raw=true", "w250 h233 cFFFFFF")
-    gui, add, text, x15 y365, this can be done repeatedly to add crafts to the list
-
-;step 3 
-    gui, add, text, x15 y410, Fill in the prices (they will be remembered)`r`nand other info like: Can stream, IGN and so on if you wish to
-    ;Gui, Add, ActiveX, x5 y430 w350 h100 vPricepic, Shell2.Explorer
-    ;Pricepic.document.body.style.overflow := "hidden"
-    ;Edit := WebPic(Pricepic, "https://github.com/esge/PoE-HarvestVendor/blob/master/examples/price.png?raw=true", "w298 h94 cFFFFFF")
-    
-;step 4
-    gui, add, text, x15 y480 w390, click: Post Augments/Removes... for the set you want to post`r`nNow your message is in clipboard`r`nCareful about Post All on TFT discord, it has separate channels for different craft types.
-    
-
-    gui, add, text, x400 y10 h590 0x11  ;Vertical Line > Etched Gray
-
-    gui, font, s14 cRed
-    Gui, Add, text, x410 y10 w380, Important:
-    
-    gui, font, s10
-    gui, add, text, x420 y30 w370, If you are using Big resolution (more than 1080p) and have scaling for display set in windows to more than 100`% (in Display settings)`r`nYou need to go into Settings in HarvestVendor and set Scale to match whats set in windows
-    gui, font, s14 cBlack
-
-    gui, add, text, x410 y110 w380, Hidden features
-    gui, font, s10
-    gui, add, text, x420 y130 w370, - Holding shift while clicking the X in a row will reduce the count by 1 and also write the craft and price into log.csv (you can find it through the Settings folder button in Settings)
-    gui, font
-    Gui, Help:Show, w800 h610
-return
-
-HelpGuiClose:
-    Gui, Help:Destroy
-    Gui, HarvestUI:Default
-return
-
 ; === my functions ===
-translate(keyword) {
-    ;Lang
-    if (LangDict.HasKey(keyword)) {
-        return LangDict[keyword]
-    }
-    return keyword
-}
-
-TagExist(text, tag) {
-    return InStr(text, tag) > 0
-}
-
-TemplateExist(text, template) {
-    return RegExMatch(text, template) > 0
-}
-
-Handle_Augment(craftText, ByRef out) {
-    mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
-    if TemplateExist(craftText, translate("non-Influenced")) {
-        augments := ["Caster"
-            , "Physical"
-            , "Fire"
-            , "Attack"
-            , "Life"
-            , "Cold"
-            , "Speed"
-            , "Defence"
-            , "Lightning"
-            , "Chaos"
-            , "Critical"
-            , "a new modifier"]
-        for k, v in augments {
-            if TemplateExist(craftText, translate(v)) {
-                out.push(["Augment non-influenced - " . v . mod
-                        , getLVL(craftText)
-                        , "Aug"])
-                return
-            }
-        }
-        return
-    }
-    out.push(["Augment Influence" . mod
-        , getLVL(craftText)
-        , "Aug"])
-}
-
-Handle_Remove(craftText, ByRef out) {
-    if TemplateExist(craftText, translate("Influenced")) {
-        if TemplateExist(craftText, translate("add")) {
-            removes := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
-                , "Speed", "Defence", "Lightning", "Chaos", "Critical"]
-            mod := TemplateExist(craftText, translate("non")) ? "non-" : ""
-            for k, v in removes {
-                if TemplateExist(craftText, translate(v)) {
-                    out.push(["Remove " . mod . v . " add " . v
-                        , getLVL(craftText)
-                        , "Other"])
-                    return
-                }
-            }
-        } else {
-            augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
-                , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
-            for k, v in augments {
-                if TemplateExist(craftText, translate(v)) {
-                    out.push(["Remove " . v
-                        , getLVL(craftText)
-                        , "Rem"])
-                    return
-                }
-            }
-        }
-        return
-    }
-    if TemplateExist(craftText, translate("add")) {
-        mod := TemplateExist(craftText, translate("non")) ? "non-" : ""
-        out.push(["Remove " . mod . "Influence add Influence"
-            , getLVL(craftText)
-            , "Rem"])
-    } else {
-        out.push(["Remove Influence"
-            , getLVL(craftText)
-            , "Rem"])
-    }
-}
-
-Handle_Reforge(craftText, ByRef out) {
-    ;prefixes
-    if TemplateExist(craftText, translate("Prefix")) {
-        mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
-        out.push(["Reforge keep Prefixes" . mod
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    ;suffixes
-    if TemplateExist(craftText, translate("Suffix")) {
-        mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
-        out.push(["Reforge keep Suffixes" . mod
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    ; reforge rares
-    remAddsClean := ["Caster"
-        , "Physical"
-        , "Fire"
-        , "Attack"
-        , "Life"
-        , "Cold"
-        , "Speed"
-        , "Defence"
-        , "Lightning"
-        , "Chaos"
-        , "Critical"
-        , "Influence"]
-    if TemplateExist(craftText, translate("including")) { ; 'including' text appears only in reforge rares
-        for k, v in remAddsClean {
-            if TemplateExist(craftText, translate(v)) {
-                mod := TemplateExist(craftText, translate("more")) ? " more common" : ""
-                out.push(["Reforge Rare - " . v . mod
-                        , getLVL(craftText)
-                        , "Other"])
-                return
-            }
-        }
-        return
-    } 
-    ; reforge white/magic - removed in 3.16, was combined with reforge rare
-    ;else if (InStr(craftText, "Normal or Magic") > 0) {
-    ;   for k, v in remAddsClean {
-    ;       if (InStr(craftText, v) > 0) {
-    ;           out.push(["Reforge Norm/Magic - " . v
-    ;               , getLVL(craftText)
-    ;               , "Other"]
-    ;           return
-    ;       }
-    ;   }
-    ;} 
-    ;reforge same mod
-    if TemplateExist(craftText, translate("less likely")) {
-        out.push(["Reforge Rare - Less Likely"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    if TemplateExist(craftText, translate("more likely")) {
-        out.push(["Reforge Rare - More Likely"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    if TemplateExist(craftText, translate("10 times")) {
-        ;Reforge the links between sockets/links on an item 10 times
-        return
-    }
-    ;links
-    if TemplateExist(craftText, translate("links")) {
-        if TemplateExist(craftText, translate("six")) {
-            out.push(["Six link (6-link)"
-                , getLVL(craftText)
-                , "Other"])
-        } else if TemplateExist(craftText, translate("five")) {
-            out.push(["Five link (5-link)"
-                , getLVL(craftText)
-                , "Other"])
-        }
-        return
-    }
-    ;colour
-    if TemplateExist(craftText, translate("colour")) {
-        if TemplateExist(craftText, translate("non")) {
-            reforgeNonColor := ["Red", "Blue", "Green"]
-            for k, v in reforgeNonColor {
-                if TemplateExist(craftText, translate(v)) {
-                    out.push(["Reforge Colour: non-" . k . " into " . k
-                        , getLVL(craftText)
-                        , "Other"])
-                    return
-                } 
-            }
-            return
-        }
-        if TemplateExist(craftText, translate("White")) {
-            out.push(["Reforge Colour: into White"
-                    , getLVL(craftText)
-                    , "Other"])
-            return
-        }
-        redVal := TemplateExist(craftText, translate("Red"))
-        blueVal := TemplateExist(craftText, translate("Blue"))
-        greenVal := TemplateExist(craftText, translate("Green"))
-        if (redVal and blueVal and greenVal) {
-            out.push(["Reforge Colour: into Red, Blue and Green"
-                    , getLVL(craftText)
-                    , "Other"])
-            return
-        }
-        if (redVal and blueVal) {
-            out.push(["Reforge Colour: into Red and Blue"
-                    , getLVL(craftText)
-                    , "Other"])
-            return
-        }
-        if (redVal and greenVal) {
-            out.push(["Reforge Colour: into Red and Green"
-                    , getLVL(craftText)
-                    , "Other"])
-            return
-        }
-        if (blueVal and greenVal) {
-            out.push(["Reforge Colour: into Blue and Green"
-                    , getLVL(craftText)
-                    , "Other"])
-            return
-        }
-        return
-    }
-    if TemplateExist(craftText, translate("Influence")) {
-        out.push(["Reforge with Influence mod more common"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-}
-
-Handle_Enchant(craftText, ByRef out) {
-    ;weapon
-    if TemplateExist(craftText, translate("Weapon")) {
-        weapEnchants := ["Critical Strike Chance", "Accuracy", "Attack Speed"
-            , "+1 Weapon Range", "Elemental Damage", "Area of Effect"]
-        for k, enchant in weapEnchants {
-            if TemplateExist(craftText, translate(enchant)) {
-                ; OCR was failing to detect "Elemental Damage" properly, but "Elemental" is unique enough for detection, just gotta add "damage" for the output
-                ;tempEnch := (enchant == "Elemental") ? "Elemental Damage" : enchant
-                out.push(["Enchant Weapon: " . enchant
-                    , getLVL(craftText)
-                    , "Other"])
-                return
-            }
-        }
-        return
-    }
-    ;body armour
-    if TemplateExist(craftText, translate("Armour")) { 
-        bodyEnchants := ["Maximum Life", "Maximum Mana", "Strength", "Dexterity"
-            , "Intelligence", "Fire Resistance", "Cold Resistance", "Lightning Resistance"]
-        for k, bodyEnchant in bodyEnchants {
-            if TemplateExist(craftText, translate(bodyEnchant)) {
-                out.push(["Enchant Body: " . bodyEnchant
-                    , getLVL(craftText)
-                    , "Other"])
-                return
-            }
-        }
-        return
-    }
-    ;Map
-    if TemplateExist(craftText, translate("Sextant")) {
-        out.push(["Enchant Map: no Sextant use"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    ;flask
-    if TemplateExist(craftText, translate("Flask")) {
-        flaskEnchants := {"Duration": "inc", "Effect": "inc"
-            , "Maximum Charges": "inc", "Charges used": "reduced"}
-        for flaskEnchant, mod in flaskEnchants {
-            if TemplateExist(craftText, translate(flaskEnchant)) {
-                out.push(["Enchant Flask: " . mod . " " . flaskEnchant
-                    , getLVL(craftText)
-                    , "Other"])
-                return
-            }
-        }
-        return
-    }
-    if TemplateExist(craftText, translate("Tormented")) {
-        out.push(["Enchant Map: surrounded by Tormented Spirits"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-}
-
-Handle_Attempt(craftText, ByRef out) {
-    ;awaken
-    if TemplateExist(craftText, translate("Awaken")) {
-        out.push(["Attempt to Awaken a level 20 Support Gem"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    ;scarab upgrade
-    if TemplateExist(craftText, translate("Scarab")) { 
-        out.push(["Attempt to upgrade a Scarab"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-}
-
-Handle_Change(craftText, ByRef out) {
-    ; res mods
-    if TemplateExist(craftText, translate("Resistance")) {
-        firePos := RegExMatch(craftText, translate("Fire"))
-        coldPos := RegExMatch(craftText, translate("Cold"))
-        lightPos := RegExMatch(craftText, translate("Lightning"))
-        rightMostPos := max(firePos, coldPos, lightPos)
-        if (rightMostPos == firePos) {
-            if (coldPos > 0) {
-                out.push(["Change Resist: Cold to Fire"
-                    , getLVL(craftText)
-                    , "Other"])
-            } else if (lightPos > 0) {
-                out.push(["Change Resist: Lightning to Fire"
-                    , getLVL(craftText)
-                    , "Other"])
-            }
-        } else if (rightMostPos == coldPos) {
-            if (firePos > 0) {
-                out.push(["Change Resist: Fire to Cold"
-                    , getLVL(craftText)
-                    , "Other"])
-            } else if (lightPos > 0) {
-                out.push(["Change Resist: Lightning to Cold"
-                    , getLVL(craftText)
-                    , "Other"])
-            }
-        } else if (rightMostPos == lightPos) {
-            if (firePos > 0) {
-                out.push(["Change Resist: Fire to Lightning"
-                    , getLVL(craftText)
-                    , "Other"])
-            } else if (coldPos > 0) {
-                out.push(["Change Resist: Cold to Lightning"
-                    , getLVL(craftText)
-                    , "Other"])
-            }
-        }
-        return
-    }
-    if (TemplateExist(craftText, translate("Bestiary")) 
-        or TemplateExist(craftText, translate("Lures"))) {
-        out.push(["Change Unique Bestiary item or item with Aspect into Lures"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    if TemplateExist(craftText, translate("Delirium")) {
-        out.push(["Change a stack of Delirium Orbs"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    } 
-    ; ignore others ?
-}
-
-Handle_Sacrifice(craftText, ByRef out) {
-    ;gem for gcp/xp
-    if TemplateExist(craftText, translate("Gem")) {
-        gemPerc := ["20%", "30%", "40%", "50%"]
-        for k, v in gemPerc {
-            if TemplateExist(craftText, v) {
-                if TemplateExist(craftText, translate("quality")) {
-                    out.push(["Sacrifice gem, get " . v . " qual as GCP"
-                        , getLVL(craftText)
-                        , "Other"])
-                } else if TemplateExist(craftText, translate("experience")) {
-                    out.push(["Sacrifice gem, get " . v . " exp as Lens"
-                        , getLVL(craftText)
-                        , "Other"])
-                }
-                return
-            }
-        }
-        return
-    }
-    ;div cards gambling
-    if TemplateExist(craftText, translate("Divination")) { 
-        if TemplateExist(craftText, translate("half a stack")) {
-            out.push(["Sacrifice half stack for 0-2x return"
-                , getLVL(craftText)
-                , "Other"])
-        }
-        return
-        ;skipping this:
-        ;   Sacrifice a stack of Divination Cards for that many different Divination Cards
-    }
-    ;ignores the rest of sacrifice crafts:
-        ;Sacrifice or Mortal Fragment into another random Fragment of that type
-        ;Sacrificie Maps for same or lower tier stuff
-        ;Sacrifice maps for missions
-        ;Sacrifice maps for map device infusions
-        ;Sacrifice maps for fragments
-        ;Sacrifice maps for map currency
-        ;Sacrifice maps for scarabs
-        ;sacrifice t14+ map for elder/shaper/synth map
-        ;sacrifice weap/ar to make similiar belt/ring/amulet/jewel
-}
-
-Handle_Improves(craftText, ByRef out) {
-    if TemplateExist(craftText, translate("Flask")) {
-        out.push(["Improves the Quality of a Flask"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    if TemplateExist(craftText, translate("Gem")) {
-        out.push(["Improves the Quality of a Gem"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-}
-
-Handle_Fracture(craftText, ByRef out) {
-    fracture := {"modifier": "1/5", "Suffix": "1/3", "Prefix": "1/3"}
-    for k, v in fracture {
-        if TemplateExist(craftText, translate(k)) {
-            out.push(["Fracture " . v . " " . k
-                , getLVL(craftText)
-                , "Other"])
-            return
-        }
-    }
-}
-
-Handle_Reroll(craftText, ByRef out) {
-    prefVal := TemplateExist(craftText, translate("Prefix"))
-    suffVal := TemplateExist(craftText, translate("Suffix"))
-    ;if RegExMatch(craftText, translate("Implicit")) > 0 {
-    if (prefVal and suffVal) {
-        out.push(["Reroll All Lucky"
-            , getLVL(craftText)
-            , "Other"])
-        return  
-    }
-    if (suffVal) {
-        out.push(["Reroll Suffix Lucky"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    if (prefVal) {
-        out.push(["Reroll Prefix Lucky"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-}
-
-Handle_Randomise(craftText, ByRef out) {
-    if TemplateExist(craftText, translate("Influence")) { 
-        addInfluence := ["Weapon", "Armour", "Jewellery"]
-        for k, v in addInfluence {
-            if TemplateExist(craftText, translate(v)) {
-                out.push(["Randomise Influence - " . v
-                    , getLVL(craftText)
-                    , "Other"])
-                return
-            }
-        }
-        if TemplateExist(craftText, translate("numeric values")) {
-            out.push(["Randomise the numeric values of the random Influence modifiers"
-                , getLVL(craftText)
-                , "Other"])
-        }
-        return
-    }
-    augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
-        , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
-    for k, v in augments {
-        if TemplateExist(craftText, translate(v)) {
-            out.push(["Randomise values of " . v . " mods"
-                , getLVL(craftText)
-                , "Other"])
-            return
-        }
-    }
-}
-
-Handle_Add(craftText, ByRef out) {
-    addInfluence := ["Weapon", "Armour", "Jewellery"]
-    for k, v in addInfluence {
-        if TemplateExist(craftText, translate(v)) {
-            out.push(["Add Influence to " . v
-                , getLVL(craftText)
-                , "Other"])
-            return
-        }
-    }
-}
-
-Handle_Set(craftText, ByRef out) {
-    if TemplateExist(craftText, translate("Prismatic")) {
-        out.push(["Set Implicit Basic Jewel"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    if (TemplateExist(craftText, translate("Timeless")) 
-        or TemplateExist(craftText, translate("Abyss"))) {
-        out.push(["Set Implicit Abyss/Timeless Jewel"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-    if TemplateExist(craftText, translate("Cluster")) {
-        out.push(["Set Implicit Cluster Jewel"
-            , getLVL(craftText)
-            , "Other"])
-        return
-    }
-}
-
-Handle_Synthesise(craftText, ByRef out) {
-    out.push(["Synthesise an item"
-        , getLVL(craftText)
-        , "Other"])
-}
-
-Handle_Corrupt(craftText, ByRef out) {
-    ;Corrupt an item 10 times, or until getting a corrupted implicit modifier
-}
-
-Handle_Exchange(craftText, ByRef out) {
-    ;skipping all exchange crafts assuming anybody would just use them for themselfs
-}
-
-Handle_Upgrade(craftText, ByRef out) {
-    if TemplateExist(craftText, translate("Normal")) {
-        if TemplateExist(craftText, translate("one random ")) {
-            out.push(["Upgrade Normal to Magic adding 1 high-tier mod"
-                , getLVL(craftText)
-                , "Other"])
-        } else if TemplateExist(craftText, translate("two random ")) {
-            out.push(["Upgrade Normal to Magic adding 2 high-tier mods"
-                , getLVL(craftText)
-                , "Other"])
-        }
-        return
-    }
-    if TemplateExist(craftText, translate("Rare")) {
-        mods := {"two random modifiers" : "Upgrade Magic to Rare adding 2 mods"
-            , "two random high-tier modifiers": "Upgrade Magic to Rare adding 2 high-tier mods"
-            , "three random modifiers" : "Upgrade Magic to Rare adding 3 mods"
-            , "three random high-tier modifiers": "Upgrade Magic to Rare adding 3 high-tier mods"
-            , "four random modifiers" : "Upgrade Magic to Rare adding 4 mods"
-            , "four random high-tier modifiers": "Upgrade Magic to Rare adding 4 high-tier mods"}
-        for k, v in mods {
-            if TemplateExist(craftText, translate(k)) {
-                out.push([v
-                    , getLVL(craftText)
-                    , "Other"])
-                return
-            }
-        }
-        return
-    }
-    ;skipping upgrade crafts
-}
-
-Handle_Split(craftText, ByRef out) {
-    ;skipping Split scarab craft
-}
-
-getCraftLines(temp) {
-    template := translate("Level") . "( *\d\d)"
-    NewLined := RegExReplace(temp, template, "$1$2#")
-    
-    NewLined := SubStr(NewLined, 1, InStr(NewLined, "#", False, 0) - 1) ; remove last "#"
-    arr := {}
-    arr := StrSplit(NewLined, "#")
-    return arr
-}
-
-getCraftsPlus(craftsText, levelsText) {
-    ;template := ;"Leve[l1]"
-    tempLevels := RegExReplace(levelsText, translate("Level"), "#$1")
-    tempLevels := SubStr(tempLevels, inStr(tempLevels, "#") + 1)
-    ArrayedLevels := StrSplit(tempLevels, "#")
-    
-    ;craftsText := RegExReplace(craftsText, "[\.\,]+", " ") ;remove all "," and "."
-    ;craftsText := RegExReplace(craftsText, " +?[^a1234567890] +?", " ") ;remove all single symbols except "a" and digits
-    craftsText := Trim(RegExReplace(craftsText, " +", " ")) ;remove possible double spaces    
-    ;NewLined := RegExReplace(craftsText, TemplateForCrafts, "#$1")
-    ;NewLined := SubStr(NewLined, inStr(NewLined, "#") + 1) ; remove all before "#" and "#" too
-    
-    NewLined := craftsText . "#"
-    
-    arr := {}
-    arr := StrSplit(NewLined, "#")
-    for index in arr {
-        level := ArrayedLevels.HasKey(index) ? " " . ArrayedLevels[index] : ""
-        arr[index] := arr[index] . level
-    }
-    return arr
-}
-
-; === my functions ===
-processCrafts(file) {
-    ; the file parameter is just for the purpose of running a test script with different input files of crafts instead of doing scans
-    Gui, HarvestUI:Hide    
-
-    if ((rescan == "rescanButton" and x_start == 0) or rescan != "rescanButton" ) {
-        coordTemp := SelectArea("cffc555 t50 ms")
-        if (!coordTemp or coordTemp.Length() == 0)
-            return false
-
-        x_start := coordTemp[1]
-        y_start := coordTemp[3]
-        x_end := coordTemp[2]
-        y_end := coordTemp[4]
-    }
-    WinActivate, Path of Exile
-    sleep, 500
-    Tooltip, Please Wait, x_end, y_end
-    
-    ; screen_rect := " -s """ . x_start . " " . y_start . " " 
-        ; . x_end . " " . y_end . """"
-    aspectRatioForLevel := 0.18
-    areaWidthLevel := Floor(aspectRatioForLevel * (x_end - x_start)) ; area width "Level"
-    x_areaLevelStart := x_end - areaWidthLevel ; starting X-position "Level"
-    screen_rect_Craft := " -s """ . x_start . " " . y_start . " " 
-        . x_areaLevelStart . " " . y_end . """" ; 82% of the area for "Craft"
-    screen_rect_Level := " -s """ . x_areaLevelStart . " " . y_start . " " 
-    . x_end . " " . y_end . """" ;  18% of the area for "Level"
-    temp := {}
-    for k, v in [screen_rect_Craft, screen_rect_Level] {
-        command := Capture2TextExe . v . Capture2TextOptions
-        RunWait, %command%,,Hide
-        
-        if !FileExist(TempPath) {
-            MsgBox, - We were unable to create temp.txt to store text recognition results.`r`n- The tool most likely doesnt have permission to write where it is.`r`n- Moving it into a location that isnt write protected, or running as admin will fix this.
-            return false
-        }
-        FileRead, curtemp, %file%
-        temp.push(curtemp)
-    }
-    WinActivate, ahk_pid %PID%
-    Tooltip
-    ;add craftsText and levelsText in temp.txt
-    FileDelete, %file%
-    FileAppend, % temp[1] . temp[2], %file%
-    ;FileRead, temp, test2.txt
-
-    Arrayed := getCraftsPlus(temp[1], temp[2])
-    outArray := {}
-    ;outArrayCount := 0
-    for index in Arrayed {  
-        craftText := Trim(Arrayed[index])
-        if (craftText == "") {
-            continue ;skip empty fields
-        }
-        for k, v in CraftNames {
-            newK := translate(v)
-            if TemplateExist(craftText, newK) {
-                if IsFunc("Handle_" . v) {
-                    ;MsgBox, %v%, %newK%
-                    Handle_%v%(craftText, outArray)
-                }
-                break
-            }
-        }
-    }
-    for iFinal, v in outArray {
-        outArray[iFinal, 1] := Trim(RegExReplace(v[1] , " +", " ")) 
-    }   
-    ;this bit is for testing purposes, it should never trigger for normal user cos processCrafts is always run with temp.txt 
-    if (file != TempPath) {
-        for s in outArray {
-            str .= outArray[s, 1] . "`r`n"
-        }
-        path := "results\out-" . file
-        FileAppend, %str%, %path%
-    }
-    return true
-}
-
 updateCraftTable(ar) { 
     tempC := ""
     ;isNeedSort := False
@@ -1669,37 +730,6 @@ updateUIRow(rowCounter, parameter:="All") {
     }
     needToChangeModel := True
 }
-
-; === Discord message creation ===
-; createPostRow(count, craft, price, group, lvl) {
-    ; ;IniRead, outStyle, %SettingsPath%, Other, outStyle
-    ; mySpaces := ""
-    ; spacesCount := 0
-    ; price := (price == "") ? " " : price
-
-    ; spacesCount := MaxLen - StrLen(craft) + 1
-
-    ; loop, %spacesCount% {
-        ; mySpaces .= " "
-    ; }
-
-    ; if (outStyle == 1) { ; no colors, no codeblock, but highlighted
-        ; outString .= "   ``" . count . "x ``**``" . craft . "``**``" . mySpaces . "[" . lvl . "]" 
-        ; if (price == " ") {
-            ; outString .= " <``**``" . price . "``**``>"
-        ; }
-        ; outString .= "```r`n"
-    ; }
-
-    ; if (outStyle == 2) { ; message style with colors, in codeblock but text isnt highlighted in discord search
-        ; outString .= "  " . count . "x [" . craft . mySpaces . "]" . "[" . lvl . "]" 
-        ; if (price != " ") {
-            ; outString .= " < " . price . " >"
-        ; }
-        ; outString .= "`r`n"
-    ; }
-; }
-
 ;added by Stregon#3347
 ;=============================================================================
 getPostRow(count, craft, price, group, lvl) {
@@ -1959,19 +989,6 @@ readyTT() {
     Tooltip,,,,1
 }
 
-; getRowData(group, row) {
-    ; GuiControlGet, tempType,, type_%row%, value
-    ; GuiControlGet, tempCount,, count_%row%, value
-    ; GuiControlGet, tempCraft,, craft_%row%, value
-    ; GuiControlGet, tempPrice,, price_%row%, value
-    ; GuiControlGet, tempLvl,, lvl_%row%, value
-    ; tempCheck := 0
-    ; if (tempCount > 0 and tempCraft != "") {
-        ; tempCheck := 1
-    ; }
-    ; return [tempCount, tempCraft, tempPrice, tempCheck, tempType, tempLvl]
-; }
-
 getMaxLenghtColunm(column) {
     MaxLen_column := 0
     loop, %MaxRowsCraftTable% {
@@ -2009,44 +1026,26 @@ getRow(elementVariable) {
     return temp[temp.Length()]
 }
 
-getLVL(craft) {
-    map_levels := {"S1": "81", "Sz": "82", "SQ": "80", "8i": "81"}
-    template := "O)" . translate("Level") . " *(\d\d)" ;"Oi)L[BEeOo]V[BEeOo][lI1] *(\w\w)"
-    lvlpos := RegExMatch(craft, template, matchObj) ; + 6    
-    lv := matchObj[2] ;substr(craft, lvlpos, 2)
-    if RegExMatch(lv, "\d\d") > 0 {
-        if (lv < 37) { ;ppl wouldn't sell lv 30 crafts, but sometimes OCR mistakes 8 for a 3 this just bumps it up for the 76+ rule
-            lv += 50
-        }
-        return lv > 86 ? "" : lv
-    } else {
-        for k, v in map_levels {
-            if (k == lv) {
-                return v
-            }
-        }
-        return ""
-    }
-}
-
 sumPrices() {
     tempSumChaos := 0
     tempSumEx := 0
+    exaltTemplate := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
+    chaosTemplate := "Oi)^(\d+) *(c|ch|chaos)$"
     loop, %MaxRowsCraftTable% {
         craftRow := CraftTable[A_Index]
         if (craftRow.craft == "" or craftRow.price == "") {
             continue
         }
-        priceCraft := craftRow.price
+        priceCraft := Trim(craftRow.price)
         countCraft := craftRow.count
         
-        if (InStr(priceCraft, "c") > 0) {
-            priceCraft := strReplace(Trim(StrReplace(priceCraft, "c")), ",", ".")
+        if (RegExMatch(priceCraft, chaosTemplate, matchObj) > 0) {
+            priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumChaos +=  priceCraft * countCraft
         }
         
-        if (InStr(priceCraft, "ex") > 0) {
-            priceCraft := strReplace(Trim(StrReplace(priceCraft, "ex")), ",", ".")
+        if (RegExMatch(priceCraft, exaltTemplate, matchObj) > 0) {
+            priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumEx += priceCraft * countCraft
         }
     }
@@ -2290,16 +1289,7 @@ IsGuiVisible(guiName) {
     return DllCall("User32\IsWindowVisible", "Ptr", guiHwnd)
 }
 
-checkFiles() {
-    if !FileExist("Capture2Text") {
-        if FileExist("Capture2Text.exe") {
-            msgbox, Looks like you put PoE-HarvestVendor.ahk into the Capture2Text folder `r`nThis is wrong `r`nTake the file out of this folder
-        } else {
-            msgbox, I don't see the Capture2Text folder, did you download the tool ? `r`nLink is in the GitHub readme under Getting started section
-        }
-        ExitApp
-    }   
-    
+checkFiles() { 
     if !FileExist(SettingsPath) {
         msgbox, Looks like you put PoE-HarvestVendor in a write protected place on your PC.`r`nIt needs to be able to create and write into a few text files in its directory.
         ExitApp
@@ -2349,110 +1339,6 @@ global SelectAreaEscapePressed := false
 SelectAreaEscape:
     SelectAreaEscapePressed := true
 return
-
-SelectArea(Options="") { ; by Learning one
-/*
-Returns selected area. Return example: 22|13|243|543
-Options: (White space separated)
-- c color. Default: Blue.
-- t transparency. Default: 50.
-- g GUI number. Default: 99.
-- m CoordMode. Default: s. s = Screen, r = Relative
-*/
-;full screen overlay
-;press Escape to cancel
-
-    iniRead tempMon, %SettingsPath%, Other, mon
-    iniRead, scale, %SettingsPath%, Other, scale
-    cover := monitorInfo(tempMon)
-    coverX := cover[1]
-    coverY := cover[2]
-    coverH := cover[3] / scale
-    coverW := cover[4] / scale
-    Gui, Select:New
-    Gui, Color, 141414
-    Gui, +LastFound +ToolWindow -Caption +AlwaysOnTop
-    WinSet, Transparent, 120
-    Gui, Select:Show, x%coverX% y%coverY% h%coverH% w%coverW%, "AutoHotkeySnapshotApp"
-
-
-    isLButtonDown := false
-    SelectAreaEscapePressed := false
-    Hotkey, Escape, SelectAreaEscape, On
-    while (!isLButtonDown and !SelectAreaEscapePressed) {
-        ; Per documentation new hotkey threads can be launched while KeyWait-ing, so SelectAreaEscapePressed
-        ; will eventually be set in the SelectAreaEscape hotkey thread above when the user presses ESC.
-
-        KeyWait, LButton, D T0.1  ; 100ms timeout
-        isLButtonDown := (ErrorLevel == 0)
-    }
-
-    areaRect := []
-    if (!SelectAreaEscapePressed) {
-        CoordMode, Mouse, Screen
-        MouseGetPos, MX, MY
-        CoordMode, Mouse, Relative
-        MouseGetPos, rMX, rMY
-        CoordMode, Mouse, Screen
-
-        loop, parse, Options, %A_Space% 
-        {
-            Field := A_LoopField
-            FirstChar := SubStr(Field, 1, 1)
-            if (FirstChar contains c,t,g,m) {
-                StringTrimLeft, Field, Field, 1
-                %FirstChar% := Field
-            }
-        }
-        c := (c = "") ? "Blue" : c
-        t := (t = "") ? "50" : t
-        g := (g = "") ? "99" : g
-        m := (m = "") ? "s" : m
-
-        Gui %g%: Destroy
-        Gui %g%: +AlwaysOnTop -Caption +Border +ToolWindow +LastFound
-        WinSet, Transparent, %t%
-        Gui %g%: Color, %c%
-        ;Hotkey := RegExReplace(A_ThisHotkey,"^(\w* & |\W*)")
-
-        While (GetKeyState("LButton") and !SelectAreaEscapePressed)
-        {
-            Sleep, 10
-            MouseGetPos, MXend, MYend        
-            w := abs((MX / scale) - (MXend / scale)), h := abs((MY / scale) - (MYend / scale))
-            X := (MX < MXend) ? MX : MXend
-            Y := (MY < MYend) ? MY : MYend
-            Gui %g%: Show, x%X% y%Y% w%w% h%h% NA
-        }
-
-        Gui %g%: Destroy
-
-        if (!SelectAreaEscapePressed) {
-            if (m == "s") { ; Screen
-                MouseGetPos, MXend, MYend
-                if (MX > MXend)
-                    temp := MX, MX := MXend, MXend := temp ;* scale
-                if (MY > MYend)
-                    temp := MY, MY := MYend, MYend := temp ;* scale
-                areaRect := [MX, MXend, MY, MYend]
-            } else { ; Relative
-                CoordMode, Mouse, Relative
-                MouseGetPos, rMXend, rMYend
-                if (rMX > rMXend)
-                    temp := rMX, rMX := rMXend, rMXend := temp
-                if (rMY > rMYend)
-                    temp := rMY, rMY := rMYend, rMYend := temp
-                areaRect := [rMX, rMXend, rMY, rMYend]
-            }
-        }
-    }
-
-    Hotkey, Escape, SelectAreaEscape, Off
-
-    Gui, Select:Destroy
-    Gui, HarvestUI:Default
-    return areaRect
-}
 
 WM_MOUSEMOVE() {
     static CurrControl, PrevControl, _TT  ; _TT is kept blank for use by the ToolTip command below.
@@ -2716,4 +1602,3 @@ WebPic(WB, Website, Options := "") {
     WB.Navigate("about:" HTML_Page)
     Return HTML_Page
 }
-
