@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.2 beta"
+global version := "0.8.2"
 
 ; === some global variables ===
 global outArray := {}
@@ -21,6 +21,7 @@ global sessionLoading := False
 global MaxRowsCraftTable := 20
 global CraftTable := []
 global needToChangeModel := True
+global isLoading := True
 loop, %MaxRowsCraftTable% {
     CraftTable.push({"count": 0, "craft": "", "price": ""
         , "lvl": "", "type": ""})
@@ -178,6 +179,7 @@ Tooltip
 if (seenInstructions == 0) {
     goto help
 }
+isLoading := False
 return
 
 
@@ -232,6 +234,10 @@ showGUI() {
 }
 
 OpenGui: ;ctrl+shift+g opens the gui, yo go from there
+    if (isLoading) {
+        MsgBox, Please wait until the program is fully loaded
+        return
+    }
     if (firstGuiOpen) {
         loadLastSession()
     }
@@ -245,6 +251,10 @@ OpenGui: ;ctrl+shift+g opens the gui, yo go from there
 Return
 
 Scan: ;ctrl+g launches straight into the capture, opens gui afterwards
+    if (isLoading) {
+        MsgBox, Please wait until the program is fully loaded
+        return
+    }
     rescan := ""
     _wasVisible := IsGuiVisible("HarvestUI")
     if (processCrafts(TempPath)) {
@@ -344,7 +354,7 @@ gui, Font, s11 cA38D6D
     gui Font, s12
         gui add, text, x460 y10 cGreen vversionText, ! New Version Available !
     ;gui, Font, s11 cFFC555
-        gui add, Link, x550 y30 vversionLink c0x0d0d0d, <a href="http://github.com/esge/PoE-HarvestVendor/releases/latest">Github Link</a>
+        gui add, Link, x550 y30 vversionLink c0x0d0d0d, <a href="http://github.com/Stregon/PoE-HarvestVendor/releases/latest">Github Link</a>
         
     GuiControl, Hide, versionText
     GuiControl, Hide, versionLink
@@ -822,7 +832,7 @@ gui, font, s10
     gui, add, text, x15 y110, Start the capture by either clicking Add Crafts button, `r`nor pressing the Capture hotkey.`r`nSelect the area with crafts:
     Gui, Add, ActiveX, x5 y120 w290 h240 vArea, Shell2.Explorer
     Area.document.body.style.overflow := "hidden"
-    Edit := WebPic(Area, "https://github.com/esge/PoE-HarvestVendor/blob/master/examples/snapshotArea_s.png?raw=true", "w250 h233 cFFFFFF")
+    Edit := WebPic(Area, "https://github.com/Stregon/PoE-HarvestVendor/blob/master/examples/snapshotArea_s.png?raw=true", "w250 h233 cFFFFFF")
     gui, add, text, x15 y365, this can be done repeatedly to add crafts to the list
 
 ;step 3 
@@ -1006,14 +1016,14 @@ Handle_Reforge(craftText, ByRef out) {
                 return
             } 
         }
-        reforge2color := {"Red and Blue": "Red.+and.+Blue"
-            , "Red and Green": "Red.+and.+Green"
-            , "Blue and Green": "them.+Blue.+and.+Green"
-            , "Red, Blue and Green": "Red.+Blue.+and.+Green"
-            , "White": "White"}
+        reforge2color := [["Red, Blue and Green", "Red.+Blue.+and.+Green"]
+            , ["Red and Green", "Red.+and.+Green"]
+            , ["Blue and Green", "them.+Blue.+and.+Green"]
+            , ["Red and Blue", "Red.+and.+Blue"]
+            , ["White", "White"]]
         for color, colortemp in reforge2color {
-            if TemplateExist(craftText, colortemp) {
-                out.push(["Reforge Colour: into " . color
+            if TemplateExist(craftText, colortemp[2]) {
+                out.push(["Reforge Colour: into " . colortemp[1]
                     , getLVL(craftText)
                     , "Other"])
                 return
@@ -2205,7 +2215,7 @@ leagueList() {
 }
 
 getVersion() {
-    versionUrl :=  "https://raw.githubusercontent.com/esge/PoE-HarvestVendor/master/version.txt"
+    versionUrl :=  "https://raw.githubusercontent.com/Stregon/PoE-HarvestVendor/master/version.txt"
     if FileExist("curl.exe") {
         ; Hack for people with outdated certificates
         shell := ComObjCreate("WScript.Shell")
@@ -2213,7 +2223,7 @@ getVersion() {
         response := exec.StdOut.ReadAll()
     } else {
         ver := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-        ver.Open("GET", "https://raw.githubusercontent.com/esge/PoE-HarvestVendor/master/version.txt", false)
+        ver.Open("GET", versionUrl, false)
         ver.SetRequestHeader("Content-Type", "application/json")
         ver.Send()
         response := ver.ResponseText
