@@ -491,8 +491,10 @@ gui, Font, s11 cA38D6D
 Up:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    tempCount := CraftTable[tempRow].count + 1
-    GuiControl,, count_%tempRow%, %tempCount%
+    CraftTable[tempRow].count := CraftTable[tempRow].count + 1
+    updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+    sumTypes()
+    sumPrices()
 return
 
 Dn:
@@ -500,8 +502,10 @@ Dn:
     tempRow := getRow(cntrl)
     tempCount := CraftTable[tempRow].count
     if (tempCount > 0) {
-        tempCount -= 1
-        GuiControl,, count_%tempRow%, %tempCount%
+        CraftTable[tempRow].count := tempCount - 1
+        updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+        sumTypes()
+        sumPrices()
     }
 return
 
@@ -531,7 +535,7 @@ Count:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newCount,, count_%tempRow%, value
-    if (oldCount == newCount and !sessionLoading) {
+    if (oldCount == newCount) {
         return
     }
     if (needToChangeModel) {
@@ -546,14 +550,14 @@ craft:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newCraft,, craft_%tempRow%, value
-    if (oldCraft == newCraft and !sessionLoading) {
+    if (oldCraft == newCraft) {
         return
     }
     if (needToChangeModel) {
         CraftTable[tempRow].craft := newCraft
         CraftTable[tempRow].Price := getPriceFor(newCraft)
-        updateUIRow(tempRow, "price")
         CraftTable[tempRow].type := getTypeFor(newCraft)
+        updateUIRow(tempRow, "price")
         updateUIRow(tempRow, "type")
     }
     sumTypes()
@@ -578,7 +582,7 @@ Price:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newPrice,, price_%tempRow%, value
-    if (oldPrice == newPrice and !sessionLoading) {
+    if (oldPrice == newPrice) {
         return
     }
     if (needToChangeModel) {
@@ -2122,6 +2126,8 @@ loadLastSession() {
         updateUIRow(A_Index)
     }
     sessionLoading := False
+    sumTypes()
+    sumPrices()
 }
 
 clearRowData(rowIndex) {
