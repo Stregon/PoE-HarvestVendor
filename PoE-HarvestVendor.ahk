@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.2 beta korean"
+global version := "0.8.2 korean"
 #include <class_iAutoComplete>
 ; === some global variables ===
 global outArray := {}
