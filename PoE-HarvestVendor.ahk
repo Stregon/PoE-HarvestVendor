@@ -2296,7 +2296,7 @@ leagueList() {
 }
 
 getVersion() {
-    versionUrl :=  "https://raw.githubusercontent.com/Stregon/PoE-HarvestVendor/master/version.txt"
+    versionUrl :=  "https://raw.githubusercontent.com/Stregon/PoE-HarvestVendor/korean/version.txt"
     if FileExist("curl.exe") {
         ; Hack for people with outdated certificates
         shell := ComObjCreate("WScript.Shell")
