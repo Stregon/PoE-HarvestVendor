@@ -20,6 +20,7 @@ global sessionLoading := False
 global MaxRowsCraftTable := 20
 global CraftTable := []
 global needToChangeModel := True
+global isLoading := True
 global PID := DllCall("Kernel32\GetCurrentProcessId")
 
 EnvGet, dir, USERPROFILE
@@ -35,20 +36,7 @@ global LogPath := RoamingDir . "\log.csv"
 global TempPath := RoamingDir . "\temp.txt"
 
 FileEncoding, UTF-8
-global Lang := "Korean" ;"English" 
-global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe_kor"
-;whitelist := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,."
-blacklist := "."
-global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
-global Capture2TextOptions := " -o " . TempPath 
-    . " -l " . Lang
-    ;. " --blacklist """ . blacklist . """"
-    . " --tess-config-file """ . TessFile . """"
-    ;. " --deskew"
-    ;. " --whitelist """ . whitelist . """"
-    ;. " -b"
-    ;. " --trim-capture" 
-    ; . " --scale-factor " . scale_factor
+global Lang := "Korean" ;"English"
 global LangDict := {}
 langfile := A_ScriptDir . "\" . Lang . ".dict" 
 ;StringCaseSense, On
@@ -59,6 +47,21 @@ Loop, read, %langfile%
     value := obj[2]
     LangDict[key] := value
 }
+global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe_kor"
+;whitelist := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,."
+blacklist := ".*:&}"
+global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
+global Capture2TextOptions := " -o " . TempPath 
+    . " -l " . Lang
+    ;. " --blacklist """ . blacklist . """"
+    ;. " --tess-config-file """ . TessFile . """"
+    ;. " --deskew"
+    ;. " --whitelist """ . whitelist . """"
+    ;. " -b"
+    ;. " -d --debug-timestamp"
+    ;. " --trim-capture" 
+    . " --poe-harvest --level-pattern """ . translate("Level") . """"
+
 global IAutoComplete_Crafts := []
 craftListFile := A_ScriptDir . "\craftlist.txt"
 global CraftList := []
@@ -94,7 +97,8 @@ tooltip, loading... Initializing Settings
 sleep, 250
 ; == init settings ==
 iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
-    if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == "") {
+    if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == ""
+        or MaxRowsCraftTable < 20 or MaxRowsCraftTable > 40) {
         IniWrite, 20, %SettingsPath%, Other, MaxRowsCraftTable
         IniRead, MaxRowsCraftTable, %SettingsPath%, Other, MaxRowsCraftTable
     }
@@ -192,6 +196,7 @@ Tooltip
 if (seenInstructions == 0) {
     goto help
 }
+isLoading := False
 return
 
 
@@ -250,6 +255,10 @@ showGUI() {
 }
 
 OpenGui: ;ctrl+shift+g opens the gui, yo go from there
+    if (isLoading) {
+        MsgBox, Please wait until the program is fully loaded
+        return
+    }
     if (firstGuiOpen) {
         loadLastSession()
     }
@@ -263,6 +272,10 @@ OpenGui: ;ctrl+shift+g opens the gui, yo go from there
 Return
 
 Scan: ;ctrl+g launches straight into the capture, opens gui afterwards
+    if (isLoading) {
+        MsgBox, Please wait until the program is fully loaded
+        return
+    }
     rescan := ""
     _wasVisible := IsGuiVisible("HarvestUI")
     if (processCrafts(TempPath)) {
@@ -502,8 +515,10 @@ gui, Font, s11 cA38D6D
 Up:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    tempCount := CraftTable[tempRow].count + 1
-    GuiControl,, count_%tempRow%, %tempCount%
+    CraftTable[tempRow].count := CraftTable[tempRow].count + 1
+    updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+    sumTypes()
+    sumPrices()
 return
 
 Dn:
@@ -511,8 +526,10 @@ Dn:
     tempRow := getRow(cntrl)
     tempCount := CraftTable[tempRow].count
     if (tempCount > 0) {
-        tempCount -= 1
-        GuiControl,, count_%tempRow%, %tempCount%
+        CraftTable[tempRow].count := tempCount - 1
+        updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+        sumTypes()
+        sumPrices()
     }
 return
 
@@ -533,6 +550,8 @@ return
 Clear_all:
     buttonHold("clearAll", "resources\clear")
     clearAll()
+    sumTypes()
+    sumPrices()
 return
 
 Count:
@@ -540,7 +559,7 @@ Count:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newCount,, count_%tempRow%, value
-    if (oldCount == newCount and !sessionLoading) {
+    if (oldCount == newCount) {
         return
     }
     if (needToChangeModel) {
@@ -555,14 +574,14 @@ craft:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newCraft,, craft_%tempRow%, value
-    if (oldCraft == newCraft and !sessionLoading) {
+    if (oldCraft == newCraft) {
         return
     }
     if (needToChangeModel) {
         CraftTable[tempRow].craft := newCraft
         CraftTable[tempRow].Price := getPriceFor(newCraft)
-        updateUIRow(tempRow, "price")
         CraftTable[tempRow].type := getTypeFor(newCraft)
+        updateUIRow(tempRow, "price")
         updateUIRow(tempRow, "type")
     }
     sumTypes()
@@ -587,7 +606,7 @@ Price:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newPrice,, price_%tempRow%, value
-    if (oldPrice == newPrice and !sessionLoading) {
+    if (oldPrice == newPrice) {
         return
     }
     if (needToChangeModel) {
@@ -1051,7 +1070,7 @@ Handle_Reforge(craftText, ByRef out) {
             reforgeNonColor := ["Red", "Blue", "Green"]
             for k, v in reforgeNonColor {
                 if TemplateExist(craftText, translate(v)) {
-                    out.push(["Reforge Colour: non-" . k . " into " . k
+                    out.push(["Reforge Colour: non-" . v . " into " . v
                         , getLVL(craftText)
                         , "Other"])
                     return
@@ -1094,7 +1113,8 @@ Handle_Reforge(craftText, ByRef out) {
         }
         return
     }
-    if TemplateExist(craftText, translate("Influence")) {
+    if (TemplateExist(craftText, translate("Influence"))
+        and TemplateExist(craftText, translate("more"))) {
         out.push(["Reforge with Influence mod more common"
             , getLVL(craftText)
             , "Other"])
@@ -1445,12 +1465,10 @@ Handle_Split(craftText, ByRef out) {
 }
 
 getCraftLines(temp) {
-    template := translate("Level") . "( *\d\d)"
-    NewLined := RegExReplace(temp, template, "$1$2#")
-    
-    NewLined := SubStr(NewLined, 1, InStr(NewLined, "#", False, 0) - 1) ; remove last "#"
+    craftsText := Trim(RegExReplace(temp, " +", " "))
     arr := {}
-    arr := StrSplit(NewLined, "#")
+    arr := StrSplit(craftsText, "||")
+    ;MsgBox, % arr.Length()
     return arr
 }
 
@@ -1466,10 +1484,10 @@ getCraftsPlus(craftsText, levelsText) {
     ;NewLined := RegExReplace(craftsText, TemplateForCrafts, "#$1")
     ;NewLined := SubStr(NewLined, inStr(NewLined, "#") + 1) ; remove all before "#" and "#" too
     
-    NewLined := craftsText . "#"
+    NewLined := SubStr(craftsText, InStr(craftsText, "||") + 1) ; remove first "||"
     
     arr := {}
-    arr := StrSplit(NewLined, "#")
+    arr := StrSplit(NewLined, "||")
     for index in arr {
         level := ArrayedLevels.HasKey(index) ? " " . ArrayedLevels[index] : ""
         arr[index] := arr[index] . level
@@ -1496,35 +1514,40 @@ processCrafts(file) {
     sleep, 500
     Tooltip, Please Wait, x_end, y_end
     
-    ; screen_rect := " -s """ . x_start . " " . y_start . " " 
-        ; . x_end . " " . y_end . """"
-    aspectRatioForLevel := 0.18
-    areaWidthLevel := Floor(aspectRatioForLevel * (x_end - x_start)) ; area width "Level"
-    x_areaLevelStart := x_end - areaWidthLevel ; starting X-position "Level"
-    screen_rect_Craft := " -s """ . x_start . " " . y_start . " " 
-        . x_areaLevelStart . " " . y_end . """" ; 82% of the area for "Craft"
-    screen_rect_Level := " -s """ . x_areaLevelStart . " " . y_start . " " 
-    . x_end . " " . y_end . """" ;  18% of the area for "Level"
-    temp := {}
-    for k, v in [screen_rect_Craft, screen_rect_Level] {
-        command := Capture2TextExe . v . Capture2TextOptions
-        RunWait, %command%,,Hide
-        
+    screen_rect := " -s """ . x_start . " " . y_start . " " 
+        . x_end . " " . y_end . """"
+    ; aspectRatioForLevel := 0.18
+    ; areaWidthLevel := Floor(aspectRatioForLevel * (x_end - x_start)) ; area width "Level"
+    ; x_areaLevelStart := x_end - areaWidthLevel ; starting X-position "Level"
+    ; screen_rect_Craft := " -s """ . x_start . " " . y_start . " " 
+        ; . x_areaLevelStart . " " . y_end . """" ; 82% of the area for "Craft"
+    ; screen_rect_Level := " -s """ . x_areaLevelStart . " " . y_start . " " 
+    ; . x_end . " " . y_end . """" ;  18% of the area for "Level"
+    ;temp := {}
+    ;mod := ""
+    ;for k, v in [screen_rect_Level, screen_rect_Craft] {
+        command := Capture2TextExe . screen_rect . Capture2TextOptions ;. mod
+        RunWait, %command% ;,,Hide
         if !FileExist(TempPath) {
             MsgBox, - We were unable to create temp.txt to store text recognition results.`r`n- The tool most likely doesnt have permission to write where it is.`r`n- Moving it into a location that isnt write protected, or running as admin will fix this.
             return false
         }
         FileRead, curtemp, %file%
-        temp.push(curtemp)
-    }
+        ; if (k == 1) {
+            ; tempLevels := RegExReplace(curtemp, translate("Level"), "#$1")
+            ; tempLevels := SubStr(tempLevels, inStr(tempLevels, "#") + 1)
+            ; ArrayedLevels := StrSplit(tempLevels, "#")
+            ; mod := " --count-pieces " . ArrayedLevels.Length()
+        ; }
+        ; temp.push(curtemp)
+    ;}
     WinActivate, ahk_pid %PID%
     Tooltip
     ;add craftsText and levelsText in temp.txt
-    FileDelete, %file%
-    FileAppend, % temp[1] . temp[2], %file%
-    ;FileRead, temp, test2.txt
+    ;FileDelete, %file%
+    ;FileAppend, % temp[2] . temp[1], %file%
 
-    Arrayed := getCraftsPlus(temp[1], temp[2])
+    Arrayed := getCraftLines(curtemp) ;getCraftsPlus(temp[2], temp[1])
     outArray := {}
     ;outArrayCount := 0
     for index in Arrayed {  
@@ -2032,21 +2055,23 @@ getLVL(craft) {
 sumPrices() {
     tempSumChaos := 0
     tempSumEx := 0
+    exaltTemplate := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
+    chaosTemplate := "Oi)^(\d+) *(c|ch|chaos)$"
     loop, %MaxRowsCraftTable% {
         craftRow := CraftTable[A_Index]
         if (craftRow.craft == "" or craftRow.price == "") {
             continue
         }
-        priceCraft := craftRow.price
+        priceCraft := Trim(craftRow.price)
         countCraft := craftRow.count
         
-        if (InStr(priceCraft, "c") > 0) {
-            priceCraft := strReplace(Trim(StrReplace(priceCraft, "c")), ",", ".")
+        if (RegExMatch(priceCraft, chaosTemplate, matchObj) > 0) {
+            priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumChaos +=  priceCraft * countCraft
         }
         
-        if (InStr(priceCraft, "ex") > 0) {
-            priceCraft := strReplace(Trim(StrReplace(priceCraft, "ex")), ",", ".")
+        if (RegExMatch(priceCraft, exaltTemplate, matchObj) > 0) {
+            priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumEx += priceCraft * countCraft
         }
     }
@@ -2176,6 +2201,8 @@ loadLastSession() {
         updateUIRow(A_Index)
     }
     sessionLoading := False
+    sumTypes()
+    sumPrices()
 }
 
 clearRowData(rowIndex) {
@@ -2269,7 +2296,7 @@ leagueList() {
 }
 
 getVersion() {
-    versionUrl :=  "https://raw.githubusercontent.com/esge/PoE-HarvestVendor/master/version.txt"
+    versionUrl :=  "https://raw.githubusercontent.com/Stregon/PoE-HarvestVendor/master/version.txt"
     if FileExist("curl.exe") {
         ; Hack for people with outdated certificates
         shell := ComObjCreate("WScript.Shell")
@@ -2277,7 +2304,7 @@ getVersion() {
         response := exec.StdOut.ReadAll()
     } else {
         ver := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-        ver.Open("GET", "https://raw.githubusercontent.com/esge/PoE-HarvestVendor/master/version.txt", false)
+        ver.Open("GET", versionUrl, false)
         ver.SetRequestHeader("Content-Type", "application/json")
         ver.Send()
         response := ver.ResponseText
