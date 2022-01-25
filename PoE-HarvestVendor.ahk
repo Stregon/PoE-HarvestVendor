@@ -25,6 +25,7 @@ if !FileExist(RoamingDir) {
 
 global SettingsPath := RoamingDir . "\settings.ini"
 global PricesPath := RoamingDir . "\prices.ini"
+global LevelsPath := RoamingDir . "\levels.ini"
 global LogPath := RoamingDir . "\log.csv"
 
 FileEncoding, UTF-8
@@ -392,8 +393,10 @@ gui, Font, s11 cA38D6D
 Up:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    tempCount := CraftTable[tempRow].count + 1
-    GuiControl,, count_%tempRow%, %tempCount%
+    CraftTable[tempRow].count := CraftTable[tempRow].count + 1
+    updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+    sumTypes()
+    sumPrices()
 return
 
 Dn:
@@ -401,8 +404,10 @@ Dn:
     tempRow := getRow(cntrl)
     tempCount := CraftTable[tempRow].count
     if (tempCount > 0) {
-        tempCount -= 1
-        GuiControl,, count_%tempRow%, %tempCount%
+        CraftTable[tempRow].count := tempCount - 1
+        updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+        sumTypes()
+        sumPrices()
     }
 return
 
@@ -418,7 +423,7 @@ Count:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newCount,, count_%tempRow%, value
-    if (oldCount == newCount and !sessionLoading) {
+    if (oldCount == newCount) {
         return
     }
     if (needToChangeModel) {
@@ -433,7 +438,7 @@ craft:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newCraft,, craft_%tempRow%, value
-    if (oldCraft == newCraft and !sessionLoading) {
+    if (oldCraft == newCraft) {
         return
     }
     if (needToChangeModel) {
@@ -442,6 +447,12 @@ craft:
         updateUIRow(tempRow, "price")
         CraftTable[tempRow].type := getTypeFor(newCraft)
         updateUIRow(tempRow, "type")
+        newLvl := getLevelFor(newCraft)
+        CraftTable[tempRow].lvl := newLvl
+        updateUIRow(tempRow, "lvl")
+        if (newCraft != "" and newCraft.Length() > 15) {
+            iniWrite, %newLvl%, %LevelsPath%, Levels, %newCraft%
+        }
     }
     sumTypes()
 return
@@ -450,10 +461,18 @@ lvl:
     if (!needToChangeModel) {
         return
     }
+    oldLvl := CraftTable[tempRow].lvl
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    guiControlGet, tempLvl,, lvl_%tempRow%, value
-    CraftTable[tempRow].lvl := tempLvl
+    guiControlGet, newLvl,, lvl_%tempRow%, value
+    if (oldLvl == newLvl) {
+        return
+    }
+    CraftTable[tempRow].lvl := newLvl
+    craftName := CraftTable[tempRow].craft
+    if (craftName != "" and newCraft.Length() > 15) {
+        iniWrite, %newLvl%, %LevelsPath%, Levels, %craftName%
+    }
 return
 
 type:
@@ -465,7 +484,7 @@ Price:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     guiControlGet, newPrice,, price_%tempRow%, value
-    if (oldPrice == newPrice and !sessionLoading) {
+    if (oldPrice == newPrice) {
         return
     }
     if (needToChangeModel) {
@@ -668,27 +687,6 @@ sortCraftTable() {
         }
         updateUIRow(k)
     }
-}
-
-detectType(craft, row) {
-    if (craft == "") {
-        guicontrol,, type_%row%,
-        return
-    } 
-    if (inStr(craft, "Augment") = 1 ) {
-        guicontrol,, type_%row%, Aug
-        return
-    } 
-    if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
-        guicontrol,, type_%row%, Rem
-        return
-    } 
-    if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
-        and instr(craft, "non") = 0) {
-        guicontrol,, type_%row%, Rem/Add
-        return
-    }
-    guicontrol,, type_%row%, Other
 }
 
 getTypeFor(craft) {
@@ -1021,6 +1019,23 @@ getPriceFor(craft) {
     }
 }
 
+getLevelFor(craft) {
+    if (craft == "") {
+        return ""
+    }
+    while (True) {
+        iniRead, tempP, %LevelsPath%, Levels, %craft%
+        if (tempP == "ERROR") {
+            return ""
+        }
+        if (tempP != "") {
+            return tempP
+        }
+        ;Delete craft with blank price
+        iniDelete, %LevelsPath%, Levels, %craft%
+    }
+}
+
 getRow(elementVariable) {
     temp := StrSplit(elementVariable, "_")
     return temp[temp.Length()]
@@ -1085,27 +1100,6 @@ sumTypes() {
     Guicontrol,, RAcount, %RAcounter%
     Guicontrol,, Ocount, %Ocounter%
     Guicontrol,, CraftsSum, %Allcounter%
-    ;sleep, 50
-    ;if (Acounter = 0) {
-    ;    guicontrol,, augPost, resources/postA_d.png
-    ;} else {
-    ;    guicontrol,, augPost, resources/postA.png
-    ;}
-    ;if (Rcounter = 0) {
-    ;    guicontrol,, remPost, resources/postR_d.png
-    ;} else {
-    ;    guicontrol,, remPost, resources/postR.png
-    ;}
-    ;if (RAcounter = 0) {
-    ;    guicontrol,, remAddPost, resources/postRA_d.png
-    ;} else {
-    ;    guicontrol,, remAddPost, resources/postRA.png
-    ;}
-    ;if (Ocounter = 0) {
-    ;    guicontrol,, otherPost, resources/postO_d.png
-    ;} else {
-    ;    guicontrol,, otherPost, resources/postO.png
-    ;}
 }
 
 buttonHold(buttonV, picture) {
@@ -1175,6 +1169,8 @@ loadLastSession() {
         updateUIRow(A_Index)
     }
     sessionLoading := False
+    sumTypes()
+    sumPrices()
 }
 
 clearRowData(rowIndex) {
@@ -1187,9 +1183,6 @@ clearAll() {
         clearRowData(A_Index)
         updateUIRow(A_Index)
     }
-    outArray := {}
-    ;outArrayCount := 0
-    ;arr := []
 }
 ; === technical stuff i guess ===
 getLeagues() {
