@@ -516,7 +516,7 @@ Up:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     CraftTable[tempRow].count := CraftTable[tempRow].count + 1
-    updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+    updateUIRow(tempRow, "count")
     sumTypes()
     sumPrices()
 return
@@ -527,7 +527,7 @@ Dn:
     tempCount := CraftTable[tempRow].count
     if (tempCount > 0) {
         CraftTable[tempRow].count := tempCount - 1
-        updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+        updateUIRow(tempRow, "count")
         sumTypes()
         sumPrices()
     }
@@ -564,9 +564,9 @@ Count:
     }
     if (needToChangeModel) {
         CraftTable[tempRow].count := newCount
+        sumTypes()
+        sumPrices()
     }
-    sumTypes()
-    sumPrices()
 return
 
 craft:
@@ -583,8 +583,9 @@ craft:
         CraftTable[tempRow].type := getTypeFor(newCraft)
         updateUIRow(tempRow, "price")
         updateUIRow(tempRow, "type")
+        sumTypes()
+        sumPrices()
     }
-    sumTypes()
 return
 
 lvl:
@@ -615,8 +616,8 @@ Price:
         if (craftName != "") {
             iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
         }
+        sumPrices()
     }
-    sumPrices()
 return
 
 Can_stream:
@@ -633,7 +634,7 @@ Custom_text:
     guiControlGet, cust,,customText, value
     cust := StrReplace(cust, "`n", "||") ;support multilines in custom text
     iniWrite, %cust%, %SettingsPath%, Other, customText
-    guicontrol,, customText_cb, 1
+    GuiControl,HarvestUI:, customText_cb, 1
 
     ;if (RegExMatch(cust, "not|remove|aug|add") > 0) {
     ;   gui, Font, cRed Bold
@@ -860,7 +861,7 @@ gui, font, s10
     gui, add, text, x15 y110, Start the capture by either clicking Add Crafts button, `r`nor pressing the Capture hotkey.`r`nSelect the area with crafts:
     Gui, Add, ActiveX, x5 y120 w290 h240 vArea, Shell2.Explorer
     Area.document.body.style.overflow := "hidden"
-    Edit := WebPic(Area, "https://github.com/esge/PoE-HarvestVendor/blob/master/examples/snapshotArea_s.png?raw=true", "w250 h233 cFFFFFF")
+    Edit := WebPic(Area, "https://github.com/Stregon/PoE-HarvestVendor/blob/korean/examples/snapshotArea_s.png?raw=true", "w250 h233 cFFFFFF")
     gui, add, text, x15 y365, this can be done repeatedly to add crafts to the list
 
 ;step 3 
@@ -2060,24 +2061,22 @@ sumPrices() {
     loop, %MaxRowsCraftTable% {
         craftRow := CraftTable[A_Index]
         if (craftRow.craft == "" or craftRow.price == "") {
-            continue
+           continue
         }
         priceCraft := Trim(craftRow.price)
         countCraft := craftRow.count
-        
+        matchObj := []
         if (RegExMatch(priceCraft, chaosTemplate, matchObj) > 0) {
             priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumChaos +=  priceCraft * countCraft
-        }
-        
-        if (RegExMatch(priceCraft, exaltTemplate, matchObj) > 0) {
+        } else if (RegExMatch(priceCraft, exaltTemplate, matchObj) > 0) {
             priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumEx += priceCraft * countCraft
         }
     }
     tempSumEx := round(tempSumEx, 1)
-    GuiControl,,sumChaos, %tempSumChaos%
-    GuiControl,,sumEx, %tempSumEx%
+    GuiControl,HarvestUI:, sumChaos, %tempSumChaos%
+    GuiControl,HarvestUI:, sumEx, %tempSumEx%
 }
 
 sumTypes() {
@@ -2106,32 +2105,11 @@ sumTypes() {
         }       
     }
     Allcounter := Acounter + Rcounter + RAcounter + Ocounter
-    Guicontrol,, Acount, %Acounter%
-    Guicontrol,, Rcount, %Rcounter%
-    Guicontrol,, RAcount, %RAcounter%
-    Guicontrol,, Ocount, %Ocounter%
-    Guicontrol,, CraftsSum, %Allcounter%
-    ;sleep, 50
-    ;if (Acounter = 0) {
-    ;    guicontrol,, augPost, resources/postA_d.png
-    ;} else {
-    ;    guicontrol,, augPost, resources/postA.png
-    ;}
-    ;if (Rcounter = 0) {
-    ;    guicontrol,, remPost, resources/postR_d.png
-    ;} else {
-    ;    guicontrol,, remPost, resources/postR.png
-    ;}
-    ;if (RAcounter = 0) {
-    ;    guicontrol,, remAddPost, resources/postRA_d.png
-    ;} else {
-    ;    guicontrol,, remAddPost, resources/postRA.png
-    ;}
-    ;if (Ocounter = 0) {
-    ;    guicontrol,, otherPost, resources/postO_d.png
-    ;} else {
-    ;    guicontrol,, otherPost, resources/postO.png
-    ;}
+    GuiControl,HarvestUI:, Acount, %Acounter%
+    GuiControl,HarvestUI:, Rcount, %Rcounter%
+    GuiControl,HarvestUI:, RAcount, %RAcounter%
+    GuiControl,HarvestUI:, Ocount, %Ocounter%
+    GuiControl,HarvestUI:, CraftsSum, %Allcounter%
 }
 
 buttonHold(buttonV, picture) {
