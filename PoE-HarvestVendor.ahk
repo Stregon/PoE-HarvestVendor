@@ -540,9 +540,9 @@ Count:
     }
     if (needToChangeModel) {
         CraftTable[tempRow].count := newCount
+        sumTypes()
+        sumPrices()
     }
-    sumTypes()
-    sumPrices()
 return
 
 craft:
@@ -559,8 +559,9 @@ craft:
         CraftTable[tempRow].type := getTypeFor(newCraft)
         updateUIRow(tempRow, "price")
         updateUIRow(tempRow, "type")
+        sumTypes()
+        sumPrices()
     }
-    sumTypes()
 return
 
 lvl:
@@ -591,8 +592,8 @@ Price:
         if (craftName != "") {
             iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
         }
+        sumPrices()
     }
-    sumPrices()
 return
 
 Can_stream:
@@ -609,7 +610,7 @@ Custom_text:
     guiControlGet, cust,,customText, value
     cust := StrReplace(cust, "`n", "||") ;support multilines in custom text
     iniWrite, %cust%, %SettingsPath%, Other, customText
-    guicontrol,, customText_cb, 1
+    GuiControl,HarvestUI:, customText_cb, 1
 
     ;if (RegExMatch(cust, "not|remove|aug|add") > 0) {
     ;   gui, Font, cRed Bold
@@ -2001,8 +2002,8 @@ sumPrices() {
         }
     }
     tempSumEx := round(tempSumEx, 1)
-    GuiControl,,sumChaos, %tempSumChaos%
-    GuiControl,,sumEx, %tempSumEx%
+    GuiControl,HarvestUI:, sumChaos, %tempSumChaos%
+    GuiControl,HarvestUI:, sumEx, %tempSumEx%
 }
 
 sumTypes() {
@@ -2031,11 +2032,11 @@ sumTypes() {
         }       
     }
     Allcounter := Acounter + Rcounter + RAcounter + Ocounter
-    Guicontrol,, Acount, %Acounter%
-    Guicontrol,, Rcount, %Rcounter%
-    Guicontrol,, RAcount, %RAcounter%
-    Guicontrol,, Ocount, %Ocounter%
-    Guicontrol,, CraftsSum, %Allcounter%
+    GuiControl,HarvestUI:, Acount, %Acounter%
+    GuiControl,HarvestUI:, Rcount, %Rcounter%
+    GuiControl,HarvestUI:, RAcount, %RAcounter%
+    GuiControl,HarvestUI:, Ocount, %Ocounter%
+    GuiControl,HarvestUI:, CraftsSum, %Allcounter%
     ;sleep, 50
     ;if (Acounter = 0) {
     ;    guicontrol,, augPost, resources/postA_d.png
