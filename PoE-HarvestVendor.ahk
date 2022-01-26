@@ -167,6 +167,7 @@ showGUI() {
             WinMove, %WinTitle%,, %NewX%, %NewY%
             DetectHiddenWindows, Off
         }
+        loadLastSession()
     } 
     Gui, HarvestUI:Show
 }
@@ -175,9 +176,6 @@ OpenGui: ;ctrl+shift+g opens the gui, yo go from there
     if (isLoading) {
         MsgBox, Please wait until the program is fully loaded
         return
-    }
-    if (firstGuiOpen) {
-        loadLastSession()
     }
     if (version != getVersion()) {
         guicontrol, HarvestUI:Show, versionText
@@ -394,7 +392,7 @@ Up:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     CraftTable[tempRow].count := CraftTable[tempRow].count + 1
-    updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+    updateUIRow(tempRow, "count")
     sumTypes()
     sumPrices()
 return
@@ -405,7 +403,7 @@ Dn:
     tempCount := CraftTable[tempRow].count
     if (tempCount > 0) {
         CraftTable[tempRow].count := tempCount - 1
-        updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+        updateUIRow(tempRow, "count")
         sumTypes()
         sumPrices()
     }
@@ -428,9 +426,9 @@ Count:
     }
     if (needToChangeModel) {
         CraftTable[tempRow].count := newCount
+        sumTypes()
+        sumPrices()
     }
-    sumTypes()
-    sumPrices()
 return
 
 craft:
@@ -453,8 +451,9 @@ craft:
         if (newCraft != "" and newCraft.Length() > 15) {
             iniWrite, %newLvl%, %LevelsPath%, Levels, %newCraft%
         }
+        sumTypes()
+        sumPrices()
     }
-    sumTypes()
 return
 
 lvl:
@@ -493,8 +492,8 @@ Price:
         if (craftName != "") {
             iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
         }
+       sumPrices() 
     }
-    sumPrices()
 return
 
 Can_stream:
@@ -1065,8 +1064,8 @@ sumPrices() {
         }
     }
     tempSumEx := round(tempSumEx, 1)
-    GuiControl,,sumChaos, %tempSumChaos%
-    GuiControl,,sumEx, %tempSumEx%
+    GuiControl,HarvestUI:, sumChaos, %tempSumChaos%
+    GuiControl,HarvestUI:, sumEx, %tempSumEx%
 }
 
 sumTypes() {
@@ -1095,11 +1094,11 @@ sumTypes() {
         }       
     }
     Allcounter := Acounter + Rcounter + RAcounter + Ocounter
-    Guicontrol,, Acount, %Acounter%
-    Guicontrol,, Rcount, %Rcounter%
-    Guicontrol,, RAcount, %RAcounter%
-    Guicontrol,, Ocount, %Ocounter%
-    Guicontrol,, CraftsSum, %Allcounter%
+    GuiControl,HarvestUI:, Acount, %Acounter%
+    GuiControl,HarvestUI:, Rcount, %Rcounter%
+    GuiControl,HarvestUI:, RAcount, %RAcounter%
+    GuiControl,HarvestUI:, Ocount, %Ocounter%
+    GuiControl,HarvestUI:, CraftsSum, %Allcounter%
 }
 
 buttonHold(buttonV, picture) {
