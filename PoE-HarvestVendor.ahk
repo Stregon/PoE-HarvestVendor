@@ -350,9 +350,9 @@ gui, Font, s11 cA38D6D
         gui add, text, xp+40 y64 w50 +BackgroundTrans vAcount,0
         gui, Font, s11 cA38D6D
 
-        gui add, text, xp+50 y64 w45 +BackgroundTrans, % translate("Rems:") 
+        gui add, text, xp+50 y64 w45 +BackgroundTrans, % translate("Reforges:") 
         gui, Font, s11 cFFC555
-        gui add, text, xp+45 y64 w50 +BackgroundTrans vRcount,0
+        gui add, text, xp+45 y64 w50 +BackgroundTrans vRefcount,0
         gui, Font, s11 cA38D6D
         gui add, text, xp+50 y64 w75 +BackgroundTrans, % translate("Rem/Adds:") 
         gui, Font, s11 cFFC555
@@ -1588,13 +1588,16 @@ sortCraftTable() {
 getTypeFor(craft) {
     if (craft == "") {
         return ""
-    } 
+    }
+    if (inStr(craft, "Reforge") == 1) {
+        return "Ref"
+    }
     if (inStr(craft, "Augment") == 1) {
         return "Aug"
     } 
-    if (InStr(craft, "Remove") == 1 and instr(craft, "add") == 0) {
-        return "Rem"
-    } 
+    ; if (InStr(craft, "Remove") == 1 and instr(craft, "add") == 0) {
+        ; return "Rem"
+    ; } 
     if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
         return "Rem/Add"
     }
@@ -1969,7 +1972,7 @@ sumPrices() {
 
 sumTypes() {
     Acounter := 0
-    Rcounter := 0
+    Refcounter := 0
     RAcounter := 0
     Ocounter := 0
     Allcounter := 0
@@ -1982,8 +1985,8 @@ sumTypes() {
         if (tempType == "Aug") {
             Acounter += tempAmount
         }
-        if (tempType == "Rem") {
-            Rcounter += tempAmount
+        if (tempType == "Ref") {
+            Refcounter += tempAmount
         }
         if (tempType == "Rem/Add") {
             RAcounter += tempAmount
@@ -1992,9 +1995,9 @@ sumTypes() {
             Ocounter += tempAmount
         }       
     }
-    Allcounter := Acounter + Rcounter + RAcounter + Ocounter
+    Allcounter := Acounter + Refcounter + RAcounter + Ocounter
     GuiControl,HarvestUI:, Acount, %Acounter%
-    GuiControl,HarvestUI:, Rcount, %Rcounter%
+    GuiControl,HarvestUI:, Refcount, %Refcounter%
     GuiControl,HarvestUI:, RAcount, %RAcounter%
     GuiControl,HarvestUI:, Ocount, %Ocounter%
     GuiControl,HarvestUI:, CraftsSum, %Allcounter%
@@ -2052,9 +2055,8 @@ loadLastSessionCraft(row) {
         type := split[4]
 
         tempP := getPriceFor(craft)
-        if (type == "") {
-            type := getTypeFor(craft)
-        }
+        type := getTypeFor(craft)
+        
         CraftTable[row] := {"count": ccount, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
     }
