@@ -1589,14 +1589,13 @@ getTypeFor(craft) {
     if (craft == "") {
         return ""
     } 
-    if (inStr(craft, "Augment") = 1 ) {
+    if (inStr(craft, "Augment") == 1) {
         return "Aug"
     } 
-    if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
+    if (InStr(craft, "Remove") == 1 and instr(craft, "add") == 0) {
         return "Rem"
     } 
-    if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
-        and instr(craft, "non") = 0) {
+    if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
         return "Rem/Add"
     }
     return "Other"
