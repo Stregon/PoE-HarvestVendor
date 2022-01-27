@@ -1,6 +1,8 @@
 ﻿#NoEnv
 #SingleInstance Force
 SetBatchLines -1
+;SetWinDelay, -1
+;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
 global version := "0.9 korean"
 #include <class_iAutoComplete>
@@ -178,6 +180,7 @@ Menu, Tray, Standard
 tooltip, % translate("loading... building GUI")
 sleep, 250
 newGUI()
+isLoading := False
 tooltip, % translate("ready")
 sleep, 500
 Tooltip
@@ -185,7 +188,6 @@ Tooltip
 if (seenInstructions == 0) {
     goto help
 }
-isLoading := False
 return
 
 
