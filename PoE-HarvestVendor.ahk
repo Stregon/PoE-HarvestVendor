@@ -383,17 +383,17 @@ gui, Font, s11 cA38D6D
     addCrafts := getImgWidth(A_ScriptDir . "\resources\addCrafts.png")
     gui add, picture, x%xColumn7% y114 w%addCrafts% h-1 gAdd_crafts vaddCrafts, resources\addCrafts.png
     lastArea := getImgWidth(A_ScriptDir . "\resources\lastArea.png")
-    gui add, picture, x%xColumn7% y137 w%lastArea% h-1 gLast_Area vrescanButton, resources\lastArea.png
+    gui add, picture, x%xColumn7% y149 w%lastArea% h-1 gLast_Area vrescanButton, resources\lastArea.png
     clear := getImgWidth(A_ScriptDir . "\resources\clear.png")
-    gui add, picture, x%xColumn7% y160 w%clear% h-1 gClear_All vclearAll, resources\clear.png
+    gui add, picture, x%xColumn7% y184 w%clear% h-1 gClear_All vclearAll, resources\clear.png
     settings := getImgWidth(A_ScriptDir . "\resources\settings.png")
-    gui add, picture, x%xColumn7% y183 w%settings% h-1 gSettings vsettings, resources\settings.png
+    gui add, picture, x%xColumn7% y219 w%settings% h-1 gSettings vsettings, resources\settings.png
     help := getImgWidth(A_ScriptDir . "\resources\help.png")
-    gui add, picture, x%xColumn7% y206 w%help% h-1 gHelp vhelp, resources\help.png
+    gui add, picture, x%xColumn7% y254 w%help% h-1 gHelp vhelp, resources\help.png
 
     ; === Post buttons ===
     createPost := getImgWidth(A_ScriptDir . "\resources\createPost.png")
-    gui add, picture, x%xColumn7% y251 w%createPost% h-1 vpostAll gPost_all, resources\createPost.png
+    gui add, picture, x%xColumn7% y289 w%createPost% h-1 vpostAll gPost_all, resources\createPost.png
 
     ;gui add, picture, x%xColumn7% y251 gAug_post vaugPost, resources\postA.png
     ;gui add, picture, x%xColumn7% y274 gRem_post vremPost, resources\postR.png
