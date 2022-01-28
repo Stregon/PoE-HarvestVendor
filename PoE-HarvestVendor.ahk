@@ -492,7 +492,7 @@ Up:
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
     CraftTable[tempRow].count := CraftTable[tempRow].count + 1
-    updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+    updateUIRow(tempRow, "count")
     sumTypes()
     sumPrices()
 return
@@ -503,7 +503,7 @@ Dn:
     tempCount := CraftTable[tempRow].count
     if (tempCount > 0) {
         CraftTable[tempRow].count := tempCount - 1
-        updateUIRow(tempRow, "count") ;GuiControl,, count_%tempRow%, %tempCount%
+        updateUIRow(tempRow, "count")
         sumTypes()
         sumPrices()
     }
@@ -531,37 +531,39 @@ Clear_all:
 return
 
 Count:
-    oldCount := CraftTable[tempRow].count
+    if (!needToChangeModel) {
+        return
+    }
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
+    oldCount := CraftTable[tempRow].count
     guiControlGet, newCount,, count_%tempRow%, value
     if (oldCount == newCount) {
         return
     }
-    if (needToChangeModel) {
-        CraftTable[tempRow].count := newCount
-        sumTypes()
-        sumPrices()
-    }
+    CraftTable[tempRow].count := newCount
+    sumTypes()
+    sumPrices()
 return
 
 craft:
-    oldCraft := CraftTable[tempRow].craft
+    if (!needToChangeModel) {
+        return
+    }
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
+    oldCraft := CraftTable[tempRow].craft
     guiControlGet, newCraft,, craft_%tempRow%, value
     if (oldCraft == newCraft) {
         return
     }
-    if (needToChangeModel) {
-        CraftTable[tempRow].craft := newCraft
-        CraftTable[tempRow].Price := getPriceFor(newCraft)
-        CraftTable[tempRow].type := getTypeFor(newCraft)
-        updateUIRow(tempRow, "price")
-        updateUIRow(tempRow, "type")
-        sumTypes()
-        sumPrices()
-    }
+    CraftTable[tempRow].craft := newCraft
+    CraftTable[tempRow].Price := getPriceFor(newCraft)
+    CraftTable[tempRow].type := getTypeFor(newCraft)
+    updateUIRow(tempRow, "price")
+    updateUIRow(tempRow, "type")
+    sumTypes()
+    sumPrices()
 return
 
 lvl:
@@ -579,21 +581,22 @@ type:
 return
 
 Price:
-    oldPrice := CraftTable[tempRow].price
+    if (!needToChangeModel) {
+        return
+    }
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
+    oldPrice := CraftTable[tempRow].price
     guiControlGet, newPrice,, price_%tempRow%, value
     if (oldPrice == newPrice) {
         return
     }
-    if (needToChangeModel) {
-        CraftTable[tempRow].price := newPrice
-        craftName := CraftTable[tempRow].craft
-        if (craftName != "") {
-            iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
-        }
-        sumPrices()
+    CraftTable[tempRow].price := newPrice
+    craftName := CraftTable[tempRow].craft
+    if (craftName != "") {
+        iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
     }
+    sumPrices()
 return
 
 Can_stream:
@@ -611,16 +614,6 @@ Custom_text:
     cust := StrReplace(cust, "`n", "||") ;support multilines in custom text
     iniWrite, %cust%, %SettingsPath%, Other, customText
     GuiControl,HarvestUI:, customText_cb, 1
-
-    ;if (RegExMatch(cust, "not|remove|aug|add") > 0) {
-    ;   gui, Font, cRed Bold
-    ;   guiControl, font, customText
-    ;   tooltip, This message might get blocked by the discord bot because it containts not|remove|aug|add
-    ;} else {
-    ;   gui, Font, s11 cA38D6D norm 
-    ;   guicontrol, font, customText
-    ;   tooltip
-    ;}
 return
 
 Custom_text_cb:
@@ -655,35 +648,8 @@ ClearRow:
     sumPrices()
 return
 
-; Aug_Post:
-    ; buttonHold("augPost", "resources\postA")
-    ; createPost("Aug")
-; return
-
-; Rem_post:
-    ; buttonHold("remPost", "resources\postR")
-    ; createPost("Rem")
-; return
-
-; RemAdd_post:
-    ; buttonHold("remAddPost", "resources\postRA")
-    ; createPost("Rem/Add")
-; return
-
-; Other_post:
-    ; buttonHold("otherPost", "resources\postO")
-    ; createPost("Other")
-; return
-
 Post_all:
-    ;buttonHold("postAll", "resources\postAll")
     buttonHold("postAll", "resources\createPost")
-
-    ;guiControlGet, selectedLeague,, League, value
-    ;if !(InStr(selectedLeague, "HC") > 0 or InStr(selectedLeague, "Hardcore") > 0 or InStr(selectedLeague, "Standard") > 0){
-    ;   msgbox, You are posting All for Temporary SC league `r`nTFT has split channels based on craft types`r`nThis message will get you timed out
-    ;}
-
     createPost("All")
 return
 
@@ -1574,44 +1540,6 @@ sortCraftTable() {
     }
 }
 
-; detectType(craft, row) {
-    ; if (craft == "") {
-        ; guicontrol,, type_%row%,
-        ; return
-    ; } 
-    ; if (inStr(craft, "Augment") = 1 ) {
-        ; guicontrol,, type_%row%, Aug
-        ; return
-    ; } 
-    ; if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
-        ; guicontrol,, type_%row%, Rem
-        ; return
-    ; } 
-    ; if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
-        ; and instr(craft, "non") = 0) {
-        ; guicontrol,, type_%row%, Rem/Add
-        ; return
-    ; }
-    ; guicontrol,, type_%row%, Other
-; }
-
-getTypeFor(craft) {
-    if (craft == "") {
-        return ""
-    } 
-    if (inStr(craft, "Augment") = 1 ) {
-        return "Aug"
-    } 
-    if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
-        return "Rem"
-    } 
-    if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
-        and instr(craft, "non") = 0) {
-        return "Rem/Add"
-    }
-    return "Other"
-}
-
 insertIntoRow(rowCounter, craft, lvl, type) {    
     tempP := getPriceFor(craft)
     CraftTable[rowCounter] := {"count": 1, "craft": craft, "price": tempP
@@ -1956,6 +1884,23 @@ getPriceFor(craft) {
     }
 }
 
+getTypeFor(craft) {
+    if (craft == "") {
+        return ""
+    } 
+    if (inStr(craft, "Augment") = 1 ) {
+        return "Aug"
+    } 
+    if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
+        return "Rem"
+    } 
+    if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
+        and instr(craft, "non") = 0) {
+        return "Rem/Add"
+    }
+    return "Other"
+}
+
 getRow(elementVariable) {
     temp := StrSplit(elementVariable, "_")
     return temp[temp.Length()]
@@ -1983,21 +1928,21 @@ getLVL(craft) {
 sumPrices() {
     tempSumChaos := 0
     tempSumEx := 0
+    exaltTemplate := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
+    chaosTemplate := "Oi)^(\d+) *(c|ch|chaos)$"
     loop, %MaxRowsCraftTable% {
         craftRow := CraftTable[A_Index]
         if (craftRow.craft == "" or craftRow.price == "") {
-            continue
+           continue
         }
-        priceCraft := craftRow.price
+        priceCraft := Trim(craftRow.price)
         countCraft := craftRow.count
-        
-        if (InStr(priceCraft, "c") > 0) {
-            priceCraft := strReplace(Trim(StrReplace(priceCraft, "c")), ",", ".")
+        matchObj := []
+        if (RegExMatch(priceCraft, chaosTemplate, matchObj) > 0) {
+            priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumChaos +=  priceCraft * countCraft
-        }
-        
-        if (InStr(priceCraft, "ex") > 0) {
-            priceCraft := strReplace(Trim(StrReplace(priceCraft, "ex")), ",", ".")
+        } else if (RegExMatch(priceCraft, exaltTemplate, matchObj) > 0) {
+            priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumEx += priceCraft * countCraft
         }
     }
@@ -2007,57 +1952,23 @@ sumPrices() {
 }
 
 sumTypes() {
-    Acounter := 0
-    Rcounter := 0
-    RAcounter := 0
-    Ocounter := 0
-    Allcounter := 0
+    stats := {"Aug": 0, "Rem": 0, "Rem/Add": 0, "Other": 0, "All": 0}
     loop, %MaxRowsCraftTable% {
         tempAmount := CraftTable[A_Index].count
         if (tempAmount == "") {
             continue
         }
         tempType := CraftTable[A_Index].type
-        if (tempType == "Aug") {
-            Acounter += tempAmount
-        }
-        if (tempType == "Rem") {
-            Rcounter += tempAmount
-        }
-        if (tempType == "Rem/Add") {
-            RAcounter += tempAmount
-        }
-        if (tempType == "Other") {
-            Ocounter += tempAmount
-        }       
+        if (stats.HasKey(tempType)) {
+            stats[tempType] := stats[tempType] + tempAmount
+            stats["All"] := stats["All"] + tempAmount
+        }   
     }
-    Allcounter := Acounter + Rcounter + RAcounter + Ocounter
-    GuiControl,HarvestUI:, Acount, %Acounter%
-    GuiControl,HarvestUI:, Rcount, %Rcounter%
-    GuiControl,HarvestUI:, RAcount, %RAcounter%
-    GuiControl,HarvestUI:, Ocount, %Ocounter%
-    GuiControl,HarvestUI:, CraftsSum, %Allcounter%
-    ;sleep, 50
-    ;if (Acounter = 0) {
-    ;    guicontrol,, augPost, resources/postA_d.png
-    ;} else {
-    ;    guicontrol,, augPost, resources/postA.png
-    ;}
-    ;if (Rcounter = 0) {
-    ;    guicontrol,, remPost, resources/postR_d.png
-    ;} else {
-    ;    guicontrol,, remPost, resources/postR.png
-    ;}
-    ;if (RAcounter = 0) {
-    ;    guicontrol,, remAddPost, resources/postRA_d.png
-    ;} else {
-    ;    guicontrol,, remAddPost, resources/postRA.png
-    ;}
-    ;if (Ocounter = 0) {
-    ;    guicontrol,, otherPost, resources/postO_d.png
-    ;} else {
-    ;    guicontrol,, otherPost, resources/postO.png
-    ;}
+    GuiControl,HarvestUI:, Acount, % stats["Aug"]
+    GuiControl,HarvestUI:, Rcount, % stats["Rem"]
+    GuiControl,HarvestUI:, RAcount, % stats["Rem/Add"]
+    GuiControl,HarvestUI:, Ocount, % stats["Other"]
+    GuiControl,HarvestUI:, CraftsSum, % stats["All"]
 }
 
 buttonHold(buttonV, picture) {
@@ -2085,10 +1996,10 @@ rememberCraft(row) {
     craftName := rowCraft.craft
     craftLvl := rowCraft.lvl
     crafCount := rowCraft.count
-    craftType := rowCraft.type
+    ;craftType := rowCraft.type
     blank := ""
     if (craftName != "") {
-        IniWrite, %craftName%|%craftLvl%|%crafCount%|%craftType%, %SettingsPath%, LastSession, craft_%row%
+        IniWrite, %craftName%|%craftLvl%|%crafCount%, %SettingsPath%, LastSession, craft_%row%
     } else {
         IniWrite, %blank%, %SettingsPath%, LastSession, craft_%row%
     }
@@ -2109,12 +2020,10 @@ loadLastSessionCraft(row) {
         craft := split[1]
         lvl := split[2]
         ccount := split[3]
-        type := split[4]
+        ;type := split[4]
 
         tempP := getPriceFor(craft)
-        if (type == "") {
-            type := getTypeFor(craft)
-        }
+        type := getTypeFor(craft)
         CraftTable[row] := {"count": ccount, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
     }
@@ -2142,8 +2051,6 @@ clearAll() {
         updateUIRow(A_Index)
     }
     outArray := {}
-    ;outArrayCount := 0
-    ;arr := []
 }
 ; === technical stuff i guess ===
 getLeagues() {
