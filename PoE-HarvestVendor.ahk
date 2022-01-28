@@ -175,11 +175,11 @@ newGUI()
 tooltip, ready
 sleep, 500
 Tooltip
-
+isLoading := False
 if (seenInstructions == 0) {
     goto help
 }
-isLoading := False
+
 return
 
 
