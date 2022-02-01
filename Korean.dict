@@ -14,7 +14,7 @@ non-Influenced2=비-영향력
 Lucky=(행운|엥 운)
 Influenced=(영향력이|영양력이)
 Influence=영향력
-Level=(레벨|례벨|렉 벨|레 벨|레  버|레  베)
+Level=(레벨|례벨|렉 벨|레 벨|레 버|레 베)
 Reroll=(변경아여|변겅아여|번겅아여|변경하여|번경아여)
 Suffix=(접미어|집미어|접미애|집미애|점미이|점미어)
 Prefix=(접두어|집두에|점두어|점두애|집두왜|집두어|접두이)
@@ -181,3 +181,9 @@ You need to go into Settings in HarvestVendor and set Scale to match whats set i
 Hidden features=숨겨진기능
 - Holding shift while clicking the X in a row will reduce the count by 1 and also write the craft and price into log.csv (you can find it through the Settings folder button in Settings)=- Shift 를 누른상태에서 크래프트옆 x를 누르면 수량을 -1개씩 조절할수있습니다.
 log.csv 파일에 크래프트이름과 가격도 기록이됩니다.(설정 폴더 들어가보면 확인할수있습니다.)
+For when you aren't running PoE on main monitor=메인 모니터에서 POE를 실행하지 않을 경우
+Add from last area:=최근영역 스캔하기
+Before using "Scan Recent Area", use the "Scan shortcut (Ctrl+G)" or press the "Scan" button="최근영역 스캔하기"를 사용하기 전에 "스캔단축키(Ctrl+G)를 사용하거나 "스캔 하기"버튼을 누르세요
+auto-completion function=자동 완성 기능 
+1. For accuracy. [Recommended] Please enter one letter=1.정확도를위해서 [권장] 1글자만 입력하세요
+2. Type it and press the space bar.=2.입력하고 무조건 스페이스바를 한번 누르세요
