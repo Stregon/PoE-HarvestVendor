@@ -1,0 +1,162 @@
+﻿Усилить предмет без влияния свойством атак=Augment non-influenced - Attack
+Усилить предмет без влияния свойством атак(значения удачливы)=Augment non-influenced - Attack Lucky
+Убрать свойство не-атак и добавить свойство атак=Remove non-Attack Add Attack
+Перековать предмет - свойства атак(шанс свойства увеличен)=Reforge Rare - Attack More Common
+Перековать предмет - свойства атак=Reforge Rare - Attack
+
+
+Усилить предмет без влияния свойством чар=Augment non-influenced - Caster
+Усилить предмет без влияния свойством чар(значения удачливы)=Augment non-influenced - Caster Lucky
+Убрать свойство не-чар и добавить свойство чар=Remove non-Caster Add Caster
+Перековать предмет - свойства чар(шанс свойства увеличен)=Reforge Rare - Caster More Common
+Перековать предмет - свойства чар=Reforge Rare - Caster
+
+
+Усилить предмет без влияния физическим свойством=Augment non-influenced - Physical
+Усилить предмет без влияния физическим свойством(значения удачливы)=Augment non-influenced - Physical Lucky 
+Убрать не-физическое свойство и добавить физическое свойство=Remove non-Physical Add Physical
+Перековать предмет - физические свойства(шанс свойства увеличен)=Reforge Rare - Physical More Common
+Перековать предмет - физические свойства=Reforge Rare - Physical
+
+
+Усилить предмет без влияния свойством холода=Augment non-influenced - Cold
+Усилить предмет без влияния свойством холода(значения удачливы)=Augment non-influenced - Cold Lucky
+Убрать свойство не-холода и добавить свойство холода=Remove non-Cold Add Cold
+Перековать предмет - свойства холода(шанс свойства увеличен)=Reforge Rare - Cold More Common
+Перековать предмет - свойства холода=Reforge Rare - Cold
+
+
+Усилить предмет без влияния свойством огня=Augment non-influenced - Fire
+Усилить предмет без влияния свойством огня(значения удачливы)=Augment non-influenced - Fire Lucky
+Убрать свойство не-огня и добавить свойство огня=Remove non-Fire Add Fire
+Перековать предмет - свойства огня(шанс свойства увеличен)=Reforge Rare - Fire More Common
+Перековать предмет - свойства огня=Reforge Rare - Fire
+
+
+Усилить предмет без влияния свойством молнии=Augment non-influenced - Lightning
+Усилить предмет без влияния свойством молнии(значения удачливы)=Augment non-influenced - Lightning Lucky
+Убрать свойство не-молнии и добавить свойство молнии=Remove non-Lightning Add Lightning
+Перековать предмет - свойства молнии(шанс свойства увеличен)=Reforge Rare - Lightning More Common
+Перековать предмет - свойства молнии=Reforge Rare - Lightning
+
+Усилить предмет без влияния свойством хаоса=Augment non-influenced - Chaos
+Усилить предмет без влияния свойством хаоса(значения удачливы)=Augment non-influenced - Chaos Lucky
+Убрать свойство не-хаоса и добавить свойство хаоса=Remove non-Chaos Add Chaos
+Перековать предмет - свойства хаоса(шанс свойства увеличен)=Reforge Rare - Chaos More Common
+Перековать предмет - свойства хаоса=Reforge Rare - Chaos
+
+
+Усилить предмет без влияния свойством защиты=Augment non-influenced - Defence
+Усилить предмет без влияния свойством защиты(значения удачливы)=Augment non-influenced - Defence Lucky
+Убрать свойство не-защиты и добавить свойство защиты=Remove non-Defence Add Defence
+Перековать предмет - свойство защиты(шанс свойства увеличен)=Reforge Rare - Defence More Common
+Перековать предмет - свойство защиты=Reforge Rare - Defence
+
+
+Усилить предмет без влияния свойством здоровья=Augment non-influenced - Life
+Усилить предмет без влияния свойством здоровья(значения удачливы)=Augment non-influenced - Life Lucky
+Убрать свойство не-здоровья и добавить свойство здоровья=Remove non-Life Add Life
+Перековать предмет - свойства здоровья(шанс свойства увеличен)=Reforge Rare - Life More Common
+Перековать предмет - свойства здоровья=Reforge Rare - Life
+
+Усилить предмет без влияния свойством критического удара=Augment non-influenced - Critical
+Усилить предмет без влияния свойством критического удара(значения удачливы)=Augment non-influenced - Critical Lucky
+Убрать свойство не-критического удара и добавить свойство критического удара=Remove non-Critical Add Critical
+Перековать предмет - свойства критических ударов(шанс свойства увеличен)=Reforge Rare - Critical More Common
+Перековать предмет - свойства критические ударов=Reforge Rare - Critical
+
+Усилить предмет без влияния свойством скорости=Augment non-influenced - Speed
+Усилить предмет без влияния свойством скорости(значения удачливы)=Augment non-influenced - Speed Lucky
+Убрать свойство не-скорости и добавить свойство скорости=Remove non-Speed Add Speed
+Перековать предмет - свойства скорости(шанс свойства увеличен)=Reforge Rare - Speed More Common
+Перековать предмет - свойства скорости=Reforge Rare - Speed
+
+Усилить предмет свойством влияния=Augment Influence
+Усилить предмет свойством влияния(значения удачливы)=Augment Influence Lucky
+Убрать свойство не-влияния и добавить свойство влияния=Remove non-Influence Add Influence
+Убрать свойство влияния и добавить свойство влияния=Remove Influence add Influence
+Перековать предмет - свойство влияния(шанс свойства увеличен)=Reforge Rare - Influence More Common
+
+Зачаровать карту: не тратит заряды секстантов=Enchant Map: no Sextant use
+
+Зачаровать оружие: меткость=Enchant Weapon: Accuracy
+Зачаровать оружие: область действия=Enchant Weapon: Area of Effect
+Зачаровать оружие: скорость атаки=Enchant Weapon: Attack Speed
+Зачаровать оружие: шанс критического удара=Enchant Weapon: Critical Strike Chance
+Зачаровать оружие: урон от стихий=Enchant Weapon: Elemental Damage
+Зачаровать оружие: +1 к дальности оружия=Enchant Weapon: +1 Weapon Range
+
+Зачаровать нательный доспех: сопротивление холоду=Enchant Body: Cold Resistance
+Зачаровать нательный доспех: ловкость=Enchant Body: Dexterity
+Зачаровать нательный доспех: сопротивление огню=Enchant Body: Fire Resistance
+Зачаровать нательный доспех: интеллект=Enchant Body: Intelligence
+Зачаровать нательный доспех: сопротивление молнии=Enchant Body: Lightning Resistance
+Зачаровать нательный доспех: максимум здоровья=Enchant Body: Maximum Life
+Зачаровать нательный доспех: максимум маны=Enchant Body: Maximum Mana
+Зачаровать нательный доспех: сила=Enchant Body: Strength
+
+
+Расколоть 1 префикс на предмете с 3 префиксами=Fracture 1/3 Prefix
+Расколоть 1 суффикс на предмете с 3 суффиксами=Fracture 1/3 Suffix
+Расколоть 1 свойство на предмете с 5 свойствами=Fracture 1/5 modifier
+
+Случайным образом изменить влияние - на доспехах=Randomise Influence - Armour
+Случайным образом изменить влияние - на бижутерии=Randomise Influence - Jewellery
+Случайным образом изменить влияние - на оружии или колчане=Randomise Influence - Weapon
+
+Перековать предмет - сохранив префиксы=Reforge keep Prefixes
+Перековать предмет - сохранив префиксы(значения удачливы)=Reforge keep Prefixes Lucky
+Перековать предмет - сохранив суффиксы=Reforge keep Suffixes
+Перековать предмет - сохранив суффиксы(значения удачливы)=Reforge keep Suffixes Lucky
+Перековать предмет - с менее похожими свойствами=Reforge Rare - Less Likely
+Перековать предмет - с более похожими свойствами=Reforge Rare - More Likely
+
+Изменить все значения свойств предмета(значения удачливы)=Reroll All Lucky
+Изменить значения префиксов и собственных свойств предмета(значения удачливы)=Reroll Prefix Lucky
+Изменить значения суффиксов и собственных свойств предмета(значения удачливы)=Reroll Suffix Lucky
+
+Заменить сопротивление к холоду на к огню=Change Resist: Cold to Fire
+Заменить сопротивление к холоду на к молнии=Change Resist: Cold to Lightning
+Заменить сопротивление к огню на к холода=Change Resist: Fire to Cold
+Заменить сопротивление к огню на к молнии=Change Resist: Fire to Lightning
+Заменить сопротивление к молнии на к холода=Change Resist: Lightning to Cold
+Заменить сопротивление к молнии на к огню=Change Resist: Lightning to Fire
+
+Добавить собственное свойство на самоцвет Бездны или вневременной=Set Implicit Abyss/Timeless Jewel
+Добавить собственное свойство на кобальтовый, багровый, радужный или бирюзовый самоцвет=Set Implicit Basic Jewel
+Добавить собственное свойство на кластерный самоцвет=Set Implicit Cluster Jewel
+
+Перековать цвет гнезда: не-синий в синий=Reforge Colour: non-Blue into Blue
+Перековать цвет гнезда: не-зелёный в зелёный=Reforge Colour: non-Green into Green
+Перековать цвет гнезда: не-красный в красный=Reforge Colour: non-Red into Red
+Перековать цвет гнезда: в белый=Reforge Colour: into White
+Перековать цвет гнезд: в красный, зелёный и синий=Reforge Colour: into Red, Blue and Green
+Перековать цвет гнезд: в красный и синий=Reforge Colour: into Red and Blue
+Перековать цвет гнезд: в красный и зелёный=Reforge Colour: into Red and Green
+Перековать цвет гнезд: в синий и зелёный=Reforge Colour: into Blue and Green
+
+Соединить 6 гнёзд на предмете=Six link (6-link)
+Соединить 5 гнёзд на предмете=Five link (5-link)
+
+Улучшить волшебный предмет до редкого, добавив 2 свойства высокого уровня=Upgrade Magic to Rare adding 2 high-tier mods
+Улучшить волшебный предмет до редкого, добавив 2 свойства=Upgrade Magic to Rare adding 2 mods
+Улучшить волшебный предмет до редкого, добавив 3 свойства высокого уровня=Upgrade Magic to Rare adding 3 high-tier mods
+Улучшить волшебный предмет до редкого, добавив 3 свойства=Upgrade Magic to Rare adding 3 mods
+Улучшить волшебный предмет до редкого, добавив 4 свойства высокого уровня=Upgrade Magic to Rare adding 4 high-tier mods
+Улучшить волшебный предмет до редкого, добавив 4 свойства=Upgrade Magic to Rare adding 4 mods
+
+Обменять стопку сфер Делириума=Change a stack of Delirium Orbs
+
+Усилить предмет без влияния новым свойством(значения удачливы)=Augment non-Influence Lucky
+
+Синтезировать предмет=Synthesise an item
+
+Обменять уникальный предмет Бестиария или предмет с духом на приманки того же семейства=Change Unique Bestiary item or item with Aspect into Lures
+
+Пожертвовать камень, получить 30% опыта в виде линзы награнения=Sacrifice gem, get 30% exp as Lens
+Пожертвовать камень, получить 40% опыта в виде линзы награнения=Sacrifice gem, get 40% exp as Lens
+Пожертвовать камень, получить 50% опыта в виде линзы награнения=Sacrifice gem, get 50% exp as Lens
+
+Пожертвовать гадальные карты 0-2х(казино)=Sacrifice Divination Card 0-2x
+
+Попытаться пробудить камень поддержки 20 уровня=Attempt to Awaken a level 20 Support Gem

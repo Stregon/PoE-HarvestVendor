@@ -1,31 +1,50 @@
 ﻿#NoEnv
 #SingleInstance Force
 SetBatchLines -1
+;SetWinDelay, -1
+;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.2"
-
+global version := "0.8.3"
+#include <class_iAutoComplete>
+#include <sortby>
 ; === some global variables ===
+global settingsApp := {"GuiKey": ""
+    , "ScanKey": ""
+    , "ScanLastAreaKey": ""
+    , "outStyle": 1
+    , "canStream": 0
+    , "CustomTextCB": 0
+    , "customText": ""
+    , "nick": ""
+    , "selectedLeague": ""
+    , "seenInstructions": 0
+    , "MaxRowsCraftTable": 20
+    , "monitor": 1
+    , "scale": 1
+    , "gui_position_x": 0
+    , "gui_position_y": 0
+    , "Language": "English"}
 global outArray := {}
-;global outArrayCount := 0
-global rescan := ""
+global canRescan := false
 global x_start := 0
 global y_start := 0
 global x_end := 0
 global y_end := 0
 global firstGuiOpen := True
-global outString := ""
 global outStyle := 1
+global langDDL := ""
+global Vivid_Scalefruit := 0
+global MonitorsDDL := ""
+global ScaleEdit := ""
+global GuiKeyHotkey := ""
+global ScanKeyHotkey := ""
+global ScanLastAreaHotkey := ""
 global maxLengths := {}
-global seenInstructions := 0
 global sessionLoading := False
 global MaxRowsCraftTable := 20
 global CraftTable := []
 global needToChangeModel := True
 global isLoading := True
-loop, %MaxRowsCraftTable% {
-    CraftTable.push({"count": 0, "craft": "", "price": ""
-        , "lvl": "", "type": ""})
-}
 global PID := DllCall("Kernel32\GetCurrentProcessId")
 
 EnvGet, dir, USERPROFILE
@@ -39,6 +58,21 @@ global SettingsPath := RoamingDir . "\settings.ini"
 global PricesPath := RoamingDir . "\prices.ini"
 global LogPath := RoamingDir . "\log.csv"
 global TempPath := RoamingDir . "\temp.txt"
+
+FileEncoding, UTF-8
+;global Language := ""
+global LanguageDictionary := {}
+global EnglishDictionary := {}
+global LanguageList := {"English": "English", "Russian": "Русский", "Korean": "한국어"}
+global LanguageReverseList := {}
+for k,v in LanguageList {
+    LanguageReverseList[v] := k
+}
+global Messages := {"Korean": "사전을 찾을수 없습니다: "
+    , "English": "Cant found the dictionary: "
+    , "Russian": "Не могу найти словарь: "}
+global IAutoComplete_Crafts := []
+global CraftList := []
 
 global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe"
 whitelist := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,. "
@@ -76,116 +110,784 @@ for k, v in CraftNames {
 }
 TemplateForCrafts := RTrim(TemplateForCrafts, "|") . ")"
 
-; detecting mouse button swap
-;swapped := DllCall("GetSystemMetrics",UInt,"23")
-
-;    if (swapped) {        
-;        global primaryButton := "RButton"
-;    } else {
-;        global primaryButton := "LButton"
-;    }
-
 OnExit("ExitFunc")
 
-tooltip, loading... Initializing Settings
+initSettings()
+tooltip, % translate("loading... Initializing Settings")
 sleep, 250
-; == init settings ==
-iniRead, seenInstructions,  %SettingsPath%, Other, seenInstructions
-    if (seenInstructions == "ERROR" or seenInstructions == "") {
-        IniWrite, 0, %SettingsPath%, Other, seenInstructions
-        IniRead, seenInstructions, %SettingsPath%, Other, seenInstructions
-    }
-
-IniRead, GuiKey, %SettingsPath%, Other, GuiKey
-    checkValidChars := RegExMatch(GuiKey, "[a-zA-Z0-9]") > 0
-    if (GuiKey == "ERROR" or GuiKey == "" or !checkValidChars) {
-        IniWrite, ^+g, %SettingsPath%, Other, GuiKey
-        sleep, 250
-        IniRead, GuiKey, %SettingsPath%, Other, GuiKey
-        if (!checkValidChars) {
-            msgBox, Open GUI hotkey was set to a non latin letter or number, it was reset to ctrl+shift+g
-        }
-    }
-hotkey, %GuiKey%, OpenGui
-
-IniRead, ScanKey, %SettingsPath%, Other, ScanKey
-    checkValidChars := RegExMatch(ScanKey, "[a-zA-Z0-9]") > 0
-    if (ScanKey == "ERROR" or ScanKey == "" or !checkValidChars) {
-        IniWrite, ^g, %SettingsPath%, Other, ScanKey
-        sleep, 250
-        IniRead, ScanKey, %SettingsPath%, Other, ScanKey
-        ;ScanKey == "^g"
-        if (!checkValidChars) {
-            msgBox, Scan hotkey was set to a non latin letter or number, it was reset to ctrl+g
-        }
-    }
-hotkey, %ScanKey%, Scan
-
-IniRead, outStyle, %SettingsPath%, Other, outStyle
-    if (outStyle == "ERROR") {
-        IniWrite, 1, %SettingsPath%, Other, outStyle
-        outStyle := 1
-    }
-
-iniRead tempMon, %SettingsPath%, Other, mon
-if (tempMon == "ERROR") { 
-    tempMon := 1 
-    iniWrite, %tempMon%, %SettingsPath%, Other, mon
-}
-
-iniRead, sc, %SettingsPath%, Other, scale
-if (sc == "ERROR") {
-    iniWrite, 1, %SettingsPath%, Other, scale
-}
-
 checkfiles()
 winCheck()
 
-tooltip, loading... Checking AHK version
+tooltip, % translate("loading... Checking AHK version")
 sleep, 250
 ; == check for ahk version ==
 if (A_AhkVersion < 1.1.27.00) {
-    MsgBox, Please update your AHK `r`nYour version: %A_AhkVersion%`r`nRequired: 1.1.27.00 or more
+    MsgBox, % translate("Please update your AHK") . "`r`n" . translate("Your version:") . A_AhkVersion . "`r`n" . translate("Required: 1.1.27.00 or more")
+    ExitApp
 }
 
-tooltip, loading... Grabbing active leagues
+tooltip, % translate("loading... Grabbing active leagues")
 getLeagues()
 
 menu, Tray, Icon, resources\Vivid_Scalefruit_inventory_icon.png
-;Menu, MySubmenu, Add, testLabel
-;Menu, Tray, Add, Harvest Vendor, OpenGui
 Menu, Tray, NoStandard
 Menu, Tray, Add, Harvest Vendor, OpenGui
 Menu, Tray, Default, Harvest Vendor
 Menu, Tray, Standard
 
 ; == preload pictures that are used more than once, for performance
-    count_pic := LoadPicture("resources\count.png")
-    up_pic := LoadPicture("resources\up.png")
-    dn_pic := LoadPicture("resources\dn.png")
-    craft_pic := LoadPicture("resources\craft.png")
-    lvl_pic := LoadPicture("resources\lvl.png")
-    price_pic := LoadPicture("resources\price.png")
-    del_pic := LoadPicture("resources\del.png")
+count_pic := LoadPicture("resources\count.png")
+up_pic := LoadPicture("resources\up.png")
+dn_pic := LoadPicture("resources\dn.png")
+craft_pic := LoadPicture("resources\craft.png")
+lvl_pic := LoadPicture("resources\lvl.png")
+price_pic := LoadPicture("resources\price.png")
+del_pic := LoadPicture("resources\del.png")
 ; =================================================================
 
-tooltip, loading... building GUI
+tooltip, % translate("loading... building GUI")
 sleep, 250
 newGUI()
-tooltip, ready
+isLoading := False
+tooltip, % translate("ready")
 sleep, 500
 Tooltip
-isLoading := False
-if (seenInstructions == 0) {
-    goto help
-}
 
+if (settingsApp.seenInstructions == 0) {
+    ShowHelpUI()
+}
+;OpenGui()
 return
 
+loadLanguageDictionary(Lang, byRef langdict) {
+    langfile := A_ScriptDir . "\resources\" . settingsApp["Language"] . "\" . Lang . ".dict"
+    if (!FileExist(langfile)) {
+        MsgBox, % Messages[settingsApp.Language] . langfile
+        ExitApp
+        return
+    }
+    ;StringCaseSense, On
+    Loop, read, %langfile%
+    {
+        line := A_LoopReadLine
+        if (line == "") {
+            continue
+        }
+        obj := StrSplit(line, "=")
+        value := obj[2]
+        key := obj[1]
+        langdict[key] := value
+    }
+}
+
+loadCraftListFrom(byRef langdict) {
+    for k, v in langdict {
+        CraftList.push(k)
+    }
+    for k, v in langdict {
+        CraftList.push(v)
+    }
+}
+
+; === Hotkey actions ===
+;ctrl+shift+g opens the gui, yo go from there
+OpenGui() { 
+    if (isLoading) {
+        MsgBox, % translate("Please wait until the program is fully loaded")
+        return
+    }
+    loadLastSession()
+    if (version != getVersion()) {
+        guicontrol, HarvestUI:Show, versionText
+        guicontrol, HarvestUI:Show, versionLink
+    }
+    showGUI()
+    OnMessage(0x200, "WM_MOUSEMOVE")
+}
+
+;ctrl+g launches straight into the capture, opens gui afterwards
+Scan() {
+    if (isLoading) {
+        MsgBox, % translate("Please wait until the program is fully loaded")
+        return
+    }
+    _wasVisible := IsGuiVisible("HarvestUI")
+    if (_wasVisible) {
+        hideGUI()
+    }
+    if (setScreenRect() and processCrafts(TempPath)) {
+        canRescan := True
+        loadLastSession()
+        showGUI()
+        OnMessage(0x200, "WM_MOUSEMOVE") ;activates tooltip function
+        updateCraftTable(outArray)
+    } else {
+        ; If processCrafts failed (e.g. the user pressed Escape), we should show the
+        ; HarvestUI only if it was visible to the user before they pressed Ctrl+G
+        if (_wasVisible) {
+            loadLastSession()
+            showGUI()
+        }
+    }
+}
+;ctrl+F scan from last area
+ScanLastArea() {
+    if (isLoading) {
+        MsgBox, % translate("Please wait until the program is fully loaded")
+        return
+    }
+    if (!canRescan) {
+        text := translate("Before using ""Scan Recent Area"", use the ""Scan shortcut (Ctrl+G)"" or press the ""Scan"" button")
+        MsgBox, % text
+        return
+    }
+    _wasVisible := IsGuiVisible("HarvestUI")
+    if (_wasVisible) {
+        hideGUI()
+    }
+    if (processCrafts(TempPath)) {
+        showGUI()
+        OnMessage(0x200, "WM_MOUSEMOVE") ;activates tooltip function
+        updateCraftTable(outArray)
+    } else {
+        if (_wasVisible) {
+            showGUI()
+        }
+    }
+}
+; === Button actions ===
+Up_Click() {
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    CraftTable[tempRow].count := CraftTable[tempRow].count + 1
+    updateUIRow(tempRow, "count")
+    sumTypes()
+    sumPrices()
+}
+
+Dn_Click() {
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    tempCount := CraftTable[tempRow].count
+    if (tempCount > 0) {
+        CraftTable[tempRow].count := tempCount - 1
+        updateUIRow(tempRow, "count")
+        sumTypes()
+        sumPrices()
+    }
+}
+
+setScreenRect() {
+    coordTemp := SelectArea("cffc555 t50 ms")
+    if (!coordTemp or coordTemp.Length() == 0)
+        return false
+    x_start := coordTemp[1]
+    y_start := coordTemp[3]
+    x_end := coordTemp[2]
+    y_end := coordTemp[4]
+    return true
+}
+
+AddCrafts_Click() { 
+    buttonHold("addCrafts", "resources\" . settingsApp["Language"] . "\addCrafts")
+    hideGUI()
+    if (!setScreenRect()) {
+        showGUI()
+        return
+    }
+    canRescan := True
+    if (processCrafts(TempPath)) {
+        updateCraftTable(outArray)
+    }
+    showGUI()
+}
+
+LastArea_Click() {
+    buttonHold("rescanButton", "resources\" . settingsApp["Language"] . "\lastArea")
+    if (!canRescan) {
+        text := translate("Before using ""Scan Recent Area"", use the ""Scan shortcut (Ctrl+G)"" or press the ""Scan"" button")
+        MsgBox, % text
+        return
+    }
+    hideGUI()
+    if (processCrafts(TempPath)) {
+        updateCraftTable(outArray)
+    }
+    showGUI()
+}
+
+ClearAll_Click() {
+    buttonHold("clearAll", "resources\" . settingsApp["Language"] . "\clear")
+    clearAll()
+    sumTypes()
+    sumPrices()
+}
+
+Count_Changed() {
+    if (!needToChangeModel) {
+        return
+    }
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    oldCount := CraftTable[tempRow].count
+    guiControlGet, newCount,, count_%tempRow%, value
+    if (oldCount == newCount) {
+        return
+    }
+    CraftTable[tempRow].count := newCount
+    sumTypes()
+    sumPrices()
+}
+
+isKorean(text) {
+    pattern := "[\x{1100}-\x{11FF}\x{302E}\x{302F}\x{3131}-\x{318E}\x{3200}-\x{321E}\x{3260}-\x{327E}\x{A960}-\x{A97C}\x{AC00}-\x{D7A3}\x{D7B0}-\x{D7C6}\x{D7CB}-\x{D7FB}\x{FFA0}-\x{FFBE}\x{FFC2}-\x{FFC7}\x{FFCA}-\x{FFCF}\x{FFD2}-\x{FFD7}\x{FFDA}-\x{FFDC}]+"
+    ;"[\x{AC00}-\x{D7A3}]+"
+    return RegExMatch(text, pattern) > 0
+}
+
+isRussian(text) {
+    pattern := "[а-яА-Я]+"
+    return RegExMatch(text, pattern) > 0
+}
+
+isEnglish(text) {
+    return false
+    ;pattern := "[a-zA-Z]+"
+    ;return RegExMatch(text, pattern) > 0
+}
+
+removeNonEnglishChars(text) {
+    return RegExReplace(text, "[^a-zA-Z0-9\.\+-_,:\*# \\]+")
+}
+
+SetTextCursorToEnd(control, caretpos) {
+    GuiControlGet, hcontrol, Hwnd, %control%
+    ;restore carret position after mark and copy
+    SendMessage, 0xB1, caretpos, caretpos,,ahk_id %hcontrol%
+}
+
+getListForAutoComplete(text) {
+    list := []
+    for k,v in CraftList {
+        if (inStr(v, text) > 0) {
+            list.push(v)
+        }
+    }
+    return list
+}
+
+Craft_Changed() {
+    if (!needToChangeModel) {
+        return
+    }
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    oldCraft := CraftTable[tempRow].craft
+    guiControlGet, newCraft,, craft_%tempRow%, value
+    lang := settingsApp.Language
+    if (is%lang%(newCraft)) {
+        englishCraft := translateToEnglish(newCraft)
+        if (englishCraft == "") {
+            return
+        }
+        newCraft := englishCraft
+        CraftTable[tempRow].craft := newCraft
+        updateUIRow(tempRow, "craft")
+        SetTextCursorToEnd(cntrl, StrLen(newCraft))
+    }
+    if (oldCraft == newCraft) {
+        return
+    }
+    
+    CraftTable[tempRow].craft := newCraft
+    CraftTable[tempRow].Price := getPriceFor(newCraft)
+    CraftTable[tempRow].type := getTypeFor(newCraft)
+    updateUIRow(tempRow, "price")
+    updateUIRow(tempRow, "type")
+    
+    sumTypes()
+    sumPrices()
+}
+
+Level_Changed() {
+   if (!needToChangeModel) {
+        return
+    }
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    oldPrice := CraftTable[tempRow].price
+    guiControlGet, newPrice,, price_%tempRow%, value
+    ;newPrice := removeNonEnglishChars(newPrice)
+    if (oldPrice == newPrice) {
+        return
+    }
+    CraftTable[tempRow].price := newPrice
+}
+
+Price_Changed() {
+    if (!needToChangeModel) {
+        return
+    }
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    oldPrice := CraftTable[tempRow].price
+    guiControlGet, newPrice,, price_%tempRow%, value
+    ;newPrice := removeNonEnglishChars(newPrice)
+    if (oldPrice == newPrice) {
+        return
+    }
+    CraftTable[tempRow].price := newPrice
+    craftName := CraftTable[tempRow].craft
+    if (craftName != "") {
+        iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
+    }
+    sumPrices()
+}
+
+CanStream_Changed() {
+    guiControlGet, strim,,canStream, value
+    settingsApp.canStream := strim 
+}
+
+IGN_Changed() {
+    guiControlGet, lastIGN,,IGN, value
+    settingsApp.nick := lastIGN
+}
+
+CustomText_Changed() {
+    guiControlGet, cust,,customText, value
+    settingsApp.customText := cust
+    GuiControl,HarvestUI:, customText_cb, 1
+}
+
+CustomTextCB_Changed() {
+    guiControlGet, custCB,,customText_cb, value
+    settingsApp.customTextCB := custCB
+}
+
+ClearRow_Click() {
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    if GetKeyState("Shift") {
+        row := CraftTable[tempRow]
+        league := settingsApp.selectedLeague
+        fileLine := A_YYYY . "-" . A_MM . "-" . A_DD . ";" . A_Hour . ":" . A_Min . ";" . league . ";" . row.craft . ";" . row.price . "`r`n"
+
+        FileAppend, %fileLine%, %LogPath%
+        if (row.count > 1) {
+            CraftTable[tempRow].count := row.count - 1
+        } else {
+            clearRowData(tempRow)
+            sortCraftTable()
+        }
+    } else {
+        clearRowData(tempRow)
+        sortCraftTable()
+    }
+    updateUIRow(tempRow)
+    sumTypes()
+    sumPrices()
+}
+
+createPost_Click() {
+    buttonHold("postAll", "resources\" . settingsApp["Language"] . "\createPost")
+    createPost("All")
+}
+
+League_Changed() {
+    guiControlGet, selectedLeague,,League, value
+    settingsApp.selectedLeague := selectedLeague
+}
+
+AlwaysOnTop_Changed() {
+    guiControlGet, onTop,,alwaysOnTop, value
+    settingsApp.alwaysOnTop := onTop
+    setWindowState(settingsApp.alwaysOnTop)
+}
+
+;====================================================
+Settings_Click() { 
+    buttonHold("settings", "resources\" . settingsApp["Language"] . "\settings")
+    hotkey, % settingsApp["GuiKey"], off
+    hotkey, % settingsApp["ScanKey"], off
+    hotkey, % settingsApp["ScanLastAreaKey"], off
+    ShowSettingsUI()
+}
+; === Settings UI ===================================
+ShowSettingsUI() {
+    static OpenSettingsFolder
+    static mf_Groupbox
+    static ms_Groupbox
+    static lastText1
+    static lastText2
+    static lang_Groupbox
+    static lastText3
+    width := 400
+    gui Settings:new,, % "PoE-HarvestVendor -" . translate("Settings")
+    gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
+        Gui, add, text, xs+5 yp+20, % translate("Output message style:")
+        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle gOutStyle_Changed, 1|2
+        guicontrol, choose, outStyle, % settingsApp.outStyle
+        widthT := width - 20
+        Gui, add, text, xs+15 y+5 w%widthT%, % "1 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
+        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
+    ;calculate a new height for Groupbox
+    guiControlGet, mf_Groupbox, Settings:Pos
+    guiControlGet, lastText1, Settings:Pos
+    newheight := (lastText1Y + lastText1H) - mf_GroupboxY + 5
+    guiControl, Settings:Move, mf_Groupbox, H%newheight%
+    
+    gui, add, Groupbox, x5 y+10 w%width% vms_GroupBox, % translate("Monitor Settings")
+        monitors := getMonCount()
+        Gui add, text, xp+5 yp+20, % translate("Select monitor:")
+        Gui add, dropdownList, x+10 yp+0 w30 Section vMonitorsDDL gMonitors_Changed, %monitors%
+            global MonitorsDDL_TT := translate("For when you aren't running PoE on main monitor")
+        guicontrol, choose, MonitorsDDL, % settingsApp.monitor
+
+        gui, add, text, x10 y+5, % translate("Scale") 
+        gui, add, edit, xs yp+0 w30 vScaleEdit gScale_Changed, % settingsApp.scale
+        text := translate("use this when you are using Other than 100% scale in windows display settings")
+        Gui, add, text, x20 y+5 w%widthT%, % "- " . text
+        Gui, add, text, xp+0 y+5 wp+0 vlastText2, % "- 100`% = 1, 150`% = 1.5 " . translate("and so on")
+    ;calculate a new height for Groupbox
+    guiControlGet, ms_GroupBox, Settings:Pos
+    guiControlGet, lastText2, Settings:Pos
+    newheight := (lastText2Y + lastText2H) - ms_GroupBoxY + 5
+    guiControl, Settings:Move, ms_GroupBox, H%newheight%
+    
+    gui, add, Groupbox, x5 y+10 w%width% Section vlang_Groupbox, % translate("Localization")
+        Gui, add, text, xs+5 yp+20, % translate("Language:")
+        listDDL := ""
+        for k,v in LanguageList {
+            listDDL .= v . "|"
+        }
+        Gui, add, dropdownList, x+10 yp+0 w80 vlangDDL glangDDL_Changed, % listDDL
+        guicontrol, choose, langDDL, % LanguageList[settingsApp.Language]
+        Gui, add, text, xs+15 y+5 w%widthT% vlastText3 , % translate("Need to restart the program for using a new language!")
+    ;calculate a new height for Groupbox
+    guiControlGet, lang_Groupbox, Settings:Pos
+    guiControlGet, lastText3, Settings:Pos
+    newheight := (lastText3Y + lastText3H) - lang_GroupboxY + 5
+    guiControl, Settings:Move, lang_Groupbox, H%newheight%
+    
+    gui, add, groupbox, x5 y+10 w%width% R4.3, % translate("Hotkeys")
+        Gui, add, text, xp+5 yp+20, % translate("Open Harvest vendor:")
+        gui,add, hotkey, x+10 yp+0 Section vGuiKeyHotkey, % settingsApp.GuiKey
+        
+        Gui, add, text, x10 y+5, % translate("Add crafts:")
+        gui, add, hotkey, xs yp+0 vScanKeyHotkey, % settingsApp.ScanKey
+        
+        Gui, add, text, x10 y+5, % translate("Add from last area:")
+        gui, add, hotkey, xs yp+0 vScanLastAreaHotkey, % settingsApp.ScanLastAreaKey
+
+    ;width := width - 10
+    gui, add, button, x5 y+10 h30 w%width% gOpenSettingsFolder_Click vOpenSettingsFolder, % translate("Open Settings Folder")
+    gui, add, button, xp+0 y+5 hp+0 wp+0 gSettingsOK_Click, % translate("Save")
+    gui, Settings:Show ;, w410 h370
+    return
+    
+    SettingsGuiClose:
+        hotkey, % settingsApp["GuiKey"], on
+        hotkey, % settingsApp["ScanKey"], on
+        hotkey, % settingsApp["ScanLastAreaKey"], on
+        Gui, Settings:Destroy
+        Gui, HarvestUI:Default
+    return
+}
+
+OpenSettingsFolder_Click() {
+    explorerpath := "explorer " . RoamingDir
+    Run, %explorerpath%
+}
+
+OutStyle_Changed() {
+    guiControlGet, os,,outStyle, value
+    settingsApp.outStyle := os
+}
+
+langDDL_Changed() {
+    guiControlGet, lang,, langDDL, value
+    settingsApp.Language := LanguageReverseList[lang]
+}
+
+Monitors_Changed() {
+    guiControlGet, mon,,MonitorsDDL, value
+    settingsApp.monitor := mon
+}
+
+Scale_Changed() {
+    guiControlGet, sc,,ScaleEdit, value
+    settingsApp.scale := sc
+}
+
+SettingsOK_Click() {
+    guiControlGet, gk,, GuiKeyHotkey, value
+    guiControlGet, sk,, ScanKeyHotkey, value
+    guiControlGet, slak,, ScanLastAreaHotKey, value
+
+    if (settingsApp.GuiKey != gk and gk != "ERROR" and gk != "") {
+        hotkey, % settingsApp["GuiKey"], off
+        settingsApp.GuiKey := gk
+        hotkey, % settingsApp["GuiKey"], OpenGui
+    } 
+            
+    if (settingsApp.ScanKey != sk and sk != "ERROR" and sk != "") {
+        hotkey, % settingsApp["ScanKey"], off
+        settingsApp.ScanKey := sk
+        hotkey, % settingsApp["ScanKey"], Scan
+    }
+    
+     if (settingsApp.ScanLastAreaKey != slak and slak != "ERROR" and slak != "") {
+        hotkey, % settingsApp["ScanLastAreaKey"], off
+        settingsApp.ScanLastAreaKey := slak
+        hotkey, % settingsApp["ScanLastAreaKey"], ScanLastArea
+    } 
+
+    if (gk != "ERROR" and gk != "") {
+        hotkey, %gk%, on
+    } else {
+        hotkey, % settingsApp["GuiKey"], on
+    }
+
+    if (sk != "ERROR" and sk != "") {
+        hotkey, %sk%, on
+    } else {
+        hotkey, % settingsApp["ScanKey"], on
+    }
+    
+    if (slak != "ERROR" and slak != "") {
+        hotkey, %slak%, on
+    } else {
+        hotkey, % settingsApp["ScanLastAreaKey"], on
+    }
+
+
+    Gui, Settings:Destroy
+    Gui, HarvestUI:Default
+}
+;====================================================
+; === Help UI =======================================
+Help_Click() {
+    buttonHold("help", "resources\" . settingsApp["Language"] . "\help")
+    ShowHelpUI()
+}
+
+ShowHelpUI() {
+    settingsApp.seenInstructions := 1
+    static Area
+    ;static Static4
+    columnWidth := 400
+    gui Help:new,, % "PoE-HarvestVendor " translate("Help")
+;step 1
+gui, font, s14 wBold
+    Gui, add, text, x5 y5 w%columnWidth%, % translate("Step 1")
+gui, font, s10 wNorm 
+    gui, add, text, xp+10 y+5 wp-10, % translate("Default Hotkey to open the UI - Ctrl + Shift + G") "`r`n" translate("Default Hotkey to start capture - Ctrl + G") "`r`n" translate("Hotkeys can be changed in settings")
+
+;step 2 
+gui, font, s14 wBold
+    gui, add, text, xp-10 y+5 wp+10, % translate("Step 2")
+gui, font, s10 wNorm
+    gui, add, text, xp+10 y+5 wp-10, % translate("Start the capture by either clicking Add Crafts button, ") "`r`n" translate("or pressing the Capture hotkey.") "`r`n" translate("Select the area with crafts:")
+    Gui, Add, ActiveX, xp+0 y+5 w250 h233 vArea, Shell2.Explorer
+    Area.document.body.style.overflow := "hidden"
+    Edit := WebPic(Area, "https://raw.githubusercontent.com/Stregon/PoE-HarvestVendor/master/examples/snapshotArea_s.png", "w250 h233 cFFFFFF")
+    relwidth := columnWidth - 250
+    gui, add, text, xp+0 y+5 wp+%relwidth%, % translate("this can be done repeatedly to add crafts to the list")
+
+;step 3     
+gui, font, s14 wBold
+    gui, add, text, xp-10 y+5 wp+10, % translate("Step 3")
+gui, font, s10 wNorm
+    gui, add, text, xp+10 y+5 wp-10, % translate("Fill in the prices (they will be remembered)") "`r`n" translate("and other info like: Can stream, IGN and so on if you wish to")
+    ;Gui, Add, ActiveX, x5 y430 w350 h100 vPricepic, Shell2.Explorer
+    ;Pricepic.document.body.style.overflow := "hidden"
+    ;Edit := WebPic(Pricepic, "https://github.com/esge/PoE-HarvestVendor/blob/master/examples/price.png?raw=true", "w298 h94 cFFFFFF")
+
+;step 4    
+gui, font, s14 wBold
+    Gui, add, text, xp-10 y+5 wp+10, % translate("Step 4")
+gui, font, s10 wNorm
+    gui, add, text, xp+10 y+5 wp-10, % translate("click: Post Augments/Removes... for the set you want to post") "`r`n" translate("Now your message is in clipboard") "`r`n" translate("Careful about Post All on TFT discord, it has separate channels for different craft types.")
+gui, font, s14 cRed wBold
+    Gui, Add, text, xp-10 y+5 wp+10, % translate("Important:")
+gui, font, s10 wNorm
+    text := translate("If you are using Big resolution (more than 1080p) and have scaling for display set in windows to more than 100% (in Display settings)") . "`r`n" . translate("You need to go into Settings in HarvestVendor and set Scale to match whats set in windows")
+    if (settingsApp.Language == "Korean") {
+        text .= "`r`n" . translate("auto-completion function") . "`r`n  " . translate("1. For accuracy. [Recommended] Please enter one letter") . "`r`n  " . translate("2. Type it and press the space bar.")
+    }
+    gui, add, text, xp+10 y+5 wp-10, % text
+    
+gui, font, s14 cBlack wBold
+    gui, add, text, xp-10 y+5 wp+10, % translate("Hidden features")
+gui, font, s10 wNorm
+    gui, add, text, xp+10 y+5 wp-10, % translate("- Holding shift while clicking the X in a row will reduce the count by 1 and also write the craft and price into log.csv (you can find it through the Settings folder button in Settings)")
+gui, font
+    Gui, Help:Show ;, w800 ;h610
+    return
+    
+    HelpGuiClose:
+        Gui, Help:Destroy
+        Gui, HarvestUI:Default
+    return
+}
+
+initSettings() {
+    iniRead, Language,  %SettingsPath%, Other, Language
+    if (Language == "ERROR" or Language == "" 
+        or !LanguageList.HasKey(Language)) {
+        Language := "English"
+    }
+    settingsApp.Language := Language
+    if (settingsApp.Language != "English") {
+        loadLanguageDictionary(settingsApp.Language, LanguageDictionary)
+    }
+    loadLanguageDictionary(settingsApp.Language . "_English", EnglishDictionary)
+    loadCraftListFrom(EnglishDictionary)
+    
+    iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
+    if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == ""
+        or MaxRowsCraftTable < 20 or MaxRowsCraftTable > 40) {
+        MaxRowsCraftTable := 20
+    }
+    settingsApp.MaxRowsCraftTable := MaxRowsCraftTable
+    loop, %MaxRowsCraftTable% {
+        CraftTable.push({"count": 0, "craft": "", "price": ""
+            , "lvl": "", "type": ""})
+    }
+
+    iniRead, seenInstructions,  %SettingsPath%, Other, seenInstructions
+    if (seenInstructions == "ERROR" or seenInstructions == "") {
+        seenInstructions := 0
+    }
+    settingsApp.seenInstructions := seenInstructions
+
+    IniRead, GuiKey, %SettingsPath%, Other, GuiKey
+    checkNoValidChars := RegExMatch(GuiKey, "[^a-zA-Z\+\^!]+") > 0
+    if (GuiKey == "ERROR" or GuiKey == "" or checkNoValidChars) {
+        GuiKey := "^+g"
+        if (checkNoValidChars) {
+            msgBox, % translate("Open GUI hotkey was set to a non latin letter or number, it was reset to ctrl+shift+g")
+        }
+    }
+    settingsApp.GuiKey := GuiKey
+    hotkey, % settingsApp["GuiKey"], OpenGui
+
+    IniRead, ScanKey, %SettingsPath%, Other, ScanKey
+    checkNoValidChars := RegExMatch(ScanKey, "[^a-zA-Z\+\^!]+") > 0
+    if (ScanKey == "ERROR" or ScanKey == "" or checkNoValidChars) {
+        ScanKey := "^g"
+        if (checkNoValidChars) {
+            msgBox, % translate("Scan hotkey was set to a non latin letter or number, it was reset to ctrl+g")
+        }
+    }
+    settingsApp.ScanKey := ScanKey
+    hotkey, % settingsApp["ScanKey"], Scan
+    
+    IniRead, ScanLastAreaKey, %SettingsPath%, Other, ScanLastAreaKey
+    checkNoValidChars := RegExMatch(ScanLastAreaKey, "[^a-zA-Z\+\^!]+") > 0
+    if (ScanLastAreaKey == "ERROR" or ScanLastAreaKey == "" or checkNoValidChars) {
+        ScanLastAreaKey := "^+f"
+        if (checkNoValidChars) {
+            msgBox, % translate("Scan from last area hotkey was set to a non latin letter or number, it was reset to ctrl+shift+f")
+        }
+    }
+    settingsApp.ScanLastAreaKey := ScanLastAreaKey
+    hotkey, % settingsApp["ScanLastAreaKey"], ScanLastArea
+
+    IniRead, outStyle, %SettingsPath%, Other, outStyle
+    if (outStyle == "ERROR") {
+        outStyle := 1
+    }
+    settingsApp.outStyle := outStyle
+
+    iniRead tempMon, %SettingsPath%, Other, mon
+    if (tempMon == "ERROR" or tempMon == "") { 
+        tempMon := 1
+    }
+    settingsApp.monitor := tempMon
+
+    iniRead, sc, %SettingsPath%, Other, scale
+    if (sc == "ERROR") {
+        sc := 1
+    }
+    settingsApp.scale := sc
+    
+    iniRead tempOnTop, %SettingsPath%, Other, alwaysOnTop
+    if (tempOnTop == "ERROR") { 
+        tempOnTop := 0 
+    }
+    settingsApp.alwaysOnTop := tempOnTop
+    
+    IniRead, NewX, %SettingsPath%, window position, gui_position_x
+    IniRead, NewY, %SettingsPath%, window position, gui_position_y
+    if (NewX == "ERROR" or NewY == "ERROR")
+        or (NewX == -32000 or NewY == -32000) {
+         NewX := 0
+         NewY := 0
+    }
+    settingsApp.gui_position_x := NewX
+    settingsApp.gui_position_y := NewY
+    
+    iniRead tempStream, %SettingsPath%, Other, canStream
+    if (tempStream == "ERROR") { 
+        tempStream := 0 
+    }
+    settingsApp.canStream := tempStream
+    
+    IniRead, name, %SettingsPath%, IGN, n
+    if (name == "ERROR") {
+        name := ""
+    }
+    settingsApp.nick := name
+    
+    iniRead tempCustomTextCB, %SettingsPath%, Other, customTextCB
+    if (tempCustomTextCB == "ERROR") { 
+        tempCustomTextCB := 0 
+    }
+    settingsApp.customTextCB := tempCustomTextCB
+    
+    iniRead tempCustomText, %SettingsPath%, Other, customText
+    if (tempCustomText == "ERROR") { 
+        tempCustomText := "" 
+    }
+    settingsApp.customText := StrReplace(tempCustomText, "||", "`n") ;support multilines in custom text
+}
+
+saveSettings() {
+    if (sessionLoading or isLoading) {
+        return
+    }
+    IniWrite, % settingsApp.Language, %SettingsPath%, Other, Language
+    IniWrite, % settingsApp.seenInstructions, %SettingsPath%, Other, seenInstructions 
+    iniWrite, % settingsApp.canStream, %SettingsPath%, Other, canStream
+    cust := StrReplace(settingsApp.customText, "`n", "||") ;support multilines in custom text
+    iniWrite, %cust%, %SettingsPath%, Other, customText
+    iniWrite, % settingsApp.customTextCB, %SettingsPath%, Other, CustomTextCB
+    iniWrite, % settingsApp.selectedLeague, %SettingsPath%, selectedLeague, s
+    iniWrite, % settingsApp.alwaysOnTop, %SettingsPath%, Other, alwaysOnTop
+    iniWrite, % settingsApp.scale, %SettingsPath%, Other, scale
+    iniWrite, % settingsApp.outStyle, %SettingsPath%, Other, outStyle
+    iniWrite, % settingsApp.nick, %SettingsPath%, IGN, n
+    iniWrite, % settingsApp.monitor, %SettingsPath%, Other, mon
+
+    IniWrite, % settingsApp.gui_position_x, %SettingsPath%, window position, gui_position_x
+    IniWrite, % settingsApp.gui_position_y, %SettingsPath%, window position, gui_position_y
+    
+    IniWrite, % settingsApp.ScanKey, %SettingsPath%, Other, ScanKey
+    IniWrite, % settingsApp.GuiKey, %SettingsPath%, Other, GuiKey
+    IniWrite, % settingsApp.ScanLastAreaKey, %SettingsPath%, Other, ScanLastAreaKey
+    
+    rememberSession()
+}
 
 ExitFunc(ExitReason, ExitCode) {
-    rememberSession()
+    for k, v in IAutoComplete_Crafts {
+        v.Disable()
+        IAutoComplete_Crafts[k] := ""
+    }
     saveWindowPosition()
+    saveSettings()
     return 0
 }
 
@@ -206,9 +908,8 @@ saveWindowPosition() {
     if WinExist(winTitle) {
         ;save window position
         WinGetPosPlus(winTitle, gui_x, gui_y)
-        ;WinGetPos, gui_x, gui_y,,, %WinTitle%
-        IniWrite, %gui_x%, %SettingsPath%, window position, gui_position_x
-        IniWrite, %gui_y%, %SettingsPath%, window position, gui_position_y
+        settingsApp.gui_position_x := gui_x
+        settingsApp.gui_position_y := gui_y
     }
     DetectHiddenWindows, Off
 }
@@ -216,72 +917,20 @@ saveWindowPosition() {
 showGUI() {
     if (firstGuiOpen) {
         firstGuiOpen := False
-        IniRead, newX, %SettingsPath%, window position, gui_position_x
-        IniRead, newY, %SettingsPath%, window position, gui_position_y
-        if (newX == "ERROR" or newY == "ERROR")
-            or (newX == -32000 or newY == -32000) {
-             Gui, HarvestUI:Show, w650 h585
-             return
-        } else {
-            DetectHiddenWindows, On
-            Gui, HarvestUI:Show, w650 h585 Hide ; Hide window before move
-            winTitle := "PoE-HarvestVendor v" . version
-            WinMove, %winTitle%,, %newX%, %newY%
-            DetectHiddenWindows, Off
-        }
+        NewX := settingsApp.gui_position_x
+        NewY := settingsApp.gui_position_y
+        DetectHiddenWindows, On
+        Gui, HarvestUI:Show, Hide
+        WinTitle := "PoE-HarvestVendor v" . version
+        WinMove, %WinTitle%,, %NewX%, %NewY%
+        DetectHiddenWindows, Off
     } 
     Gui, HarvestUI:Show
 }
 
-OpenGui: ;ctrl+shift+g opens the gui, yo go from there
-    if (isLoading) {
-        MsgBox, Please wait until the program is fully loaded
-        return
-    }
-    if (firstGuiOpen) {
-        loadLastSession()
-    }
-    if (version != getVersion()) {
-        guicontrol, HarvestUI:Show, versionText
-        guicontrol, HarvestUI:Show, versionLink
-    }
-    showGUI()
-    OnMessage(0x200, "WM_MOUSEMOVE")
-    
-Return
-
-Scan: ;ctrl+g launches straight into the capture, opens gui afterwards
-    if (isLoading) {
-        MsgBox, Please wait until the program is fully loaded
-        return
-    }
-    rescan := ""
-    _wasVisible := IsGuiVisible("HarvestUI")
-    if (processCrafts(TempPath)) {
-        if (firstGuiOpen) {
-            loadLastSession()
-        }
-        showGUI()
-        OnMessage(0x200, "WM_MOUSEMOVE") ;activates tooltip function
-        updateCraftTable(outArray)
-    } else {
-        ; If processCrafts failed (e.g. the user pressed Escape), we should show the
-        ; HarvestUI only if it was visible to the user before they pressed Ctrl+G
-        if (_wasVisible) {
-            if (firstGuiOpen) {
-                loadLastSession()
-            }
-            showGUI()
-        }
-    }
-return
-
-HarvestUIGuiEscape:
-HarvestUIGuiClose:
-    ;rememberSession()
-    saveWindowPosition()
+hideGUI() {
     Gui, HarvestUI:Hide
-return
+}
 
 newGUI() {
     Global
@@ -289,555 +938,225 @@ newGUI() {
     ;Gui -DPIScale      ;this will turn off scaling on big screens, which is nice for keeping layout but doesn't solve the font size, and fact that it would be tiny on big screens
     Gui, Color, 0x0d0d0d, 0x1A1B1B
     gui, Font, s11 cFFC555
-
-    xColumn1 := 10
-    xColumn2 := xColumn1 + 65
-    xColumn3 := xColumn2 + 33 + 5
-    xColumn4 := xColumn3 + 300 + 5
-    xColumn5 := xColumn4 + 25 + 5
-    xColumn6 := xColumn5 + 50 + 5
-    xColumn7 := xColumn6 + 15 + 5
-    xcolumn8 := xColumn7 + 111 + 5
-
-    xColumnUpDn := xColumn2 + 23
-
-    xEditOffset2 := xColumn2 + 1
-    xEditOffset3 := xColumn3 + 3
-    xEditOffset4 := xColumn4 + 1
-    xEditOffset5 := xColumn5 + 1
-    xEditOffset6 := xColumn6 + 1
-    xEditOffset7 := xColumn7 + 1
-    row := 90
-
 ; === Title and icon ===
     title_icon := getImgWidth(A_ScriptDir . "\resources\Vivid_Scalefruit_inventory_icon.png")
-    gui add, picture, x10 y10 w%title_icon% h-1, resources\Vivid_Scalefruit_inventory_icon.png
+    gui add, picture, x10 y10 w%title_icon% h-1 vVivid_Scalefruit, resources\Vivid_Scalefruit_inventory_icon.png
     title := getImgWidth(A_ScriptDir . "\resources\title.png")
-    gui add, picture, x%xColumn3% y10 w%title% h-1, resources\title.png
-    gui add, text, x380 y15, v%version%
-; ======================
-; === Text stuff ===
-gui, Font, s11 cA38D6D
-        gui add, text, x%xColumn3% y40 w70 vValue +BackgroundTrans, You have: 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+70 y40 w40 right +BackgroundTrans vsumEx, 0
-        gui, Font, s11 cA38D6D
-        gui add, text, xp+42 y40 w20 +BackgroundTrans, ex 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+20 y40 w40 right +BackgroundTrans vsumChaos, 0
-        gui, Font, s11 cA38D6D
-        gui add, text, xp+42 y40 +BackgroundTrans, c 
-
-        gui add, text, x412 y40 w80 vcrafts +BackgroundTrans, Total Crafts:     
-        gui, Font, s11 cFFC555
-        gui add, text, xp+80 y40 w30 vCraftsSum, 0
-        gui, Font, s11 cA38D6D
-
-        gui add, text, x%xColumn3% y64 w40 +BackgroundTrans, Augs:  
-        gui, Font, s11 cFFC555
-        gui add, text, xp+40 y64 w50 +BackgroundTrans vAcount,0
-        gui, Font, s11 cA38D6D
-
-        gui add, text, xp+50 y64 w45 +BackgroundTrans, Rems: 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+45 y64 w50 +BackgroundTrans vRcount,0
-        gui, Font, s11 cA38D6D
-        gui add, text, xp+50 y64 w75 +BackgroundTrans, Rem/Adds: 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+75 y64 w50 +BackgroundTrans vRAcount,0
-        gui, Font, s11 cA38D6D
-        gui add, text, xp+50 y64 w40 +BackgroundTrans, Other: 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+40 y64 w50 +BackgroundTrans vOcount,0
-        gui, Font, s11 cA38D6D
-; ==================
+    gui add, picture, x+5 yp+0 w%title% h-1 Section, resources\title.png
+    gui add, text, x+5 yp+2, v%version%
+    
     gui Font, s12
-        gui add, text, x460 y10 cGreen vversionText, ! New Version Available !
-    ;gui, Font, s11 cFFC555
-        gui add, Link, x550 y30 vversionLink c0x0d0d0d, <a href="http://github.com/Stregon/PoE-HarvestVendor/releases/latest">Github Link</a>
+    gui add, text, x+10 yp+0 cGreen vversionText Right, % translate("! New Version Available !")
+;gui, Font, s11 cFFC555
+    gui add, Link, xp+0 yp+20 vversionLink c0x0d0d0d Right, <a href="http://github.com/Stregon/PoE-HarvestVendor/releases/latest">Github Link</a>
         
     GuiControl, Hide, versionText
     GuiControl, Hide, versionLink
-     gui Font, s11
-; === Right side ===
-   ;y math: row + (23*rowNum)
     
-    gui add, checkbox, x%xColumn7% y90 valwaysOnTop gAlwaysOnTop, Always on top
-        iniRead tempOnTop, %SettingsPath%, Other, alwaysOnTop
-        if (tempOnTop == "ERROR") { 
-            tempOnTop := 0 
+    GuiControlGet, Vivid_Scalefruit, HarvestUI:Pos
+    header_Y := Vivid_ScalefruitY + Vivid_ScalefruitH + 5
+    Header_X := Vivid_ScalefruitX
+    borderRight_width := 1
+    borderLeft_width := 1
+    border_width := borderLeft_width + borderRight_width
+    borderTop_height := 1
+    borderBottom_height := 1
+    border_height := borderTop_height + borderBottom_height
+    Row_height := 18 + borderTop_height + borderBottom_height ; 18
+    Type_width := Vivid_ScalefruitW ;60
+    Craft_width := 300 + border_width ; 296
+    Count_width := 36 + border_width
+    Level_width := 44 + border_width
+    Price_width := 44 + border_width 
+; ======================
+; === Text stuff ===
+value_width := 50
+gui, Font, s11 cA38D6D
+        gui add, text, xs yp+5 vValue +BackgroundTrans, % translate("You have:") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumEx, 0
+        gui, Font, s11 cA38D6D
+        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumChaos, 0
+        gui, Font, s11 cA38D6D
+        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c") 
+
+        gui add, text, x+40 yp+0 vcrafts +BackgroundTrans, % translate("Total Crafts:")     
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% vCraftsSum, 0
+        gui, Font, s11 cA38D6D
+
+        gui add, text, xs y+5 +BackgroundTrans, % translate("Augs:")  
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vAcount,0
+        gui, Font, s11 cA38D6D
+
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Reforges:") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vRefcount,0
+        gui, Font, s11 cA38D6D
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Rem/Adds:") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vRAcount,0
+        gui, Font, s11 cA38D6D
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Other:") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vOcount,0
+        gui, Font, s11 cA38D6D
+; ==================
+; === table headers ===
+    offsetColumn := 4
+    offsetFirstColumn := 4 
+    offsetColumn_Craft := offsetColumn + border_width
+    
+    offsetNRow := offsetColumn + borderTop_height
+    offsetFirstRow := 0
+    offsetRow := offsetFirst
+    gui add, text, x%Header_X% y%header_Y% w%Type_width% h%Row_height% +Right, % translate("Type")
+    gui add, text, x+%offsetFirstColumn% yp+0 w%Count_width% h%Row_height% +Center, % translate("#")
+    gui add, text, x+%offsetFirstColumn% yp+0 w%Craft_width% h%Row_height% +Center, % translate("Crafts")
+    gui add, text, x+%offsetFirstColumn% yp+0 w%Level_width% h%Row_height% +Center, % translate("LvL")
+    gui add, text, x+%offsetFirstColumn% yp+0 w%Price_width% h%Row_height% +Center, % translate("Price")
+
+; === table ===
+    del_ := getImgWidth(A_ScriptDir . "\resources\del.png")
+    up_pic_width := getImgWidth(A_ScriptDir . "\resources\up.png")
+    dn_pic_width := up_pic_width
+    dp_pic_height := 9
+    dp_pic_relX := Row_height - dp_pic_height
+    
+    loop, %MaxRowsCraftTable% {
+        if (A_Index != 1) {
+            offsetRow := offsetNRow + borderTop_height
         }
-    guicontrol,,alwaysOnTop, %tempOnTop%
-    setWindowState(tempOnTop)
+        gui, Font, s11 cA38D6D
+            gui add, text, x%Header_X% y+%offsetRow% vtype_%A_Index% w%Type_width% h%Row_height% Right,
+        gui, Font, s11 cFFC555
+        
+        gui add, picture, x+%offsetColumn% yp+0 w%Count_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" count_pic
+            Gui Add, Edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% vcount_%A_Index% gCount_Changed -E0x200 +BackgroundTrans Center
+                Gui Add, UpDown, Range0-20 hp+0 vupDown_%A_Index%, 0
+                GuiControlGet, upDown_%A_Index%, HarvestUI:Pos
+                guicontrol, hide, upDown_%A_Index%
+                upDown_W := upDown_%A_Index%W
+                upDown_X := upDown_%A_Index%X + (upDown_W - up_pic_width - border_width)
+            gui add, picture, x%upDown_X% yp+0 w%up_pic_width% gUp_Click vUp_%A_Index%, % "HBITMAP:*" up_pic
+            gui add, picture, xp+0 yp+%dp_pic_relX% wp+0 hp+0 gDn_Click vDn_%A_Index%, % "HBITMAP:*" dn_pic
+        
+        gui add, picture, x+%offsetColumn_Craft% ys+0 w%Craft_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" craft_pic
+            gui add, edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% -E0x200 +BackgroundTrans vcraft_%A_Index% gCraft_Changed HwndhCraft_%A_Index%
+            ia_craft := IAutoComplete_Create(hCraft_%A_Index%, CraftList
+                , ["UPDOWNKEYDROPSLIST", "AUTOSUGGEST", "WORD_FILTER"], True)
+            IAutoComplete_Crafts.push(ia_craft) ;, "AUTOSUGGEST" "WORD_FILTER"
+
+        gui add, picture, x+%offsetColumn% ys+0 w%Level_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" lvl_pic
+            gui add, edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% -E0x200 +BackgroundTrans Center vlvl_%A_Index% gLevel_Changed
+
+        gui add, picture, x+%offsetColumn% ys+0 w%Price_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" price_pic
+            gui add, edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% -E0x200 +BackgroundTrans Center vprice_%A_Index% gPrice_Changed
+
+        gui add, picture, x+%offsetColumn% ys+0  w-1 hp+0 vdel_%A_Index% gClearRow_Click AltSubmit , % "HBITMAP:*" del_pic ;resources\del.png 
+    }
+; === Right side ===
+    GuiControlGet, del_1, HarvestUI:Pos
+    RightSide_X := del_1X + del_1W + 10
+    leagueDDL_width := 113 + 2
+    offsetForbuttons := 4
+    gui Font, s11
+    gui add, checkbox, x%RightSide_X% y%header_Y% valwaysOnTop gAlwaysOnTop_Changed, % translate("Always on top")
+    guicontrol,,alwaysOnTop, % settingsApp.alwaysOnTop
+    setWindowState(settingsApp.alwaysOnTop)
     
-    addCrafts := getImgWidth(A_ScriptDir . "\resources\addCrafts.png")
-    gui add, picture, x%xColumn7% y114 w%addCrafts% h-1 gAdd_crafts vaddCrafts, resources\addCrafts.png
-    lastArea := getImgWidth(A_ScriptDir . "\resources\lastArea.png")
-    gui add, picture, x%xColumn7% y137 w%lastArea% h-1 gLast_Area vrescanButton, resources\lastArea.png
-    clear := getImgWidth(A_ScriptDir . "\resources\clear.png")
-    gui add, picture, x%xColumn7% y160 w%clear% h-1 gClear_All vclearAll, resources\clear.png
-    settings := getImgWidth(A_ScriptDir . "\resources\settings.png")
-    gui add, picture, x%xColumn7% y183 w%settings% h-1 gSettings vsettings, resources\settings.png
-    help := getImgWidth(A_ScriptDir . "\resources\help.png")
-    gui add, picture, x%xColumn7% y206 w%help% h-1 gHelp vhelp, resources\help.png
+    addCrafts_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\addCrafts.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%addCrafts_% h-1 gAddCrafts_Click vaddCrafts, % "resources\" . settingsApp["Language"] . "\addCrafts.png"
+    lastArea_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\lastArea.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%lastArea_% h-1 gLastArea_Click vrescanButton, % "resources\" settingsApp["Language"] "\lastArea.png"
+    clear_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\clear.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%clear_% h-1 gClearAll_Click vclearAll, % "resources\" settingsApp["Language"] "\clear.png"
+    settings_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\settings.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%settings_% h-1 gSettings_Click vsettings, % "resources\" settingsApp["Language"] "\settings.png"
+    help_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\help.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%help_% h-1 gHelp_Click vhelp, % "resources\" settingsApp["Language"] "\help.png"
 
     ; === Post buttons ===
-    createPost := getImgWidth(A_ScriptDir . "\resources\createPost.png")
-    gui add, picture, x%xColumn7% y251 w%createPost% h-1 vpostAll gPost_all, resources\createPost.png
-
-    ;gui add, picture, x%xColumn7% y251 gAug_post vaugPost, resources\postA.png
-    ;gui add, picture, x%xColumn7% y274 gRem_post vremPost, resources\postR.png
-    ;gui add, picture, x%xColumn7% y297 gRemAdd_post vremAddPost, resources\postRA.png
-    ;gui add, picture, x%xColumn7% y320 gOther_post votherPost, resources\postO.png
-    ;gui add, picture, x%xColumn7% y343 vpostAll gPost_all, resources\postAll.png
-    ;    postAll_TT := "WARNING: Don't use this for Temporary SC league on TFT Discord"
+    createPost_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\createPost.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%createPost_% h-1 vpostAll gcreatePost_Click, % "resources\" settingsApp["Language"] "\createPost.png"
 
     ; === League dropdown ===
-    gui add, text, x%xColumn7% y370, League:
-    gui add, dropdownList, x%xColumn7% y389 w115 -E0x200 +BackgroundTrans vleague gLeague_dropdown
-        leagueList()
+    
+    gui add, text, xp+0 y+10, % translate("League:")
+    gui add, dropdownList, xp+0 y+%offsetForbuttons% w%leagueDDL_width% -E0x200 +BackgroundTrans vleague gLeague_Changed
+    leagueList()
 
     ; === can stream ===
-    iniRead tempStream, %SettingsPath%, Other, canStream
-    if (tempStream == "ERROR") { 
-        tempStream := 0 
-    }
-    gui add, checkbox, x%xColumn7% y419 vcanStream gCan_stream, Can stream
-    guicontrol,,canStream, %tempStream%
+    gui add, checkbox, xp+0 y+%offsetForbuttons% vcanStream gCanStream_Changed, % translate("Can stream")
+    guicontrol,,canStream, % settingsApp.canStream
 
     ; === IGN ===
-    IniRead, name, %SettingsPath%, IGN, n
-    if (name == "ERROR") {
-        name := ""
-    }
-    gui add, text, x%xColumn7% y440, IGN: 
-        ign := getImgWidth(A_ScriptDir . "\resources\ign.png")
-        gui add, picture, x%xColumn7% y458 w%ign% h-1, resources\ign.png
+    ign_width := 113 + 2
+    ign_height := 18 + 2
+    gui add, text, xp+0 y+%offsetForbuttons%, % translate("IGN:") 
+        ;ign := getImgWidth(A_ScriptDir . "\resources\ign.png")
+        gui add, picture, xp+0 y+%offsetForbuttons% w%ign_width% h%ign_height%, resources\ign.png
         gui, Font, s11 cA38D6D
-            Gui Add, Edit, x%xEditOffset7% y459 w113 h18 -E0x200 +BackgroundTrans vign gIGN, %name%
+            Gui Add, Edit, xp+1 yp+1 wp-2 hp-2 -E0x200 +BackgroundTrans vign gIGN_Changed, % settingsApp.nick
         gui, Font, s11 cFFC555
 
     ; === custom text checkbox ===
-    iniRead tempCustomTextCB, %SettingsPath%, Other, customTextCB
-    if (tempCustomTextCB == "ERROR") { 
-        tempCustomTextCB := 0 
-    }
-    gui add, checkbox, x%xColumn7% y485 vcustomText_cb gCustom_text_cb, Custom Text: 
-        guicontrol,,customText_cb, %tempCustomTextCB%
+    gui add, checkbox, xp-1 y+%offsetForbuttons% vcustomText_cb gCustomTextCB_Changed, % translate("Custom Text:")
+        guicontrol,,customText_cb, % settingsApp.customTextCB
     ; ============================
     ; === custom text input ===
-        text := getImgWidth(A_ScriptDir . "\resources\text.png")
-        gui add, picture,  x%xColumn7% y504 w%text% h-1, resources\text.png
-        iniRead tempCustomText, %SettingsPath%, Other, customText
-        if (tempCustomText == "ERROR") { 
-            tempCustomText := "" 
-        }
-        tempCustomText := StrReplace(tempCustomText, "||", "`n") ;support multilines in custom text
-        gui, Font, s11 cA38D6D
-            Gui Add, Edit, x%xEditOffset7% y505 w113 h65 -E0x200 +BackgroundTrans vcustomText gCustom_text -VScroll, %tempCustomText%
-        gui, Font, s11 cFFC555
+    customText_width := 113  + 2
+    customText_height := 65 + 2
+    ;text := getImgWidth(A_ScriptDir . "\resources\text.png")
+    gui add, picture,  xp+0 y+%offsetForbuttons% w%customText_width% h%customText_height%, resources\text.png
+    gui, Font, s11 cA38D6D
+        Gui Add, Edit, xp+1 yp+1 wp-2 hp-2 -E0x200 +BackgroundTrans vcustomText gCustomText_Changed -VScroll, % settingsApp.customText
+    gui, Font, s11 cFFC555
     ; ============================
-    ;gui add, picture, x%xColumn7% y366, resources\leagueHeader.png
+    GuiControlGet, postAll, HarvestUI:Pos
+    GuiControlGet, versionLink, HarvestUI:Pos
+    newX_versionLink := (postAllX + postAllW) - versionLinkW
+    GuiControl, Move, versionLink, x%newX_versionLink%
+    GuiControlGet, versionText, HarvestUI:Pos
+    newX_versionText := (postAllX + postAllW) - versionTextW 
+    GuiControl, Move, versionText, x%newX_versionText%
 ; ===============================================================================
-    
-; === table headers ===
-    gui add, text, x%xColumn1% y%row% w60 +Right, Type
-    count_beautyOffset := xColumn2 + 5
-    gui add, text, x%count_beautyOffset% y%row%, #
-    gui add, text, x%xColumn3% y%row%, Crafts
-    gui add, text, x%xColumn4% y%row%, LvL
-    gui add, text, x%xColumn5% y%row%, Price
-
-; === table ===
-    count_ := getImgWidth(A_ScriptDir . "\resources\count.png")
-    craft_ := getImgWidth(A_ScriptDir . "\resources\craft.png")
-    lvl_ := getImgWidth(A_ScriptDir . "\resources\lvl.png")  
-    price_ := getImgWidth(A_ScriptDir . "\resources\price.png")
-    del_ := getImgWidth(A_ScriptDir . "\resources\del.png")
-    loop, %MaxRowsCraftTable% {
-        row2 := row + 23 * A_Index
-        row2p := row2 + 1
-        row2dn := row2 + 10
-        row2del := row2 + 5
-        ;gui add, picture, x%xColumn1% y%row2%, resources\type.png
-        gui, Font, s11 cA38D6D
-            gui add, text, x%xColumn1% y%row2% vtype_%A_Index% gType w60 Right,
-        gui, Font, s11 cFFC555
-        
-        gui add, picture, x%xColumn2% y%row2% w%count_% h-1 AltSubmit , % "HBITMAP:*" count_pic ;resources\count.png
-            Gui Add, Edit, x%xEditOffset2% y%row2p% w35 h18 vcount_%A_Index% gCount -E0x200 +BackgroundTrans Center
-                Gui Add, UpDown, Range0-20 vupDown_%A_Index%, 0
-                guicontrol, hide, upDown_%A_Index%
-            gui add, picture, x%xColumnUpDn% y%row2p% gUp vUp_%A_Index%, % "HBITMAP:*" up_pic
-            gui add, picture, x%xColumnUpDn% y%row2dn% gDn vDn_%A_Index%, % "HBITMAP:*" dn_pic
-
-        gui add, picture, x%xColumn3% y%row2% w%craft_% h-1 AltSubmit , % "HBITMAP:*" craft_pic ;resources\craft.png
-            gui add, edit, x%xEditOffset3% y%row2p% w295 h18 -E0x200 +BackgroundTrans vcraft_%A_Index% gcraft        
-
-        gui add, picture, x%xColumn4% y%row2% w%lvl_% h-1 AltSubmit , % "HBITMAP:*" lvl_pic ;resources\lvl.png
-            gui add, edit, x%xEditOffset4% y%row2p% w23 h18 -E0x200 +BackgroundTrans Center vlvl_%A_Index% glvl
-
-        gui add, picture, x%xColumn5% y%row2% w%price_% h-1 AltSubmit , % "HBITMAP:*" price_pic ; resources\price.png
-            gui add, edit, x%xEditOffset5% y%row2p% w44 h18 -E0x200 +BackgroundTrans Center vprice_%A_Index% gPrice
-
-        gui add, picture, x%xColumn6% y%row2del% w%del_% h-1 vdel_%A_Index% gclearRow AltSubmit , % "HBITMAP:*" del_pic ;resources\del.png 
-    }
     gui, font    
-    gui temp:hide
-}
-
-
-; === Button actions ===
-Up:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    CraftTable[tempRow].count := CraftTable[tempRow].count + 1
-    updateUIRow(tempRow, "count")
-    sumTypes()
-    sumPrices()
-return
-
-Dn:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    tempCount := CraftTable[tempRow].count
-    if (tempCount > 0) {
-        CraftTable[tempRow].count := tempCount - 1
-        updateUIRow(tempRow, "count")
-        sumTypes()
-        sumPrices()
-    }
-return
-
-Add_crafts: 
-    buttonHold("addCrafts", "resources\addCrafts")
-    GuiControlGet, rescan, name, %A_GuiControl% 
-    if (processCrafts(TempPath)) {
-        updateCraftTable(outArray)
-    }
-    showGUI()
-return
-
-Last_area:
-    buttonHold("rescanButton", "resources\lastArea")
-    goto Add_crafts
-return
-
-Clear_all:
-    buttonHold("clearAll", "resources\clear")
-    clearAll()
-    sumTypes()
-    sumPrices()
-return
-
-Count:
-    if (!needToChangeModel) {
-        return
-    }
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    oldCount := CraftTable[tempRow].count
-    guiControlGet, newCount,, count_%tempRow%, value
-    if (oldCount == newCount) {
-        return
-    }
-    CraftTable[tempRow].count := newCount
-    sumTypes()
-    sumPrices()
-return
-
-craft:
-    if (!needToChangeModel) {
-        return
-    }
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    oldCraft := CraftTable[tempRow].craft
-    guiControlGet, newCraft,, craft_%tempRow%, value
-    if (oldCraft == newCraft) {
-        return
-    }
-    CraftTable[tempRow].craft := newCraft
-    CraftTable[tempRow].Price := getPriceFor(newCraft)
-    CraftTable[tempRow].type := getTypeFor(newCraft)
-    updateUIRow(tempRow, "price")
-    updateUIRow(tempRow, "type")
-    sumTypes()
-    sumPrices()
-return
-
-lvl:
-    if (!needToChangeModel) {
-        return
-    }
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, tempLvl,, lvl_%tempRow%, value
-    CraftTable[tempRow].lvl := tempLvl
-return
-
-type:
+    ;gui temp:hide
+    return
     
-return
-
-Price:
-    if (!needToChangeModel) {
-        return
-    }
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    oldPrice := CraftTable[tempRow].price
-    guiControlGet, newPrice,, price_%tempRow%, value
-    if (oldPrice == newPrice) {
-        return
-    }
-    CraftTable[tempRow].price := newPrice
-    craftName := CraftTable[tempRow].craft
-    if (craftName != "") {
-        iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
-    }
-    sumPrices()
-return
-
-Can_stream:
-    guiControlGet, strim,,canStream, value
-    iniWrite, %strim%, %SettingsPath%, Other, canStream
-return
-
-IGN:
-    guiControlGet, lastIGN,,IGN, value
-    iniWrite,  %lastIGN%, %SettingsPath%, IGN, n
-return
-
-Custom_text:
-    guiControlGet, cust,,customText, value
-    cust := StrReplace(cust, "`n", "||") ;support multilines in custom text
-    iniWrite, %cust%, %SettingsPath%, Other, customText
-    GuiControl,HarvestUI:, customText_cb, 1
-return
-
-Custom_text_cb:
-    guiControlGet, custCB,,customText_cb, value
-    iniWrite, %custCB%, %SettingsPath%, Other, CustomTextCB
-return
-
-ClearRow:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-
-    IniRead selLeague, %SettingsPath%, selectedLeague, s
-
-    if GetKeyState("Shift") {
-        row := CraftTable[tempRow]
-        IniRead, league, %SettingsPath%, selectedLeague, s
-        fileLine := A_YYYY . "-" . A_MM . "-" . A_DD . ";" . A_Hour . ":" . A_Min . ";" . league . ";" . row.craft . ";" . row.price . "`r`n"
-
-        FileAppend, %fileLine%, %LogPath%
-        if (row.count > 1) {
-            CraftTable[tempRow].count := row.count - 1
-            updateUIRow(tempRow, "count")
-        } else {
-            clearRowData(tempRow)
-            sortCraftTable()
-        }
-    } else {
-        clearRowData(tempRow)
-        sortCraftTable()
-    }
-    sumTypes()
-    sumPrices()
-return
-
-Post_all:
-    buttonHold("postAll", "resources\createPost")
-    createPost("All")
-return
-
-League_dropdown:
-    guiControlGet, selectedLeague,,League, value
-    iniWrite, %selectedLeague%, %SettingsPath%, selectedLeague, s
-    ;allowAll()
-return
-
-alwaysOnTop:
-    guiControlGet, onTop,,alwaysOnTop, value
-    iniWrite, %onTop%, %SettingsPath%, Other, alwaysOnTop
-    setWindowState(onTop)
-return
+    HarvestUIGuiEscape:
+    HarvestUIGuiClose:
+        ;rememberSession()
+        saveWindowPosition()
+        hideGUI()
+    return
+}
 
 setWindowState(onTop) {
     mod := (onTop == 1) ? "+" : "-"
     Gui, HarvestUI:%mod%AlwaysOnTop
 }
-;====================================================
-; === Settings UI ===================================
-settings:
-    iniRead tempMon, %SettingsPath%, Other, mon 
-    buttonHold("settings", "resources\settings")
-    hotkey, %GuiKey%, off
-    hotkey, %ScanKey%, off
-    gui Settings:new,, PoE-HarvestVendor - Settings
-    gui, add, Groupbox, x5 y5 w400 h90, Message formatting
-        Gui, add, text, x10 y25, Output message style:
-        Gui, add, dropdownList, x120 y20 w30 voutStyle goutStyle, 1|2
-        iniRead, tstyle, %SettingsPath%, Other, outStyle
-        guicontrol, choose, outStyle, %tstyle%
-        Gui, add, text, x20 y50, 1 - No Colors, No codeblock = Words are highlighted when using discord search
-        Gui, add, text, x20 y70, 2 - Codeblock, Colors = Words aren't highlighetd when using discord search
-
-    gui, add, Groupbox, x5 y110 w400 h100, Monitor Settings
-        monitors := getMonCount()
-        Gui add, text, x10 y130, Select monitor:
-        Gui add, dropdownList, x85 y125 w30 vMonitors_v gMonitors, %monitors%
-            global Monitors_v_TT := "For when you aren't running PoE on main monitor"
-        guicontrol, choose, Monitors_v, %tempMon%
-
-        gui, add, text, x10 y150, Scale 
-        iniRead, tScale,  %SettingsPath%, Other, scale
-        gui, add, edit, x85 y150 w30 vScale gScale, %tScale% 
-        Gui, add, text, x20 y175, - use this when you are using Other than 100`% scale in windows display settings
-        Gui, add, text, x20 y195, - 100`% = 1, 150`% = 1.5 and so on
-
-    gui, add, groupbox, x5 y215 w400 h75, Hotkeys       
-        Gui, add, text, x10 y235, Open Harvest vendor: 
-        iniRead, GuiKey,  %SettingsPath%, Other, GuiKey
-        gui,add, hotkey, x120 y230 vGuiKey_v gGuiKey_l, %GuiKey%
-        
-        Gui, add, text, x10 y260, Add crafts: 
-        iniRead, ScanKey,  %SettingsPath%, Other, ScanKey
-        gui, add, hotkey, x120 y255 vScanKey_v gScanKey_l, %ScanKey%
-
-    
-    gui, add, button, x10 y295 h30 w390 gOpenRoaming vSettingsFolder, Open Settings Folder
-    gui, add, button, x10 y335 h30 w390 gSettingsOK, Save
-    gui, Settings:Show, w410 h370
-    
-return
-
-SettingsGuiClose:
-    hotkey, %GuiKey%, on
-    hotkey, %ScanKey%, on
-    Gui, Settings:Destroy
-    Gui, HarvestUI:Default
-return
-
-GuiKey_l:
-return
-
-ScanKey_l:
-return
-
-OpenRoaming:
-    explorerpath := "explorer " RoamingDir
-    Run, %explorerpath%
-return
-
-outStyle:
-    guiControlGet, os,,outStyle, value
-    iniWrite, %os%, %SettingsPath%, Other, outStyle
-return
-
-Monitors:
-    guiControlGet, mon,,Monitors_v, value
-    iniWrite, %mon%, %SettingsPath%, Other, mon
-return
-
-Scale:
-    guiControlGet, sc,,Scale, value
-    iniWrite, %sc%, %SettingsPath%, Other, scale
-return
-
-SettingsOK:
-    iniRead, GuiKey,  %SettingsPath%, Other, GuiKey
-    iniRead, ScanKey,  %SettingsPath%, Other, ScanKey
-
-    guiControlGet, gk,, GuiKey_v, value
-    guiControlGet, sk,, ScanKey_v, value
-
-    if (GuiKey != gk and gk != "ERROR" and gk != "") {
-        hotkey, %GuiKey%, off
-        iniWrite, %gk%, %SettingsPath%, Other, GuiKey
-        hotkey, %gk%, OpenGui
-    } 
-            
-    if (ScanKey != sk and sk != "ERROR" and sk != "") {
-        hotkey, %ScanKey%, off
-        iniWrite, %sk%, %SettingsPath%, Other, ScanKey
-        hotkey, %sk%, Scan
-    } 
-
-    if (gk != "ERROR" and gk != "") {
-        hotkey, %gk%, on
-    } else {
-        hotkey, %GuiKey%, on
-    }
-
-    if (sk != "ERROR" and sk != "") {
-        hotkey, %sk%, on
-    } else {
-        hotkey, %ScanKey%, on
-    }
-
-    Gui, Settings:Destroy
-    Gui, HarvestUI:Default
-return
-;====================================================
-; === Help UI =======================================
-help:
-    buttonHold("help", "resources\help")
-    IniWrite, 1, %SettingsPath%, Other, seenInstructions 
-    gui Help:new,, PoE-HarvestVendor Help
-
-gui, font, s14
-    Gui, add, text, x5 y5, Step 1
-    gui, add, text, x5 y80, Step 2
-    gui, add, text, x5 y380, Step 3
-    Gui, add, text, x5 y450, Step 4
-gui, font
-
-gui, font, s10
-;step 1
-    gui, add, text, x15 y30, Default Hotkey to open the UI = Ctrl + Shift + G`r`nDefault Hotkey to start capture = Ctrl + G`r`nHotkeys can be changed in settings
-
-;step 2 
-    gui, add, text, x15 y110, Start the capture by either clicking Add Crafts button, `r`nor pressing the Capture hotkey.`r`nSelect the area with crafts:
-    Gui, Add, ActiveX, x5 y120 w290 h240 vArea, Shell2.Explorer
-    Area.document.body.style.overflow := "hidden"
-    Edit := WebPic(Area, "https://github.com/Stregon/PoE-HarvestVendor/blob/master/examples/snapshotArea_s.png?raw=true", "w250 h233 cFFFFFF")
-    gui, add, text, x15 y365, this can be done repeatedly to add crafts to the list
-
-;step 3 
-    gui, add, text, x15 y410, Fill in the prices (they will be remembered)`r`nand other info like: Can stream, IGN and so on if you wish to
-    ;Gui, Add, ActiveX, x5 y430 w350 h100 vPricepic, Shell2.Explorer
-    ;Pricepic.document.body.style.overflow := "hidden"
-    ;Edit := WebPic(Pricepic, "https://github.com/esge/PoE-HarvestVendor/blob/master/examples/price.png?raw=true", "w298 h94 cFFFFFF")
-    
-;step 4
-    gui, add, text, x15 y480 w390, click: Post Augments/Removes... for the set you want to post`r`nNow your message is in clipboard`r`nCareful about Post All on TFT discord, it has separate channels for different craft types.
-    
-
-    gui, add, text, x400 y10 h590 0x11  ;Vertical Line > Etched Gray
-
-    gui, font, s14 cRed
-    Gui, Add, text, x410 y10 w380, Important:
-    
-    gui, font, s10
-    gui, add, text, x420 y30 w370, If you are using Big resolution (more than 1080p) and have scaling for display set in windows to more than 100`% (in Display settings)`r`nYou need to go into Settings in HarvestVendor and set Scale to match whats set in windows
-    gui, font, s14 cBlack
-
-    gui, add, text, x410 y110 w380, Hidden features
-    gui, font, s10
-    gui, add, text, x420 y130 w370, - Holding shift while clicking the X in a row will reduce the count by 1 and also write the craft and price into log.csv (you can find it through the Settings folder button in Settings)
-    gui, font
-    Gui, Help:Show, w800 h610
-return
-
-HelpGuiClose:
-    Gui, Help:Destroy
-    Gui, HarvestUI:Default
-return
 
 ; === my functions ===
+translate(keyword) {
+    newKeyword := ""
+    if (LanguageDictionary.HasKey(keyword)) {
+        newKeyword := LanguageDictionary[keyword]
+    }
+    return newKeyword == "" ? keyword : newKeyword
+}
+
+translateToEnglish(text) {
+    if (EnglishDictionary.HasKey(text)) {
+        return EnglishDictionary[text]
+    }
+    return ""
+}
+
 TagExist(text, tag) {
     return InStr(text, tag) > 0
 }
@@ -1369,7 +1688,6 @@ Handle_Split(craftText, ByRef out) {
 }
 
 ; === my functions ===
-
 ;function for "tessedit_pageseg_mode 3" or "tessedit_pageseg_mode 4"
 ;3 = Fully automatic page segmentation, but no OSD(Orientation and script detection).
 getCraftsPlus(craftsText, levelsText) {
@@ -1406,21 +1724,9 @@ getCrafts(temp) {
 
 processCrafts(file) {
     ; the file parameter is just for the purpose of running a test script with different input files of crafts instead of doing scans
-    Gui, HarvestUI:Hide    
-
-    if ((rescan == "rescanButton" and x_start == 0) or rescan != "rescanButton" ) {
-        coordTemp := SelectArea("cffc555 t50 ms")
-        if (!coordTemp or coordTemp.Length() == 0)
-            return false
-
-        x_start := coordTemp[1]
-        y_start := coordTemp[3]
-        x_end := coordTemp[2]
-        y_end := coordTemp[4]
-    }
     WinActivate, Path of Exile
     sleep, 500
-    Tooltip, Please Wait, x_end, y_end
+    Tooltip, % translate("Please Wait"), x_end, y_end
     
     ; screen_rect := " -s """ . x_start . " " . y_start . " " 
         ; . x_end . " " . y_end . """"
@@ -1437,7 +1743,7 @@ processCrafts(file) {
         RunWait, %command%,,Hide
         
         if !FileExist(TempPath) {
-            MsgBox, - We were unable to create temp.txt to store text recognition results.`r`n- The tool most likely doesnt have permission to write where it is.`r`n- Moving it into a location that isnt write protected, or running as admin will fix this.
+            MsgBox, % translate("- We were unable to create temp.txt to store text recognition results.") . "`r`n" . translate("- The tool most likely doesnt have permission to write where it is.") . "`r`n" . translate("- Moving it into a location that isnt write protected, or running as admin will fix this.")
             return false
         }
         FileRead, curtemp, %file%
@@ -1488,7 +1794,7 @@ updateCraftTable(ar) {
     tempC := ""
     isNeedSort := False
     uiRows := []
-    for k, v in ar {   
+    for k, v in ar {
         tempC := v[1]
         tempLvl := v[2] 
         tempType := v[3]
@@ -1512,7 +1818,7 @@ updateCraftTable(ar) {
         sortCraftTable()
     } else {
         for k, v in uiRows {
-            updateUIRow(v, "count")  
+            updateUIRow(v, "count")
         }
     }
     sumTypes()
@@ -1540,7 +1846,7 @@ sortCraftTable() {
     }
 }
 
-insertIntoRow(rowCounter, craft, lvl, type) {    
+insertIntoRow(rowCounter, craft, lvl, type) {
     tempP := getPriceFor(craft)
     CraftTable[rowCounter] := {"count": 1, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
@@ -1553,81 +1859,66 @@ updateUIRow(rowCounter, parameter:="All") {
         GuiControl,HarvestUI:, craft_%rowCounter%, % row.craft
         GuiControl,HarvestUI:, count_%rowCounter%, % row.count
         GuiControl,HarvestUI:, lvl_%rowCounter%, % row.lvl
-        GuiControl,HarvestUI:, type_%rowCounter%, % row.type
+        GuiControl,HarvestUI:, type_%rowCounter%, % translate(row.type)
         GuiControl,HarvestUI:, price_%rowCounter%, % row.price
     } else {
         if (row.HasKey(parameter)) {
-            GuiControl,HarvestUI:, %parameter%_%rowCounter%, % row[parameter]
+            value := row[parameter]
+            value := (parameter == "type") ? translate(value) : value
+            GuiControl,HarvestUI:, %parameter%_%rowCounter%, % value
         }
     }
     needToChangeModel := True
 }
 
-; === Discord message creation ===
-; createPostRow(count, craft, price, group, lvl) {
-    ; ;IniRead, outStyle, %SettingsPath%, Other, outStyle
-    ; mySpaces := ""
-    ; spacesCount := 0
-    ; price := (price == "") ? " " : price
-
-    ; spacesCount := MaxLen - StrLen(craft) + 1
-
-    ; loop, %spacesCount% {
-        ; mySpaces .= " "
-    ; }
-
-    ; if (outStyle == 1) { ; no colors, no codeblock, but highlighted
-        ; outString .= "   ``" . count . "x ``**``" . craft . "``**``" . mySpaces . "[" . lvl . "]" 
-        ; if (price == " ") {
-            ; outString .= " <``**``" . price . "``**``>"
-        ; }
-        ; outString .= "```r`n"
-    ; }
-
-    ; if (outStyle == 2) { ; message style with colors, in codeblock but text isnt highlighted in discord search
-        ; outString .= "  " . count . "x [" . craft . mySpaces . "]" . "[" . lvl . "]" 
-        ; if (price != " ") {
-            ; outString .= " < " . price . " >"
-        ; }
-        ; outString .= "`r`n"
-    ; }
-; }
-
 ;added by Stregon#3347
 ;=============================================================================
-getPostRow(count, craft, price, group, lvl) {
-    ;IniRead, outStyle, %SettingsPath%, Other, outStyle
-    postRowString := ""
-    mySpaces := ""
-    spacesCount := 0
-    price := (price == "") ? " " : price
+getPadding(width, maxWidth) {
+    spaces := ""
+    loop, % (maxWidth - width) {
+        spaces .= " "
+    }
+    return spaces
+}
+
+; no colors, no codeblock, but highlighted
+getNoColorStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
     
-    loop, % (maxLengths.count - StrLen(count) + 1) {
-        spaces_count_craft .= " "
+    postRowString := "   ``" . count . "x" . spaces_count_craft . "``**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
     }
-    loop, % (maxLengths.craft - StrLen(craft) + 1) {
-        spaces_craft_lvl .= " "
-    }
-    loop, % (maxLengths.lvl - StrLen(lvl) + 2) {
-        spaces_lvl_price .= " "
-    }
+    
+    return postRowString . "```r`n"
+}
 
-    if (outStyle == 1) { ; no colors, no codeblock, but highlighted
-        postRowString .= "   ``" . count . "x" . spaces_count_craft . "``**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
-        if (price != " ") {
-            postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
-        }
-        postRowString .= "```r`n"
-    }
+; message style with colors, in codeblock but text isnt highlighted in discord search
+getColorStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
 
-    if (outStyle == 2) { ; message style with colors, in codeblock but text isnt highlighted in discord search
-        postRowString .= "  " . count . "x" . spaces_count_craft . "[" . craft . spaces_craft_lvl . "]" . "[" . lvl . "]" 
-        if (price != " ") {
-            postRowString .= spaces_lvl_price . "< " . price . " >"
-        }
-        postRowString .= "`r`n"
+    postRowString := "  " . count . "x" . spaces_count_craft . "[" . craft . spaces_craft_lvl . "]" . "[" . lvl . "]" 
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . "< " . price . " >"
     }
-    return postRowString
+    return postRowString . "`r`n"
+}
+
+getPostRow(count, craft, price, group, lvl) {
+    price := (price == "") ? " " : price
+    ; no colors, no codeblock, but highlighted
+    if (settingsApp.outStyle == 1) { 
+        return getNoColorStyleRow(count, craft, price, lvl)
+    }
+    ; message style with colors, in codeblock but text isnt highlighted in discord search
+    if (settingsApp.outStyle == 2) { 
+        return getColorStyleRow(count, craft, price, lvl)
+    }
+    return ""
 }
 
 getSortedPosts(type) {
@@ -1635,140 +1926,31 @@ getSortedPosts(type) {
     postsArr := []
     loop, %MaxRowsCraftTable% {
         row := CraftTable[A_Index]
-        if ((row["count"] != "" and row["count"] > 0)
-            and (row["type"] == type or type == "All")) {
+        if ((row.count != "" and row.count > 0)
+            and (row.type == type or type == "All")) {
             postsArr.push(row)
         }
     }
     postsArr := sortBy(postsArr, ["count", "craft"])
     for Index, row in postsArr {
-        posts .= getPostRow(row["count"], row["craft"], row["price"]
-        , row["type"], row["lvl"])
+        posts .= getPostRow(row.count, row.craft, row.price
+            , row.type, row.lvl)
     }
     return posts
 }
 
-_clone(param_value) {
-    if (isObject(param_value)) {
-        return param_value.Clone()
-    } else {
-        return param_value
-    }
-}
-
-_cloneDeep(param_array) {
-    Objs := {}
-    Obj := param_array.Clone()
-    Objs[&param_array] := Obj ; Save this new array
-    for key, value in Obj {
-        if (isObject(value)) ; if it is a subarray
-            Obj[key] := Objs[&value] ; if we already know of a refrence to this array
-            ? Objs[&value] ; Then point it to the new array
-            : _clone(value) ; Otherwise, clone this sub-array
-    }
-    return Obj
-}
-
-_internal_sort(param_collection, param_iteratees:="") {
-    l_array := _cloneDeep(param_collection)
-
-    ; associative arrays
-    if (param_iteratees != "") {
-        for Index, obj in l_array {
-            value := obj[param_iteratees]
-            if (!isNumber(value)) {
-                value := StrReplace(value, "+", "#")
-            }
-            out .= value "+" Index "|" ; "+" allows for sort to work with just the value
-            ; out will look like: value+index|value+index|
+getPosts(type) {
+    posts := ""
+    loop, %MaxRowsCraftTable% {
+        row := CraftTable[A_Index]
+        if ((row.count != "" and row.count > 0)
+            and (row.type == type or type == "All")) {
+            posts .= getPostRow(row.count, row.craft, row.price
+                , row.type, row.lvl)
         }
-        lastvalue := l_array[Index, param_iteratees]
-    } else {
-        ; regular arrays
-        for Index, obj in l_array {
-            value := obj
-            if (!isNumber(obj)) {
-                value := StrReplace(value, "+", "#")
-            }
-            out .= value "+" Index "|"
-        }
-        lastvalue := l_array[l_array.count()]
     }
-
-    if (isNumber(lastvalue)) {
-        sortType := "N"
-    }
-    stringTrimRight, out, out, 1 ; remove trailing |
-    sort, out, % "D| " sortType
-    arrStorage := []
-    loop, parse, out, |
-    {
-        arrStorage.push(l_array[SubStr(A_LoopField, InStr(A_LoopField, "+") + 1)])
-    }
-    return arrStorage
+    return posts
 }
-
-sortBy(param_collection, param_iteratees:="__identity") {
-    l_array := []
-
-    ; create
-    ; no param_iteratees
-    if (param_iteratees == "__identity") {
-        return _internal_sort(param_collection)
-    }
-    ; property
-    if (isAlnum(param_iteratees)) {
-        return _internal_sort(param_collection, param_iteratees)
-    }
-    ; own method or function
-    ; if (isCallable(param_iteratees)) {
-        ; for key, value in param_collection {
-            ; l_array[A_Index] := {}
-            ; l_array[A_Index].value := value
-            ; l_array[A_Index].key := param_iteratees.call(value)
-        ; }
-        ; l_array := _internal_sort(l_array, "key")
-        ; return this.map(l_array, "value")
-    ; }
-    ; shorthand/multiple keys
-    if (isObject(param_iteratees)) {
-        l_array := _cloneDeep(param_collection)
-        ; sort the collection however many times is requested by the shorthand identity
-        for key, value in param_iteratees {
-            l_array := _internal_sort(l_array, value)
-        }
-        return l_array
-    }
-    return -1
-}
-
-isAlnum(param) {
-    if (isObject(param)) {
-        return false
-    }
-    if param is alnum
-    {
-        return true
-    }
-    return false
-}
-
-; isCallable(param) {
-    ; fn := numGet(&(_ := Func("InStr").bind()), "Ptr")
-    ; return (isFunc(param) || (isObject(param) && (numGet(&param, "Ptr") = fn)))
-; }
-
-isNumber(param) {
-    if (isObject(param)) {
-        return false
-    }
-    if param is number
-    {
-        return true
-    }
-    return false
-}
-;=============================================================================
 
 codeblockWrap(text) {
     if (outStyle == 1) {
@@ -1779,78 +1961,78 @@ codeblockWrap(text) {
     }
 }
 
-;puts together the whole message that ends up in clipboard
-createPost(type) {
-    IniRead, outStyle, %SettingsPath%, Other, outStyle
+getNoColorStyleHeader() {
     tempName := ""
     GuiControlGet, tempLeague,, League, value
     GuiControlGet, tempName,, IGN, value
     GuiControlGet, tempStream,, canStream, value
     GuiControlGet, tempCustomText,, customText, value
     GuiControlGet, tempCustomTextCB,, customText_cb, value
-    
     tempLeague := RegExReplace(tempLeague, "SC", "Softcore")
     tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
-    outString := ""
-    ;getMaxLenghts(type)
     
-    ;added by Stregon#3347
+    outString := "**WTS " . tempLeague . "**"
+    if (tempName != "") {
+        tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
+        outString .= " - IGN: **" . tempName . "**" 
+    }
+    outString .= " ``|  generated by HarvestVendor v" . version . "```r`n"
+    if (tempCustomText != "" and tempCustomTextCB == 1) {
+        outString .= "   " . tempCustomText . "`r`n"
+    }
+    if (tempStream == 1) {
+        outString .= "   *Can stream if requested*`r`n"
+    }
+    return outString
+}
+
+getColorStyleHeader() {
+    tempName := ""
+    GuiControlGet, tempLeague,, League, value
+    GuiControlGet, tempName,, IGN, value
+    GuiControlGet, tempStream,, canStream, value
+    GuiControlGet, tempCustomText,, customText, value
+    GuiControlGet, tempCustomTextCB,, customText_cb, value
+    tempLeague := RegExReplace(tempLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "#WTS " . tempLeague
+    if (tempName != "") {
+        outString .= " - IGN: " . tempName
+    }
+    outString .= " |  generated by HarvestVendor v" . version . "`r`n"
+    if (tempCustomText != "" and tempCustomTextCB == 1) {
+        outString .= "  " . tempCustomText . "`r`n"
+    }
+    if (tempStream == 1) {
+        outString .= "  Can stream if requested `r`n"
+    }
+    return outString
+}
+
+;puts together the whole message that ends up in clipboard
+createPost(type) {
     maxLengths := {}
     maxLengths.count := getMaxLenghtColunm("count")
     maxLengths.craft := getMaxLenghtColunm("craft")
     maxLengths.lvl := getMaxLenghtColunm("lvl")
-    
-    if (outStyle == 1) {
-        outString .= "**WTS " . tempLeague . "**"
-        if (tempName != "") {
-            tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
-            outString .= " - IGN: **" . tempName . "**" 
-        }
-        outString .= " ``|  generated by HarvestVendor v" . version . "```r`n"
-        if (tempCustomText != "" and tempCustomTextCB == 1) {
-            outString .= "   " . tempCustomText . "`r`n"
-        }
-        if (tempStream == 1 ) {
-            outString .= "   *Can stream if requested*`r`n"
-        }
+    header := ""
+    if (settingsApp.outStyle == 1) {
+        header := getNoColorStyleHeader()
     }
-    if (outStyle == 2) {
-        outString .= "#WTS " . tempLeague
-        if (tempName != "") {
-            outString .= " - IGN: " . tempName
-        }
-        outString .= " |  generated by HarvestVendor v" . version . "`r`n"
-        if (tempCustomText != "" and tempCustomTextCB == 1) {
-            outString .= "  " . tempCustomText . "`r`n"
-        }
-        if (tempStream == 1 ) {
-            outString .= "  Can stream if requested `r`n"
-        }
+    if (settingsApp.outStyle == 2) {
+        header := getColorStyleHeader()
     }
-    outString .= getSortedPosts(type)
-    Clipboard := codeblockWrap(outString)
+    Clipboard := codeblockWrap(header . getSortedPosts(type))
     readyTT()
 }
 
 readyTT() {
     ClipWait
-    ToolTip, Paste Ready,,,1
+    ToolTip, % translate("Paste Ready"),,,1
     sleep, 2000
     Tooltip,,,,1
 }
-
-; getRowData(group, row) {
-    ; GuiControlGet, tempType,, type_%row%, value
-    ; GuiControlGet, tempCount,, count_%row%, value
-    ; GuiControlGet, tempCraft,, craft_%row%, value
-    ; GuiControlGet, tempPrice,, price_%row%, value
-    ; GuiControlGet, tempLvl,, lvl_%row%, value
-    ; tempCheck := 0
-    ; if (tempCount > 0 and tempCraft != "") {
-        ; tempCheck := 1
-    ; }
-    ; return [tempCount, tempCraft, tempPrice, tempCheck, tempType, tempLvl]
-; }
 
 getMaxLenghtColunm(column) {
     MaxLen_column := 0
@@ -1887,15 +2069,17 @@ getPriceFor(craft) {
 getTypeFor(craft) {
     if (craft == "") {
         return ""
-    } 
-    if (inStr(craft, "Augment") = 1 ) {
+    }
+    if (inStr(craft, "Reforge") == 1) {
+        return "Ref"
+    }
+    if (inStr(craft, "Augment") == 1) {
         return "Aug"
     } 
-    if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
-        return "Rem"
-    } 
-    if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
-        and instr(craft, "non") = 0) {
+    ; if (InStr(craft, "Remove") == 1 and instr(craft, "add") == 0) {
+        ; return "Rem"
+    ; } 
+    if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
         return "Rem/Add"
     }
     return "Other"
@@ -1952,7 +2136,7 @@ sumPrices() {
 }
 
 sumTypes() {
-    stats := {"Aug": 0, "Rem": 0, "Rem/Add": 0, "Other": 0, "All": 0}
+    stats := {"Aug": 0, "Ref": 0, "Rem/Add": 0, "Other": 0, "All": 0}
     loop, %MaxRowsCraftTable% {
         tempAmount := CraftTable[A_Index].count
         if (tempAmount == "") {
@@ -1965,7 +2149,7 @@ sumTypes() {
         }   
     }
     GuiControl,HarvestUI:, Acount, % stats["Aug"]
-    GuiControl,HarvestUI:, Rcount, % stats["Rem"]
+    GuiControl,HarvestUI:, Refcount, % stats["Ref"]
     GuiControl,HarvestUI:, RAcount, % stats["Rem/Add"]
     GuiControl,HarvestUI:, Ocount, % stats["Other"]
     GuiControl,HarvestUI:, CraftsSum, % stats["All"]
@@ -1979,37 +2163,26 @@ buttonHold(buttonV, picture) {
     guiControl,, %buttonV%, %picture%.png
 }
 
-allowAll() {
-    IniRead selLeague, %SettingsPath%, selectedLeague, s
-    if (selLeague == "ERROR") {
-        GuiControlGet, selLeague,, LeagueDropdown, value
-    }
-    if (InStr(selLeague, "Standard") = 0 and InStr(selLeague, "Hardcore") = 0 ) {
-        guicontrol, Disable, postAll
-    } else {
-        guicontrol, Enable, postAll
-    }
-}
-
 rememberCraft(row) {
     rowCraft := CraftTable[row]
     craftName := rowCraft.craft
     craftLvl := rowCraft.lvl
     crafCount := rowCraft.count
-    ;craftType := rowCraft.type
+    craftType := rowCraft.type
     blank := ""
     if (craftName != "") {
-        IniWrite, %craftName%|%craftLvl%|%crafCount%, %SettingsPath%, LastSession, craft_%row%
+        IniWrite, %craftName%|%craftLvl%|%crafCount%|%craftType%, %SettingsPath%, LastSession, craft_%row%
     } else {
         IniWrite, %blank%, %SettingsPath%, LastSession, craft_%row%
     }
 }
 
 rememberSession() { 
-    if (!sessionLoading) { 
-        loop, %MaxRowsCraftTable% { 
-            rememberCraft(A_Index)
-        }
+    if (sessionLoading or isLoading or firstGuiOpen) {
+        return
+    }
+    loop, %MaxRowsCraftTable% {
+        rememberCraft(A_Index)
     }
 }
 
@@ -2024,12 +2197,16 @@ loadLastSessionCraft(row) {
 
         tempP := getPriceFor(craft)
         type := getTypeFor(craft)
+        
         CraftTable[row] := {"count": ccount, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
     }
 }
 
 loadLastSession() {
+    if (!firstGuiOpen) {
+        return
+    }
     sessionLoading := True
     loop, %MaxRowsCraftTable% {
         loadLastSessionCraft(A_Index)
@@ -2081,15 +2258,15 @@ getLeagues() {
         } else {
             IniRead, lc, %SettingsPath%, Leagues, 1
             if (lc == "ERROR" or lc == "") {
-                msgbox, Unable to get list of leagues from GGG API`r`nYou will need to copy [Leagues] and [selectedLeague] sections from the example settings.ini on github
+                msgbox, % translate("Unable to get list of leagues from GGG API") . "`r`n" . translate("You will need to copy [Leagues] and [selectedLeague] sections from the example settings.ini on github")
             }
         }
 
         if !FileExist(SettingsPath) {
-            MsgBox, Looks like AHK was unable to create settings.ini`r`nThis might be because the place you have the script is write protected by Windows`r`nYou will need to place this somewhere else
+            MsgBox, % translate("Looks like AHK was unable to create settings.ini") . "`r`n" . translate("This might be because the place you have the script is write protected by Windows") . "`r`n" . translate("You will need to place this somewhere else")
         }
     } else {
-        Msgbox, Unable to get active leagues from GGG API, using placeholder names
+        Msgbox, % translate("Unable to get active leagues from GGG API, using placeholder names")
         iniWrite, Temp, %SettingsPath%, Leagues, 1
         iniWrite, Hardcore Temp, %SettingsPath%, Leagues, 2
         iniWrite, Standard, %SettingsPath%, Leagues, 3
@@ -2119,10 +2296,12 @@ leagueList() {
     }
 
     iniRead, leagueCheck, %SettingsPath%, selectedLeague, s
+    settingsApp.selectedLeague := leagueCheck
     guicontrol,, League, %leagueString%
     if (leagueCheck == "ERROR") {
         guicontrol, choose, League, %defaultLeague%
-        iniWrite, %defaultLeague%, %SettingsPath%, selectedLeague, s    
+        ;iniWrite, %defaultLeague%, %SettingsPath%, selectedLeague, s  
+        settingsApp.selectedLeague := defaultLeague
     } else {
         guicontrol, choose, League, %leagueCheck%   
     }
@@ -2142,7 +2321,7 @@ getVersion() {
         ver.Send()
         response := ver.ResponseText
     }
-    return StrReplace(StrReplace(response,"`r"),"`n")
+    return StrReplace(StrReplace(response, "`r"), "`n")
 }
 
 IsGuiVisible(guiName) {
@@ -2153,22 +2332,22 @@ IsGuiVisible(guiName) {
 checkFiles() {
     if !FileExist("Capture2Text") {
         if FileExist("Capture2Text.exe") {
-            msgbox, Looks like you put PoE-HarvestVendor.ahk into the Capture2Text folder `r`nThis is wrong `r`nTake the file out of this folder
+            msgbox, % translate("Looks like you put PoE-HarvestVendor.ahk into the Capture2Text folder") . "`r`n" . translate("This is wrong") . "`r`n" . translate("Take the file out of this folder")
         } else {
-            msgbox, I don't see the Capture2Text folder, did you download the tool ? `r`nLink is in the GitHub readme under Getting started section
+            msgbox, % translate("I don't see the Capture2Text folder, did you download the tool ?") . "`r`n" . translate("Link is in the GitHub readme under Getting started section")
         }
         ExitApp
     }   
     
     if !FileExist(SettingsPath) {
-        msgbox, Looks like you put PoE-HarvestVendor in a write protected place on your PC.`r`nIt needs to be able to create and write into a few text files in its directory.
+        msgbox, % translate("Looks like you put PoE-HarvestVendor in a write protected place on your PC.") . "`r`n" . translate("It needs to be able to create and write into a few text files in its directory.")
         ExitApp
     }
 }
 
 winCheck() {
     if (SubStr(A_OSVersion,1,2) != "10" and !FileExist("curl.exe")) {
-         msgbox, Looks like you aren't running win10. There might be a problem with WinHttpRequest(outdated Certificates).`r`nYou need to download curl, and place the curl.exe (just this 1 file) into the same directory as Harvest Vendor.`r`nLink in the FAQ section in readme on github
+         msgbox, % translate("Looks like you aren't running win10. There might be a problem with WinHttpRequest(outdated Certificates).") . "`r`n" . translate("You need to download curl, and place the curl.exe (just this 1 file) into the same directory as Harvest Vendor.") . "`r`n" . translate("Link in the FAQ section in readme on github")
     }
 }
 
@@ -2198,7 +2377,7 @@ getImgWidth(img) {
     objFolder := objShell.NameSpace(dir)
     objFolderItem := objFolder.ParseName(fn)
     scale := StrSplit(RegExReplace(objFolder.GetDetailsOf(objFolderItem, 31), ".(.+).", "$1"), " x ")
-    Return scale.1 ; {w: scale.1, h: scale.2}
+    return scale.1 ; {w: scale.1, h: scale.2}
 }
 
 ; ========================================================================
@@ -2222,9 +2401,10 @@ Options: (White space separated)
 ;full screen overlay
 ;press Escape to cancel
 
-    iniRead tempMon, %SettingsPath%, Other, mon
-    iniRead, scale, %SettingsPath%, Other, scale
-    cover := monitorInfo(tempMon)
+    ;iniRead tempMon, %SettingsPath%, Other, mon
+    ;iniRead, scale, %SettingsPath%, Other, scale
+    scale := settingsApp.scale
+    cover := monitorInfo(settingsApp.monitor)
     coverX := cover[1]
     coverY := cover[2]
     coverH := cover[3] / scale
@@ -2264,10 +2444,10 @@ Options: (White space separated)
                 %FirstChar% := Field
             }
         }
-        c := (c = "") ? "Blue" : c
-        t := (t = "") ? "50" : t
-        g := (g = "") ? "99" : g
-        m := (m = "") ? "s" : m
+        c := (c == "") ? "Blue" : c
+        t := (t == "") ? "50" : t
+        g := (g == "") ? "99" : g
+        m := (m == "") ? "s" : m
 
         Gui %g%: Destroy
         Gui %g%: +AlwaysOnTop -Caption +Border +ToolWindow +LastFound
@@ -2546,7 +2726,7 @@ Jxon_Dump(obj, indent:="", lvl:=1) {
     return q . obj . q
 }
 
-WebPic(WB, Website, Options := "") {
+WebPic(WB, url, Options := "") {
     RegExMatch(Options, "i)w\K\d+", W), (W = "") ? W := 50 :
     RegExMatch(Options, "i)h\K\d+", H), (H = "") ? H := 50 :
     RegExMatch(Options, "i)c\K\d+", C), (C = "") ? C := "EEEEEE" :
@@ -2555,19 +2735,33 @@ WebPic(WB, Website, Options := "") {
     (RTRIM
     "<!DOCTYPE html>
         <html>
-            <head>
+            <head
+                <meta http-equiv='X-UA-Compatible' content='IE=edge'>
                 <style>
-                    body {
+                    html, body {
+                        height: 100%;
+                        margin: 0;
+                        padding: 0;
                         background-color: #" C ";
                     }
                     img {
-                        top: 0px;
-                        left: 0px;
+                        max-width: 100%;
+                        max-height: 100vh;
+                        width: auto;
+                        margin: auto;
+                    }
+                    .bg {
+                        background-image: url(""" url """);
+                        background-repeat: no-repeat;
+                        background-size: cover;
+                        background-position: center;
+                        height: 100vh;
+                        width: 100vw;
                     }
                 </style>
             </head>
             <body>
-                <img src=""" Website """ alt=""Picture"" style=""width:" W "px;height:" H "px;"" />
+                <div class=""bg"">
             </body>
         </html>"
     )
@@ -2576,4 +2770,3 @@ WebPic(WB, Website, Options := "") {
     WB.Navigate("about:" HTML_Page)
     Return HTML_Page
 }
-
