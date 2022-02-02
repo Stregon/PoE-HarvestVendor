@@ -523,7 +523,7 @@ ShowSettingsUI() {
     static lang_Groupbox
     static lastText3
     width := 400
-    gui Settings:new,, % "PoE-HarvestVendor -" . translate("Settings")
+    gui Settings:new,, % "PoE-HarvestVendor fork -" . translate("Settings")
     gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
         Gui, add, text, xs+5 yp+20, % translate("Output message style:")
         Gui, add, dropdownList, x+10 yp+0 w30 voutStyle gOutStyle_Changed, 1|2
@@ -677,7 +677,7 @@ ShowHelpUI() {
     static Area
     ;static Static4
     columnWidth := 400
-    gui Help:new,, % "PoE-HarvestVendor " translate("Help")
+    gui Help:new,, % "PoE-HarvestVendor fork -" translate("Help")
 ;step 1
 gui, font, s14 wBold
     Gui, add, text, x5 y5 w%columnWidth%, % translate("Step 1")
@@ -903,7 +903,7 @@ saveWindowPosition() {
     if (firstGuiOpen) { ;wrong window pos(0,0) if dont show gui before
         return
     }
-    winTitle := "PoE-HarvestVendor v" . version
+    winTitle := "PoE-HarvestVendor fork v" . version
     DetectHiddenWindows, On
     if WinExist(winTitle) {
         ;save window position
@@ -921,7 +921,7 @@ showGUI() {
         NewY := settingsApp.gui_position_y
         DetectHiddenWindows, On
         Gui, HarvestUI:Show, Hide
-        WinTitle := "PoE-HarvestVendor v" . version
+        WinTitle := "PoE-HarvestVendor fork v" . version
         WinMove, %WinTitle%,, %NewX%, %NewY%
         DetectHiddenWindows, Off
     } 
@@ -934,7 +934,7 @@ hideGUI() {
 
 newGUI() {
     Global
-    Gui, HarvestUI:New,, PoE-HarvestVendor v%version% 
+    Gui, HarvestUI:New,, PoE-HarvestVendor fork v%version% 
     ;Gui -DPIScale      ;this will turn off scaling on big screens, which is nice for keeping layout but doesn't solve the font size, and fact that it would be tiny on big screens
     Gui, Color, 0x0d0d0d, 0x1A1B1B
     gui, Font, s11 cFFC555
