@@ -62,7 +62,7 @@ global Language := "Korean"
 global LanguageDictionary := {}
 global EnglishDictionary := {}
 global Messages := {"Korean": "사전을 찾을수 없습니다"
-    , "English": "사전을 찾을수 없습니다"}
+    , "English": "Cant found the dictionary"}
 loadLanguageDictionary(Language, LanguageDictionary)
 loadLanguageDictionary("English", EnglishDictionary)
 
@@ -144,8 +144,8 @@ if (settingsApp.seenInstructions == 0) {
 OpenGui()
 return
 
-loadLanguageDictionary(Language, byRef langdict) {
-    langfile := A_ScriptDir . "\" . Language . ".dict"
+loadLanguageDictionary(Lang, byRef langdict) {
+    langfile := A_ScriptDir . "\" . Lang . ".dict"
     if (!FileExist(langfile)) {
         MsgBox, % Messages[Language] . langfile
         ExitApp
@@ -336,7 +336,6 @@ Count_Changed() {
 
 isKorean(text) {
     pattern := "[\x{1100}-\x{11FF}\x{302E}\x{302F}\x{3131}-\x{318E}\x{3200}-\x{321E}\x{3260}-\x{327E}\x{A960}-\x{A97C}\x{AC00}-\x{D7A3}\x{D7B0}-\x{D7C6}\x{D7CB}-\x{D7FB}\x{FFA0}-\x{FFBE}\x{FFC2}-\x{FFC7}\x{FFCA}-\x{FFCF}\x{FFD2}-\x{FFD7}\x{FFDA}-\x{FFDC}]+"
-    ;"[\x{AC00}-\x{D7A3}]+"
     return RegExMatch(text, pattern) > 0
 }
 
@@ -367,7 +366,6 @@ Craft_Changed() {
     if (isKorean(newCraft)) {
         englishCraft := translateToEnglish(newCraft)
         if (englishCraft == "") {
-            ;IAutoComplete_Crafts[k].UpdStrings(getListForAutoComplete(newCraft))
             return
         }
         newCraft := englishCraft
@@ -696,17 +694,15 @@ initSettings() {
     iniRead, seenInstructions,  %SettingsPath%, Other, seenInstructions
     if (seenInstructions == "ERROR" or seenInstructions == "") {
         seenInstructions := 0
+        IniWrite, % seenInstructions, %SettingsPath%, Other, seenInstructions
     }
     settingsApp.seenInstructions := seenInstructions
 
     IniRead, GuiKey, %SettingsPath%, Other, GuiKey
-    checkValidChars := RegExMatch(GuiKey, "[a-zA-Z0-9]") > 0
-    if (GuiKey == "ERROR" or GuiKey == "" or !checkValidChars) {
-        IniWrite, ^+g, %SettingsPath%, Other, GuiKey
-        sleep, 250
-        IniRead, GuiKey, %SettingsPath%, Other, GuiKey
-        
-        if (!checkValidChars) {
+    checkNoValidChars := RegExMatch(GuiKey, "[^a-zA-Z\+\^!]+") > 0
+    if (GuiKey == "ERROR" or GuiKey == "" or checkNoValidChars) {
+        GuiKey := "^+g"
+        if (checkNoValidChars) {
             msgBox, % translate("Open GUI hotkey was set to a non latin letter or number, it was reset to ctrl+shift+g")
         }
     }
@@ -714,13 +710,10 @@ initSettings() {
     hotkey, % settingsApp["GuiKey"], OpenGui
 
     IniRead, ScanKey, %SettingsPath%, Other, ScanKey
-    checkValidChars := RegExMatch(ScanKey, "[a-zA-Z0-9]") > 0
-    if (ScanKey == "ERROR" or ScanKey == "" or !checkValidChars) {
-        IniWrite, ^g, %SettingsPath%, Other, ScanKey
-        sleep, 250
-        IniRead, ScanKey, %SettingsPath%, Other, ScanKey
-        ;ScanKey == "^g"
-        if (!checkValidChars) {
+    checkNoValidChars := RegExMatch(ScanKey, "[^a-zA-Z\+\^!]+") > 0
+    if (ScanKey == "ERROR" or ScanKey == "" or checkNoValidChars) {
+        ScanKey := "^g"
+        if (checkNoValidChars) {
             msgBox, % translate("Scan hotkey was set to a non latin letter or number, it was reset to ctrl+g")
         }
     }
@@ -728,18 +721,16 @@ initSettings() {
     hotkey, % settingsApp["ScanKey"], Scan
     
     IniRead, ScanLastAreaKey, %SettingsPath%, Other, ScanLastAreaKey
-    checkValidChars := RegExMatch(ScanLastAreaKey, "[a-zA-Z0-9]") > 0
-    if (ScanLastAreaKey == "ERROR" or ScanLastAreaKey == "" or !checkValidChars) {
-        IniWrite, +^f, %SettingsPath%, Other, ScanLastAreaKey
-        sleep, 250
-        IniRead, ScanLastAreaKey, %SettingsPath%, Other, ScanLastAreaKey
-        if (!checkValidChars) {
+    checkNoValidChars := RegExMatch(ScanLastAreaKey, "[^a-zA-Z\+\^!]+") > 0
+    if (ScanLastAreaKey == "ERROR" or ScanLastAreaKey == "" or checkNoValidChars) {
+        ScanLastAreaKey := "^+f"
+        if (checkNoValidChars) {
             msgBox, % translate("Scan from last area hotkey was set to a non latin letter or number, it was reset to ctrl+shift+f")
         }
     }
     settingsApp.ScanLastAreaKey := ScanLastAreaKey
     hotkey, % settingsApp["ScanLastAreaKey"], ScanLastArea
-
+    
     IniRead, outStyle, %SettingsPath%, Other, outStyle
     if (outStyle == "ERROR") {
         outStyle := 1
@@ -2169,8 +2160,8 @@ getLeagues() {
 leagueList() {
     leagueString := ""
     loop, 8 {
-        IniRead, tempList, %SettingsPath%, Leagues, %A_Index%     
-        if (templist != "") {      
+        IniRead, tempList, %SettingsPath%, Leagues, %A_Index%
+        if (tempList != "ERROR" and templist != "") {
             if InStr(tempList, "Hardcore") = 0 and InStr(tempList, "HC") = 0 {
                 tempList .= " SC"
             } 
@@ -2188,14 +2179,16 @@ leagueList() {
     }
 
     iniRead, leagueCheck, %SettingsPath%, selectedLeague, s
-    settingsApp.selectedLeague := leagueCheck
     guicontrol,, League, %leagueString%
     if (leagueCheck == "ERROR") {
+        if (defaultLeague == "") {
+            IniRead, defaultLeague, %SettingsPath%, Leagues, 1
+        }
         guicontrol, choose, League, %defaultLeague%
-        ;iniWrite, %defaultLeague%, %SettingsPath%, selectedLeague, s  
         settingsApp.selectedLeague := defaultLeague
     } else {
-        guicontrol, choose, League, %leagueCheck%   
+        settingsApp.selectedLeague := leagueCheck
+        guicontrol, choose, League, %leagueCheck%
     }
 }
 
