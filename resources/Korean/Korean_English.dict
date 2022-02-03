@@ -1,160 +1,123 @@
-﻿비-영향력 아이템에 공격 부여=Augment non-influenced - Attack
-비-영향력 아이템에 공격 행운 부여=Augment non-influenced - Attack Lucky
-비-공격 제거후 공격 부여=Remove non-Attack Add Attack
-공격 빈도 재련=Reforge Rare - Attack More Common
-공격 재련=Reforge Rare - Attack
-
-
-비-영향력 아이템에 시전 부여=Augment non-influenced - Caster
-비-영향력 아이템에 시전 행운 부여=Augment non-influenced - Caster Lucky
-비-시전 제거후 시전 부여=Remove non-Caster Add Caster
-시전 빈도 재련=Reforge Rare - Caster More Common
-시전 재련=Reforge Rare - Caster
-
-
-비-영향력 아이템에 물리 부여=Augment non-influenced - Physical
-비-영향력 아이템에 물리 행운 부여=Augment non-influenced - Physical Lucky 
-비-물리 제거후 물리 부여=Remove non-Physical Add Physical
-물리 빈도 재련=Reforge Rare - Physical More Common
-물리 재련=Reforge Rare - Physical
-
-
-비-영향력 아이템에 냉기 부여=Augment non-influenced - Cold
-비-영향력 아이템에 냉기 행운 부여=Augment non-influenced - Cold Lucky
-비-냉기 제거후 냉기 부여=Remove non-Cold Add Cold
-냉기 빈도 재련=Reforge Rare - Cold More Common
-냉기 재련=Reforge Rare - Cold
-
-
-비-영향력 아이템에 화염 부여=Augment non-influenced - Fire
-비-영향력 아이템에 화염 행운 부여=Augment non-influenced - Fire Lucky
-비-화염 제거후 화염 부여=Remove non-Fire Add Fire
-화염 빈도 재련=Reforge Rare - Fire More Common
-화염 재련=Reforge Rare - Fire
-
-
-비-영향력 아이템에 번개 부여=Augment non-influenced - Lightning
-비-영향력 아이템에 번개 행운 부여=Augment non-influenced - Lightning Lucky
-비-번개 제거후 번개 부여=Remove non-Lightning Add Lightning
-번개 빈도 재련=Reforge Rare - Lightning More Common
-번개 재련=Reforge Rare - Lightning
-
-비-영향력 아이템에 카오스 부여=Augment non-influenced - Chaos
-비-영향력 아이템에 카오스 행운 부여=Augment non-influenced - Chaos Lucky
-비-카오스 제거후 카오스 부여=Remove non-Chaos Add Chaos
-카오스 빈도 재련=Reforge Rare - Chaos More Common
-카오스 재련=Reforge Rare - Chaos
-
-
-비-영향력 아이템에 방어 부여=Augment non-influenced - Defence
-비-영향력 아이템에 방어 행운 부여=Augment non-influenced - Defence Lucky
-비-방어 제거후 방어 부여=Remove non-Defence Add Defence
-방어 빈도 재련=Reforge Rare - Defence More Common
-방어 재련=Reforge Rare - Defence
-
-
-비-영향력 아이템에 생명력 부여=Augment non-influenced - Life
-비-영향력 아이템에 생명력 행운 부여=Augment non-influenced - Life Lucky
-비-생명력 제거후 생명력 부여=Remove non-Life Add Life
-생명력 빈도 재련=Reforge Rare - Life More Common
-생명력 재련=Reforge Rare - Life
-
-비-영향력 아이템에 치명 부여=Augment non-influenced - Critical
-비-영향력 아이템에 치명 행운 부여=Augment non-influenced - Critical Lucky
-비-치명타 제거후 치명타 부여=Remove non-Critical Add Critical
-치명타 빈도 재련=Reforge Rare - Critical More Common
-치명타 재련=Reforge Rare - Critical
-
-비-영향력 아이템에 속도 부여=Augment non-influenced - Speed
-비-영향력 아이템에 속도 행운 부여=Augment non-influenced - Speed Lucky
-비-속도 제거후 속도 부여=Remove non-Speed Add Speed
-속도 빈도 재련=Reforge Rare - Speed More Common
-속도 재련=Reforge Rare - Speed
-
-영향력 속성 부여=Augment Influence
-영향력 속성 행운 부여=Augment Influence Lucky
-비-영향력 제거후 영향력 부여=Remove non-Influence Add Influence
-영향력 빈도 재련=Reforge Rare - Influence More Common
-
-지도인챈트: 육분의 소모 없음=Enchant Map: no Sextant use
-
-무기인챈트: 정확도=Enchant Weapon: Accuracy
-무기인챈트: 효과범위=Enchant Weapon: Area of Effect
-무기인챈트: 공격속도=Enchant Weapon: Attack Speed
-무기인챈트: 치명타확률=Enchant Weapon: Critical Strike Chance
-무기인챈트: 원소피해=Enchant Weapon: Elemental Damage
-무기인챈트: 근접무기범위+1=Enchant Weapon: +1 Weapon Range
-
-갑옷인챈트: 냉기저항=Enchant Body: Cold Resistance
-갑옷인챈트: 민첩=Enchant Body: Dexterity
-갑옷인챈트: 화염저항=Enchant Body: Fire Resistance
-갑옷인챈트: 지능=Enchant Body: Intelligence
-갑옷인챈트: 번개저항=Enchant Body: Lightning Resistance
-갑옷인챈트: 생명력최대치=Enchant Body: Maximum Life
-갑옷인챈트: 마나최대치=Enchant Body: Maximum Mana
-갑옷인챈트: 힘=Enchant Body: Strength
-
-
+﻿각성 시도 실패시 파괴됨 (20레벨 보조젬)=Awaken Level 20 Support Gem
+갑옷인챈트: 냉기저항=Enchant Body, Cold Resist
+갑옷인챈트: 마나최대치=Enchant Body, Maximum Mana
+갑옷인챈트: 민첩=Enchant Body, Dexterity
+갑옷인챈트: 번개저항=Enchant Body, Lightning Resist
+갑옷인챈트: 생명력최대치=Enchant Body, Maximum Life
+갑옷인챈트: 지능=Enchant Body, Intelligence
+갑옷인챈트: 화염저항=Enchant Body, Fire Resist
+갑옷인챈트: 힘=Enchant Body, Strength
+같은 속성이 나올 확률 낮음=Reforge Rare Less Likely
+같은 속성이 나올 확률 높음=Reforge Rare More Likely
+결합 고정 속성 부여=Synthesise an item
+고정 속성 부여 [. 심연 군단 주얼]=Set Implicit, Abyss/Timeless Jewel
+고정 속성 부여 [기본주얼]=Set Implicit, Basic Jewel
+고정 속성 부여 [스킬 군 주얼]=Set Implicit, Cluster Jewel
+공격 빈도 재련=Reforge Attack More Common
+공격 재련=Reforge Attack
+냉기 빈도 재련=Reforge Cold More Common
+냉기 재련=Reforge Cold
+루어 변경 [위상아이템]=Change Unique Bestiary item or item with Aspect into Lures
+링크 [5 연결]=Five Links
+링크 [6 연결]=Six Links
+마법템을 희귀템으로, 상위 옵션 2개 추가=Upgrade Magic to Rare adding 2 high-tier mods
+마법템을 희귀템으로, 상위 옵션 3개 추가=Upgrade Magic to Rare adding 3 high-tier mods
+마법템을 희귀템으로, 상위 옵션 4개 추가=Upgrade Magic to Rare adding 4 high-tier mods
+마법템을 희귀템으로, 옵션 2개 추가=Upgrade Magic to Rare adding 2 mods
+마법템을 희귀템으로, 옵션 3개 추가=Upgrade Magic to Rare adding 3 mods
+마법템을 희귀템으로, 옵션 4개 추가=Upgrade Magic to Rare adding 4 mods
+무기인챈트: 공격속도=Enchant Weapon, Attack Speed
+무기인챈트: 근접무기범위+1=Enchant Weapon, Weapon Range
+무기인챈트: 원소피해=Enchant Weapon, Elemental Damage
+무기인챈트: 정확도=Enchant Weapon, Accuracy
+무기인챈트: 치명타확률=Enchant Weapon, Critical Strike Chance
+무기인챈트: 효과범위=Enchant Weapon, Area of Effect
+무아지경 렌즈 (30%)=Sacrifice Gem, 30% XP As Facetor Lens
+무아지경 렌즈 (40%)=Sacrifice Gem, 40% XP As Facetor Lens
+무아지경 렌즈 (50%)=Sacrifice Gem, 50% XP As Facetor Lens
+무작위 홈1개의 색을 하얀색으로 재련=Reforge into White Socket
+무작위 홈2개의 색을 빨,초로 재련=Reforge into Red and Green Socket
+무작위 홈2개의 색을 빨,파로 재련=Reforge into Red and Blue Socket
+무작위 홈2개의 색을 파,초로 재련=Reforge into Blue and Green Socket
+무작위 홈3개의 색을 빨,초,파 로 재련=Reforge into Red, Blue and Green Socket
+물리 빈도 재련=Reforge Physical More Common
+물리 재련=Reforge Physical
+방어 빈도 재련=Reforge Defence More Common
+방어 재련=Reforge Defence
+번개 빈도 재련=Reforge Lightning More Common
+번개 재련=Reforge Lightning
+분열고정 [전체] 1/5=Fracture 1/5
 분열고정 [접두] 1/3=Fracture 1/3 Prefix
 분열고정 [접미] 1/3=Fracture 1/3 Suffix
-분열고정 [전체] 1/5=Fracture 1/5 modifier
-
-영향력 변경 - 방어구=Randomise Influence - Armour
-영향력 변경 - 장신구=Randomise Influence - Jewellery
-영향력 변경 - 무기및화살통=Randomise Influence - Weapon
-
-접두 유지 재련=Reforge keep Prefixes
-접두 행운 유지 재련=Reforge keep Prefixes Lucky
-접미 유지 재련=Reforge keep Suffixes
-접미 행운 유지 재련=Reforge keep Suffixes Lucky
-같은 속성이 나올 확률 낮음=Reforge Rare - Less Likely
-같은 속성이 나올 확률 높음=Reforge Rare - More Likely
-
+비-공격 제거후 공격 부여=Remove Non-Attack Add Attack
+비-냉기 제거후 냉기 부여=Remove Non-Cold Add Cold
+비-물리 제거후 물리 부여=Remove Non-Physical Add Physical
+비-방어 제거후 방어 부여=Remove Non-Defence Add Defence
+비-번개 제거후 번개 부여=Remove Non-Lightning Add Lightning
+비-생명력 제거후 생명력 부여=Remove Non-Life Add Life
+비-속도 제거후 속도 부여=Remove Non-Speed Add Speed
+비-시전 제거후 시전 부여=Remove Non-Caster Add Caster
+비-영향력 아이템에 공격 부여=Augment Attack
+비-영향력 아이템에 공격 행운 부여=Augment Attack Lucky
+비-영향력 아이템에 냉기 부여=Augment Cold
+비-영향력 아이템에 냉기 행운 부여=Augment Cold Lucky
+비-영향력 아이템에 물리 부여=Augment Physical
+비-영향력 아이템에 물리 행운 부여=Augment non-influenced - Physical Lucky 
+비-영향력 아이템에 방어 부여=Augment Defence
+비-영향력 아이템에 방어 행운 부여=Augment Defence Lucky
+비-영향력 아이템에 번개 부여=Augment Lightning
+비-영향력 아이템에 번개 행운 부여=Augment Lightning Lucky
+비-영향력 아이템에 생명력 부여=Augment Life
+비-영향력 아이템에 생명력 행운 부여=Augment Life Lucky
+비-영향력 아이템에 속도 부여=Augment Speed
+비-영향력 아이템에 속도 행운 부여=Augment Speed Lucky
+비-영향력 아이템에 시전 부여=Augment Caster
+비-영향력 아이템에 시전 행운 부여=Augment Caster Lucky
+비-영향력 아이템에 치명 부여=Augment Critical
+비-영향력 아이템에 치명 행운 부여=Augment Critical Lucky
+비-영향력 아이템에 카오스 부여=Augment Chaos
+비-영향력 아이템에 카오스 행운 부여=Augment Chaos Lucky
+비-영향력 아이템에 행운 엑잘 (부여)=Augment Non-Influence Lucky
+비-영향력 아이템에 화염 부여=Augment Fire
+비-영향력 아이템에 화염 행운 부여=Augment Fire Lucky
+비-영향력 제거후 영향력 부여=Remove Non-Influence Add Influence
+비-치명타 제거후 치명타 부여=Remove Non-Critical Add Critical
+비-카오스 제거후 카오스 부여=Remove Non-Chaos Add Chaos
+비-화염 제거후 화염 부여=Remove Non-Fire Add Fire
+빨강 홈이 아닌 홈을 빨강홈으로 재련=Non-Red into Red Socket
+생명력 빈도 재련=Reforge Life More Common
+생명력 재련=Reforge Life
+속도 빈도 재련=Reforge Speed More Common
+속도 재련=Reforge Speed
+시전 빈도 재련=Reforge Caster More Common
+시전 재련=Reforge Caster
+영향력 변경 - 무기및화살통=Randomise Influence Weapon
+영향력 변경 - 방어구=Randomise Influence Armour
+영향력 변경 - 장신구=Randomise Influence Jewellery
+영향력 빈도 재련=Reforge Influence More Common
+영향력 속성 부여=Augment Influence
+영향력 속성 행운 부여=Augment Influence Lucky
+저항 변경: 냉기를 번개로=Cold to Lightning Resist
+저항 변경: 냉기를 화염으로=Cold to Fire Resist
+저항 변경: 번개를 냉기로=Lightning to Cold Resist
+저항 변경: 번개를 화염으로=Lightning to Fire Resist
+저항 변경: 화염을 냉기로=Fire to Cold Resist
+저항 변경: 화염을 번개로=Fire to Lightning Resist
+접두 유지 재련=Reforge keep Prefix
+접두 행운 유지 재련=Reforge keep Prefix Lucky
+접미 유지 재련=Reforge keep Suffix
+접미 행운 유지 재련=Reforge keep Suffix Lucky
+지도인챈트: 육분의 소모 없음=Enchant Map, Doesn't Consume Sextant
+초록 홈이 아닌 홈을 초록홈으로 재련=Non-Green into Green Socket
+치명타 빈도 재련=Reforge Critical More Common
+치명타 재련=Reforge Critical
+카드세트소모 0~2배 획득[카드도박]=Sacrifice Divination Card 0-2x
+카오스 빈도 재련=Reforge Chaos More Common
+카오스 재련=Reforge Chaos
+파랑 홈이 아닌 홈을 파랑홈으로 재련=Non-Blue into Blue Socket
 행운 리롤 [. 신성한 오브] 전체=Reroll All Lucky
 행운 리롤 [. 신성한 오브] 접두=Reroll Prefix Lucky
 행운 리롤 [. 신성한 오브] 접미=Reroll Suffix Lucky
-
-저항 변경: 냉기를 화염으로=Change Resist: Cold to Fire
-저항 변경: 냉기를 번개로=Change Resist: Cold to Lightning
-저항 변경: 화염을 냉기로=Change Resist: Fire to Cold
-저항 변경: 화염을 번개로=Change Resist: Fire to Lightning
-저항 변경: 번개를 냉기로=Change Resist: Lightning to Cold
-저항 변경: 번개를 화염으로=Change Resist: Lightning to Fire
-
-고정 속성 부여 [. 심연 군단 주얼]=Set Implicit Abyss/Timeless Jewel
-고정 속성 부여 [기본주얼]=Set Implicit Basic Jewel
-고정 속성 부여 [스킬 군 주얼]=Set Implicit Cluster Jewel
-
-파랑 홈이 아닌 홈을 파랑홈으로 재련=Reforge Colour: non-Blue into Blue
-초록 홈이 아닌 홈을 초록홈으로 재련=Reforge Colour: non-Green into Green
-빨강 홈이 아닌 홈을 빨강홈으로 재련=Reforge Colour: non-Red into Red
-무작위 홈1개의 색을 하얀색으로 재련=Reforge Colour: into White
-무작위 홈3개의 색을 빨,초,파 로 재련=Reforge Colour: into Red, Blue and Green
-무작위 홈2개의 색을 빨,파로 재련=Reforge Colour: into Red and Blue
-무작위 홈2개의 색을 빨,초로 재련=Reforge Colour: into Red and Green
-무작위 홈2개의 색을 파,초로 재련=Reforge Colour: into Blue and Green
-링크 [6 연결]=Six link (6-link)
-링크 [5 연결]=Five link (5-link)
-
-마법템을 희귀템으로, 상위 옵션 2개 추가=Upgrade Magic to Rare adding 2 high-tier mods
-마법템을 희귀템으로, 옵션 2개 추가=Upgrade Magic to Rare adding 2 mods
-마법템을 희귀템으로, 상위 옵션 3개 추가=Upgrade Magic to Rare adding 3 high-tier mods
-마법템을 희귀템으로, 옵션 3개 추가=Upgrade Magic to Rare adding 3 mods
-마법템을 희귀템으로, 상위 옵션 4개 추가=Upgrade Magic to Rare adding 4 high-tier mods
-마법템을 희귀템으로, 옵션 4개 추가=Upgrade Magic to Rare adding 4 mods
-
+화염 빈도 재련=Reforge Fire More Common
+화염 재련=Reforge Fire
 환영 오브 스택 변경=Change a stack of Delirium Orbs
-
-비-영향력 아이템에 행운 엑잘 (부여)=Augment non-Influence Lucky
-
-결합 고정 속성 부여=Synthesise an item
-
-루어 변경 [위상아이템]=Change Unique Bestiary item or item with Aspect into Lures
-
-무아지경 렌즈 (30%)=Sacrifice gem, get 30% exp as Lens
-무아지경 렌즈 (40%)=Sacrifice gem, get 40% exp as Lens
-무아지경 렌즈 (50%)=Sacrifice gem, get 50% exp as Lens
-
-카드세트소모 0~2배 획득[카드도박]=Sacrifice Divination Card 0-2x
-
-각성 시도 실패시 파괴됨 (20레벨 보조젬)=Attempt to Awaken a level 20 Support Gem
