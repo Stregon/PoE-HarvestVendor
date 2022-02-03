@@ -759,6 +759,7 @@ initSettings() {
     iniRead, seenInstructions,  %SettingsPath%, Other, seenInstructions
     if (seenInstructions == "ERROR" or seenInstructions == "") {
         seenInstructions := 0
+        IniWrite, % seenInstructions, %SettingsPath%, Other, seenInstructions
     }
     settingsApp.seenInstructions := seenInstructions
 
@@ -859,7 +860,7 @@ saveSettings() {
         return
     }
     IniWrite, % settingsApp.Language, %SettingsPath%, Other, Language
-    IniWrite, % settingsApp.seenInstructions, %SettingsPath%, Other, seenInstructions 
+    IniWrite, % settingsApp.seenInstructions, %SettingsPath%, Other, seenInstructions
     iniWrite, % settingsApp.canStream, %SettingsPath%, Other, canStream
     cust := StrReplace(settingsApp.customText, "`n", "||") ;support multilines in custom text
     iniWrite, %cust%, %SettingsPath%, Other, customText
