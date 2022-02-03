@@ -2,15 +2,31 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.2 light"
+global version := "0.8.3 light"
 #include <class_iAutoComplete>
+#include <sortby>
+#include <JSON>
 ; === some global variables ===
+global settingsApp := {"GuiKey": ""
+    , "outStyle": 1
+    , "canStream": 0
+    , "CustomTextCB": 0
+    , "customText": ""
+    , "nick": ""
+    , "selectedLeague": ""
+    , "seenInstructions": 0
+    , "MaxRowsCraftTable": 20
+    , "gui_position_x": 0
+    , "gui_position_y": 0
+    , "Language": "English"
+    , "LeagueList": []}
 global firstGuiOpen := True
-global outString := ""
 global outStyle := 1
+global langDDL := ""
+global Vivid_Scalefruit := 0
+global GuiKeyHotkey := ""
 global maxLengths := {}
 global sessionLoading := False
-global MaxRowsCraftTable := 20
 global CraftTable := []
 global needToChangeModel := True
 global isLoading := True
@@ -25,105 +41,619 @@ if !FileExist(RoamingDir) {
 
 global SettingsPath := RoamingDir . "\settings.ini"
 global PricesPath := RoamingDir . "\prices.ini"
-global LevelsPath := RoamingDir . "\levels.ini"
 global LogPath := RoamingDir . "\log.csv"
+global LevelsPath := RoamingDir . "\levels.ini"
+global TempPath := RoamingDir . "\temp.txt"
+global tftPrices := RoamingDir . "\tftprices.json"
 
 FileEncoding, UTF-8
-
-global IAutoComplete_Crafts := []
-craftListFile := A_ScriptDir . "\craftlist.txt"
-global CraftList := []
-Loop, read, %craftListFile%
-{
-    line := Trim(A_LoopReadLine)
-    if (line != "") {
-        CraftList.push(line)
-    }
+;global Language := ""
+global LanguageDictionary := {}
+global EnglishDictionary := {}
+global LanguageList := {"English": "English", "Russian": "Русский", "Korean": "한국어"}
+global LanguageReverseList := {}
+for k,v in LanguageList {
+    LanguageReverseList[v] := k
 }
+global Messages := {"Korean": "사전을 찾을수 없습니다: "
+    , "English": "Cant found the dictionary: "
+    , "Russian": "Не могу найти словарь: "}
+global IAutoComplete_Crafts := []
+global CraftList := []
+
+initSettings()
+tooltip, % translate("loading... Initializing Settings")
+sleep, 250
 
 OnExit("ExitFunc")
-
-tooltip, loading... Initializing Settings
-sleep, 250
-; == init settings ==
-iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
-    if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == ""
-        or MaxRowsCraftTable < 20 or MaxRowsCraftTable > 40) {
-        IniWrite, 20, %SettingsPath%, Other, MaxRowsCraftTable
-        IniRead, MaxRowsCraftTable, %SettingsPath%, Other, MaxRowsCraftTable
-    }
-loop, %MaxRowsCraftTable% {
-    CraftTable.push({"count": 0, "craft": "", "price": ""
-        , "lvl": "", "type": ""})
-}
-
-IniRead, GuiKey, %SettingsPath%, Other, GuiKey
-    checkValidChars := RegExMatch(GuiKey, "[a-zA-Z0-9]") > 0
-    if (GuiKey == "ERROR" or GuiKey == "" or !checkValidChars) {
-        IniWrite, ^+g, %SettingsPath%, Other, GuiKey
-        sleep, 250
-        IniRead, GuiKey, %SettingsPath%, Other, GuiKey
-        if (!checkValidChars) {
-            msgBox, Open GUI hotkey was set to a non latin letter or number, it was reset to ctrl+shift+g
-        }
-    }
-hotkey, %GuiKey%, OpenGui
-
-IniRead, outStyle, %SettingsPath%, Other, outStyle
-    if (outStyle == "ERROR") {
-        IniWrite, 1, %SettingsPath%, Other, outStyle
-        outStyle := 1
-    }
-
 checkfiles()
 winCheck()
 
-tooltip, loading... Checking AHK version
+tooltip, % translate("loading... Checking AHK version")
 sleep, 250
 ; == check for ahk version ==
 if (A_AhkVersion < 1.1.27.00) {
-    MsgBox, Please update your AHK `r`nYour version: %A_AhkVersion%`r`nRequired: 1.1.27.00 or more
+    MsgBox, % translate("Please update your AHK") . "`r`n" . translate("Your version:") . A_AhkVersion . "`r`n" . translate("Required: 1.1.27.00 or more")
 }
 
-tooltip, loading... Grabbing active leagues
+tooltip, % translate("loading... Grabbing active leagues")
 getLeagues()
 
 menu, Tray, Icon, resources\Vivid_Scalefruit_inventory_icon.png
-;Menu, MySubmenu, Add, testLabel
-;Menu, Tray, Add, Harvest Vendor, OpenGui
 Menu, Tray, NoStandard
 Menu, Tray, Add, Harvest Vendor, OpenGui
 Menu, Tray, Default, Harvest Vendor
 Menu, Tray, Standard
 
 ; == preload pictures that are used more than once, for performance
-    count_pic := LoadPicture("resources\count.png")
-    up_pic := LoadPicture("resources\up.png")
-    dn_pic := LoadPicture("resources\dn.png")
-    craft_pic := LoadPicture("resources\craft.png")
-    lvl_pic := LoadPicture("resources\lvl.png")
-    price_pic := LoadPicture("resources\price.png")
-    del_pic := LoadPicture("resources\del.png")
+count_pic := LoadPicture("resources\count.png")
+up_pic := LoadPicture("resources\up.png")
+dn_pic := LoadPicture("resources\dn.png")
+craft_pic := LoadPicture("resources\craft.png")
+lvl_pic := LoadPicture("resources\lvl.png")
+price_pic := LoadPicture("resources\price.png")
+del_pic := LoadPicture("resources\del.png")
 ; =================================================================
 
-tooltip, loading... building GUI
+tooltip, % translate("loading... building GUI")
 sleep, 250
 newGUI()
-tooltip, ready
+isLoading := False
+tooltip, % translate("ready")
 sleep, 500
 Tooltip
 
-isLoading := False
+OpenGui()
 return
 
+loadLanguageDictionary(Lang, byRef langdict) {
+    langfile := A_ScriptDir . "\resources\" . settingsApp["Language"] . "\" . Lang . ".dict"
+    if (!FileExist(langfile)) {
+        MsgBox, % Messages[settingsApp.Language] . langfile
+        ExitApp
+        return
+    }
+    ;StringCaseSense, On
+    Loop, read, %langfile%
+    {
+        line := A_LoopReadLine
+        if (line == "") {
+            continue
+        }
+        obj := StrSplit(line, "=")
+        value := obj[2]
+        key := obj[1]
+        langdict[key] := value
+    }
+}
+
+loadCraftListFrom(byRef langdict) {
+    for k, v in langdict {
+        CraftList.push(k)
+    }
+    for k, v in langdict {
+        CraftList.push(v)
+    }
+}
+
+; === Hotkey actions ===
+;ctrl+shift+g opens the gui, yo go from there
+OpenGui() { 
+    if (isLoading) {
+        MsgBox, % translate("Please wait until the program is fully loaded")
+        return
+    }
+    loadLastSession()
+    if (version != getVersion()) {
+        guicontrol, HarvestUI:Show, versionText
+        guicontrol, HarvestUI:Show, versionLink
+    }
+    showGUI()
+    OnMessage(0x200, "WM_MOUSEMOVE")
+}
+; === Button actions ===
+Up_Click() {
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    CraftTable[tempRow].count := CraftTable[tempRow].count + 1
+    updateUIRow(tempRow, "count")
+    sumTypes()
+    sumPrices()
+}
+
+Dn_Click() {
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    tempCount := CraftTable[tempRow].count
+    if (tempCount > 0) {
+        CraftTable[tempRow].count := tempCount - 1
+        updateUIRow(tempRow, "count")
+        sumTypes()
+        sumPrices()
+    }
+}
+
+ClearAll_Click() {
+    buttonHold("clearAll", "resources\" . settingsApp["Language"] . "\clear")
+    clearAll()
+    sumTypes()
+    sumPrices()
+}
+
+Count_Changed() {
+    if (!needToChangeModel) {
+        return
+    }
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    oldCount := CraftTable[tempRow].count
+    guiControlGet, newCount,, count_%tempRow%, value
+    if (oldCount == newCount) {
+        return
+    }
+    CraftTable[tempRow].count := newCount
+    sumTypes()
+    sumPrices()
+}
+
+isKorean(text) {
+    pattern := "[\x{1100}-\x{11FF}\x{302E}\x{302F}\x{3131}-\x{318E}\x{3200}-\x{321E}\x{3260}-\x{327E}\x{A960}-\x{A97C}\x{AC00}-\x{D7A3}\x{D7B0}-\x{D7C6}\x{D7CB}-\x{D7FB}\x{FFA0}-\x{FFBE}\x{FFC2}-\x{FFC7}\x{FFCA}-\x{FFCF}\x{FFD2}-\x{FFD7}\x{FFDA}-\x{FFDC}]+"
+    ;"[\x{AC00}-\x{D7A3}]+"
+    return RegExMatch(text, pattern) > 0
+}
+
+isRussian(text) {
+    pattern := "[а-яА-Я]+"
+    return RegExMatch(text, pattern) > 0
+}
+
+isEnglish(text) {
+    return false
+    ;pattern := "[a-zA-Z]+"
+    ;return RegExMatch(text, pattern) > 0
+}
+
+removeNonEnglishChars(text) {
+    return RegExReplace(text, "[^a-zA-Z0-9\.\+-_,:\*# \\]+")
+}
+
+SetTextCursorToEnd(control, caretpos) {
+    GuiControlGet, hcontrol, Hwnd, %control%
+    ;restore carret position after mark and copy
+    SendMessage, 0xB1, caretpos, caretpos,,ahk_id %hcontrol%
+}
+
+Craft_Changed() {
+    if (!needToChangeModel) {
+        return
+    }
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    oldCraft := CraftTable[tempRow].craft
+    guiControlGet, newCraft,, craft_%tempRow%, value
+    lang := settingsApp.Language
+    if (is%lang%(newCraft)) {
+        englishCraft := translateToEnglish(newCraft)
+        if (englishCraft == "") {
+            return
+        }
+        newCraft := englishCraft
+        CraftTable[tempRow].craft := newCraft
+        updateUIRow(tempRow, "craft")
+        SetTextCursorToEnd(cntrl, StrLen(newCraft))
+    }
+    if (oldCraft == newCraft) {
+        return
+    }
+    
+    CraftTable[tempRow].craft := newCraft
+    CraftTable[tempRow].Price := getPriceFor(newCraft)
+    CraftTable[tempRow].type := getTypeFor(newCraft)
+    updateUIRow(tempRow, "price")
+    updateUIRow(tempRow, "type")
+    newLvl := getLevelFor(newCraft)
+    CraftTable[tempRow].lvl := newLvl
+    updateUIRow(tempRow, "lvl")
+    if (newCraft != "" and newCraft.Length() > 15) {
+        iniWrite, %newLvl%, %LevelsPath%, Levels, %newCraft%
+    }
+    
+    sumTypes()
+    sumPrices()
+}
+
+Level_Changed() {
+    if (!needToChangeModel) {
+        return
+    }
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    oldLvl := CraftTable[tempRow].lvl
+    guiControlGet, newLvl,, lvl_%tempRow%, value
+    if (oldLvl == newLvl) {
+        return
+    }
+    newLvl := removeNonEnglishChars(newLvl)
+    CraftTable[tempRow].lvl := newLvl
+    craftName := CraftTable[tempRow].craft
+    if (craftName != "" and newCraft.Length() > 15) {
+        iniWrite, %newLvl%, %LevelsPath%, Levels, %craftName%
+    }
+}
+
+Price_Changed() {
+    if (!needToChangeModel) {
+        return
+    }
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    oldPrice := CraftTable[tempRow].price
+    guiControlGet, newPrice,, price_%tempRow%, value
+    newPrice := removeNonEnglishChars(newPrice)
+    if (oldPrice == newPrice) {
+        return
+    }
+    CraftTable[tempRow].price := newPrice
+    craftName := CraftTable[tempRow].craft
+    if (craftName != "") {
+        iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
+    }
+    sumPrices()
+}
+
+CanStream_Changed() {
+    guiControlGet, strim,,canStream, value
+    settingsApp.canStream := strim 
+}
+
+IGN_Changed() {
+    guiControlGet, lastIGN,,IGN, value
+    settingsApp.nick := lastIGN
+}
+
+CustomText_Changed() {
+    guiControlGet, cust,,customText, value
+    settingsApp.customText := cust
+    GuiControl,HarvestUI:, customText_cb, 1
+}
+
+CustomTextCB_Changed() {
+    guiControlGet, custCB,,customText_cb, value
+    settingsApp.customTextCB := custCB
+}
+
+ClearRow_Click() {
+    GuiControlGet, cntrl, name, %A_GuiControl%
+    tempRow := getRow(cntrl)
+    if GetKeyState("Shift") {
+        row := CraftTable[tempRow]
+        league := settingsApp.selectedLeague
+        fileLine := A_YYYY . "-" . A_MM . "-" . A_DD . ";" . A_Hour . ":" . A_Min . ";" . league . ";" . row.craft . ";" . row.price . "`r`n"
+
+        FileAppend, %fileLine%, %LogPath%
+        if (row.count > 1) {
+            CraftTable[tempRow].count := row.count - 1
+        } else {
+            clearRowData(tempRow)
+            ;sortCraftTable()
+        }
+    } else {
+        clearRowData(tempRow)
+        ;sortCraftTable()
+    }
+    updateUIRow(tempRow)
+    sumTypes()
+    sumPrices()
+}
+
+updatePrices() {
+    for k, row in CraftTable {
+        craftInGui := row.craft
+        if (row.craft == "") {
+            continue
+        }
+        oldPrice := row.price
+        iniRead, newPrice, %PricesPath%, Prices, % row.craft
+        if (newPrice == "ERROR" or newPrice == oldPrice) {
+            continue
+        }
+        CraftTable[k].price := newPrice
+        updateUIRow(k, "price")
+    }
+    sumPrices()
+}
+
+GithubPriceUpdate_Click() {
+    MsgBox, 4, , % translate("This will update all local prices with TFT discord prices(Only those which are high confidence, if there is no high confidence price for certain Harvest, they will be kept as it is in local file.), are you sure you want to continue?")
+    IfMsgBox, Yes
+    {
+        leagueCheck := settingsApp.selectedLeague
+        ToolTip, Updating for %leagueCheck%
+        sleep, 1000
+        Tooltip
+        mapLeagues := {"Standard": "std", "SC": "lsc", "Hardcore": "lhc"}
+        url := "https://raw.githubusercontent.com/The-Forbidden-Trove/tft-data-prices/master/{league}/harvest.json"
+        for league in mapLeagues {
+            if InStr(leagueCheck, league) {
+                url := StrReplace(url, "{league}", mapLeagues[league])
+                UrlDownloadToFile, %url%, %tftPrices%
+                break
+            }
+        }
+        if (!FileExist(tftPrices)) {
+            ToolTip, % translate("Prices NOT Updated")
+            sleep, 1000
+            Tooltip
+            return
+        }
+        FileRead, tftData, %tftPrices%
+        parsed := JSON.Load(tftData)
+        for k, v in parsed.data {
+            lowConfidence := v.lowConfidence
+            if (lowConfidence) {
+                continue
+            }
+            exalt := v.exalt
+            craftName := v.name
+            iniRead, CheckLocalPrice, %PricesPath%, Prices, %craftName%
+            if (exalt >= 1) {
+                template := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
+                type := "ex"
+                craftPrice := exalt
+            } else {
+                template := "Oi)^(\d+) *(c|chaos)$"
+                craftPrice := v.chaos
+                type := "c"
+            }
+            if (RegExMatch(CheckLocalPrice, template, matchObj) > 0) {
+                CheckLocalPrice := matchObj[1]
+            }
+            if (CheckLocalPrice != craftPrice) {
+                craftPrice .= type
+                iniWrite, %craftPrice%, %PricesPath%, Prices, %craftName%
+            }
+        }
+        FileDelete, %tftPrices%
+        updatePrices()
+        ToolTip, % translate("Prices Updated")
+        sleep, 1000
+        Tooltip
+        return
+    }
+    ToolTip, % translate("Prices NOT Updated")
+    sleep, 1000
+    Tooltip
+}
+
+createPost_Click() {
+    buttonHold("postAll", "resources\" . settingsApp["Language"] . "\createPost")
+    createPost("All")
+}
+
+League_Changed() {
+    guiControlGet, selectedLeague,,League, value
+    settingsApp.selectedLeague := selectedLeague
+}
+
+AlwaysOnTop_Changed() {
+    guiControlGet, onTop,,alwaysOnTop, value
+    settingsApp.alwaysOnTop := onTop
+    setWindowState(settingsApp.alwaysOnTop)
+}
+
+;====================================================
+Settings_Click() { 
+    buttonHold("settings", "resources\" . settingsApp["Language"] . "\settings")
+    hotkey, % settingsApp["GuiKey"], off
+    ShowSettingsUI()
+}
+; === Settings UI ===================================
+ShowSettingsUI() {
+    static OpenSettingsFolder
+    static mf_Groupbox
+    static lastText1
+    static lang_Groupbox
+    static lastText2
+    width := 400
+    gui Settings:new,, % "PoE-HarvestVendor -" . translate("Settings")
+    gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
+        Gui, add, text, xs+5 yp+20, % translate("Output message style:")
+        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle gOutStyle_Changed, 1|2
+        guicontrol, choose, outStyle, % settingsApp.outStyle
+        widthT := width - 20
+        Gui, add, text, xs+15 y+5 w%widthT%, % "1 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
+        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
+    ;calculate a new height for Groupbox
+    guiControlGet, mf_Groupbox, Settings:Pos
+    guiControlGet, lastText1, Settings:Pos
+    newheight := (lastText1Y + lastText1H) - mf_GroupboxY + 5
+    guiControl, Settings:Move, mf_Groupbox, H%newheight%
+    
+    gui, add, Groupbox, x5 y+10 w%width% Section vlang_Groupbox, % translate("Localization")
+        Gui, add, text, xs+5 yp+20, % translate("Language:")
+        Gui, add, dropdownList, x+10 yp+0 w80 vlangDDL glangDDL_Changed, English|Korean|Russian
+        guicontrol, choose, langDDL, % settingsApp.Language
+        Gui, add, text, xs+15 y+5 w%widthT% vlastText2 , % translate("Need to restart the program for using a new language!")
+    ;calculate a new height for Groupbox
+    guiControlGet, lang_Groupbox, Settings:Pos
+    guiControlGet, lastText2, Settings:Pos
+    newheight := (lastText2Y + lastText2H) - lang_GroupboxY + 5
+    guiControl, Settings:Move, lang_Groupbox, H%newheight%
+    
+    gui, add, groupbox, x5 y+10 w%width% R4.3, % translate("Hotkeys")       
+        Gui, add, text, xp+5 yp+20, % translate("Open Harvest vendor:") 
+        gui,add, hotkey, x+10 yp+0 Section vGuiKeyHotkey, % settingsApp.GuiKey
+
+    ;width := width - 10
+    gui, add, button, x5 y+10 h30 w%width% gOpenSettingsFolder_Click vOpenSettingsFolder, % translate("Open Settings Folder")
+    gui, add, button, xp+0 y+5 hp+0 wp+0 gSettingsOK_Click, % translate("Save")
+    gui, Settings:Show ;, w410 h370
+    return
+    
+    SettingsGuiClose:
+        hotkey, % settingsApp["GuiKey"], on
+        Gui, Settings:Destroy
+        Gui, HarvestUI:Default
+    return
+}
+
+OpenSettingsFolder_Click() {
+    explorerpath := "explorer " . RoamingDir
+    Run, %explorerpath%
+}
+
+OutStyle_Changed() {
+    guiControlGet, os,,outStyle, value
+    settingsApp.outStyle := os
+}
+
+langDDL_Changed() {
+    guiControlGet, lang,, langDDL, value
+    settingsApp.Language := LanguageReverseList[lang]
+}
+
+SettingsOK_Click() {
+    guiControlGet, gk,, GuiKeyHotkey, value
+
+    if (settingsApp.GuiKey != gk and gk != "ERROR" and gk != "") {
+        hotkey, % settingsApp["GuiKey"], off
+        settingsApp.GuiKey := gk
+        hotkey, % settingsApp["GuiKey"], OpenGui
+    } 
+    if (gk != "ERROR" and gk != "") {
+        hotkey, %gk%, on
+    } else {
+        hotkey, % settingsApp["GuiKey"], on
+    }
+
+    Gui, Settings:Destroy
+    Gui, HarvestUI:Default
+}
+;====================================================
+initSettings() {
+    iniRead, Language,  %SettingsPath%, Other, Language
+    if (Language == "ERROR" or Language == "" 
+        or !LanguageList.HasKey(Language)) {
+        Language := "English"
+    }
+    settingsApp.Language := Language
+    if (settingsApp.Language != "English") {
+        loadLanguageDictionary(settingsApp.Language, LanguageDictionary)
+    }
+    loadLanguageDictionary(settingsApp.Language . "_English", EnglishDictionary)
+    loadCraftListFrom(EnglishDictionary)
+    
+    iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
+    if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == ""
+        or MaxRowsCraftTable < 20 or MaxRowsCraftTable > 40) {
+        MaxRowsCraftTable := 20
+    }
+    settingsApp.MaxRowsCraftTable := MaxRowsCraftTable
+    loop, % settingsApp.MaxRowsCraftTable {
+        CraftTable.push({"count": 0, "craft": "", "price": ""
+            , "lvl": "", "type": ""})
+    }
+
+    iniRead, seenInstructions,  %SettingsPath%, Other, seenInstructions
+    if (seenInstructions == "ERROR" or seenInstructions == "") {
+        seenInstructions := 0
+        IniWrite, % seenInstructions, %SettingsPath%, Other, seenInstructions
+    }
+    settingsApp.seenInstructions := seenInstructions
+
+    IniRead, GuiKey, %SettingsPath%, Other, GuiKey
+    checkNoValidChars := RegExMatch(GuiKey, "[^a-zA-Z\+\^!]+") > 0
+    if (GuiKey == "ERROR" or GuiKey == "" or checkNoValidChars) {
+        GuiKey := "^+g"
+        if (checkNoValidChars) {
+            msgBox, % translate("Open GUI hotkey was set to a non latin letter or number, it was reset to ctrl+shift+g")
+        }
+    }
+    settingsApp.GuiKey := GuiKey
+    hotkey, % settingsApp["GuiKey"], OpenGui
+
+    IniRead, outStyle, %SettingsPath%, Other, outStyle
+    if (outStyle == "ERROR") {
+        outStyle := 1
+    }
+    settingsApp.outStyle := outStyle
+    
+    iniRead tempOnTop, %SettingsPath%, Other, alwaysOnTop
+    if (tempOnTop == "ERROR") { 
+        tempOnTop := 0 
+    }
+    settingsApp.alwaysOnTop := tempOnTop
+    
+    IniRead, NewX, %SettingsPath%, window position, gui_position_x
+    IniRead, NewY, %SettingsPath%, window position, gui_position_y
+    if (NewX == "ERROR" or NewY == "ERROR")
+        or (NewX == -32000 or NewY == -32000) {
+         NewX := 0
+         NewY := 0
+    }
+    settingsApp.gui_position_x := NewX
+    settingsApp.gui_position_y := NewY
+    
+    iniRead tempStream, %SettingsPath%, Other, canStream
+    if (tempStream == "ERROR") { 
+        tempStream := 0 
+    }
+    settingsApp.canStream := tempStream
+    
+    IniRead, name, %SettingsPath%, IGN, n
+    if (name == "ERROR") {
+        name := ""
+    }
+    settingsApp.nick := name
+    
+    iniRead tempCustomTextCB, %SettingsPath%, Other, customTextCB
+    if (tempCustomTextCB == "ERROR") { 
+        tempCustomTextCB := 0 
+    }
+    settingsApp.customTextCB := tempCustomTextCB
+    
+    iniRead tempCustomText, %SettingsPath%, Other, customText
+    if (tempCustomText == "ERROR") { 
+        tempCustomText := "" 
+    }
+    settingsApp.customText := StrReplace(tempCustomText, "||", "`n") ;support multilines in custom text
+    iniRead, selectedLeague, %SettingsPath%, selectedLeague, s
+    if (selectedLeague == "ERROR") {
+        selectedLeague := ""
+    }
+    settingsApp.selectedLeague := selectedLeague
+}
+
+saveSettings() {
+    if (sessionLoading or isLoading) {
+        return
+    }
+    IniWrite, % settingsApp.Language, %SettingsPath%, Other, Language
+    IniWrite, % settingsApp.seenInstructions, %SettingsPath%, Other, seenInstructions 
+    iniWrite, % settingsApp.canStream, %SettingsPath%, Other, canStream
+    cust := StrReplace(settingsApp.customText, "`n", "||") ;support multilines in custom text
+    iniWrite, %cust%, %SettingsPath%, Other, customText
+    iniWrite, % settingsApp.customTextCB, %SettingsPath%, Other, CustomTextCB
+    iniWrite, % settingsApp.selectedLeague, %SettingsPath%, selectedLeague, s
+    iniWrite, % settingsApp.alwaysOnTop, %SettingsPath%, Other, alwaysOnTop
+    iniWrite, % settingsApp.outStyle, %SettingsPath%, Other, outStyle
+    iniWrite, % settingsApp.nick, %SettingsPath%, IGN, n
+
+    IniWrite, % settingsApp.gui_position_x, %SettingsPath%, window position, gui_position_x
+    IniWrite, % settingsApp.gui_position_y, %SettingsPath%, window position, gui_position_y
+    
+    IniWrite, % settingsApp.GuiKey, %SettingsPath%, Other, GuiKey
+    
+    rememberSession()
+}
 
 ExitFunc(ExitReason, ExitCode) {
     for k, v in IAutoComplete_Crafts {
         v.Disable()
         IAutoComplete_Crafts[k] := ""
     }
-    rememberSession()
     saveWindowPosition()
+    saveSettings()
     return 0
 }
 
@@ -144,9 +674,8 @@ saveWindowPosition() {
     if WinExist(winTitle) {
         ;save window position
         WinGetPosPlus(winTitle, gui_x, gui_y)
-        ;WinGetPos, gui_x, gui_y,,, %WinTitle%
-        IniWrite, %gui_x%, %SettingsPath%, window position, gui_position_x
-        IniWrite, %gui_y%, %SettingsPath%, window position, gui_position_y
+        settingsApp.gui_position_x := gui_x
+        settingsApp.gui_position_y := gui_y
     }
     DetectHiddenWindows, Off
 }
@@ -154,44 +683,20 @@ saveWindowPosition() {
 showGUI() {
     if (firstGuiOpen) {
         firstGuiOpen := False
-        IniRead, NewX, %SettingsPath%, window position, gui_position_x
-        IniRead, NewY, %SettingsPath%, window position, gui_position_y
-        if (NewX == "ERROR" or NewY == "ERROR")
-            or (NewX == -32000 or NewY == -32000) {
-             Gui, HarvestUI:Show
-             return
-        } else {
-            DetectHiddenWindows, On
-            Gui, HarvestUI:Show, Hide
-            WinTitle := "PoE-HarvestVendor v" . version
-            WinMove, %WinTitle%,, %NewX%, %NewY%
-            DetectHiddenWindows, Off
-        }
-        loadLastSession()
+        NewX := settingsApp.gui_position_x
+        NewY := settingsApp.gui_position_y
+        DetectHiddenWindows, On
+        Gui, HarvestUI:Show, Hide
+        WinTitle := "PoE-HarvestVendor v" . version
+        WinMove, %WinTitle%,, %NewX%, %NewY%
+        DetectHiddenWindows, Off
     } 
     Gui, HarvestUI:Show
 }
 
-OpenGui: ;ctrl+shift+g opens the gui, yo go from there
-    if (isLoading) {
-        MsgBox, Please wait until the program is fully loaded
-        return
-    }
-    if (version != getVersion()) {
-        guicontrol, HarvestUI:Show, versionText
-        guicontrol, HarvestUI:Show, versionLink
-    }
-    showGUI()
-    OnMessage(0x200, "WM_MOUSEMOVE")
-    
-Return
-
-HarvestUIGuiEscape:
-HarvestUIGuiClose:
-    ;rememberSession()
-    saveWindowPosition()
+hideGUI() {
     Gui, HarvestUI:Hide
-return
+}
 
 newGUI() {
     Global
@@ -199,442 +704,226 @@ newGUI() {
     ;Gui -DPIScale      ;this will turn off scaling on big screens, which is nice for keeping layout but doesn't solve the font size, and fact that it would be tiny on big screens
     Gui, Color, 0x0d0d0d, 0x1A1B1B
     gui, Font, s11 cFFC555
-
-    xColumn1 := 10
-    xColumn2 := xColumn1 + 65
-    xColumn3 := xColumn2 + 33 + 5
-    xColumn4 := xColumn3 + 300 + 5
-    xColumn5 := xColumn4 + 25 + 5
-    xColumn6 := xColumn5 + 50 + 5
-    xColumn7 := xColumn6 + 15 + 5
-    xcolumn8 := xColumn7 + 111 + 5
-
-    xColumnUpDn := xColumn2 + 23
-
-    xEditOffset2 := xColumn2 + 1
-    xEditOffset3 := xColumn3 + 3
-    xEditOffset4 := xColumn4 + 1
-    xEditOffset5 := xColumn5 + 1
-    xEditOffset6 := xColumn6 + 1
-    xEditOffset7 := xColumn7 + 1
-    row := 90
-
 ; === Title and icon ===
     title_icon := getImgWidth(A_ScriptDir . "\resources\Vivid_Scalefruit_inventory_icon.png")
-    gui add, picture, x10 y10 w%title_icon% h-1, resources\Vivid_Scalefruit_inventory_icon.png
+    gui add, picture, x10 y10 w%title_icon% h-1 vVivid_Scalefruit, resources\Vivid_Scalefruit_inventory_icon.png
     title := getImgWidth(A_ScriptDir . "\resources\title.png")
-    gui add, picture, x%xColumn3% y10 w%title% h-1, resources\title.png
-    gui add, text, x380 y15, v%version%
-; ======================
-; === Text stuff ===
-gui, Font, s11 cA38D6D
-        gui add, text, x%xColumn3% y40 w70 vValue +BackgroundTrans, You have: 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+70 y40 w40 right +BackgroundTrans vsumEx, 0
-        gui, Font, s11 cA38D6D
-        gui add, text, xp+42 y40 w20 +BackgroundTrans, ex 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+20 y40 w40 right +BackgroundTrans vsumChaos, 0
-        gui, Font, s11 cA38D6D
-        gui add, text, xp+42 y40 +BackgroundTrans, c 
-
-        gui add, text, x412 y40 w80 vcrafts +BackgroundTrans, Total Crafts:     
-        gui, Font, s11 cFFC555
-        gui add, text, xp+80 y40 w30 vCraftsSum, 0
-        gui, Font, s11 cA38D6D
-
-        gui add, text, x%xColumn3% y64 w40 +BackgroundTrans, Augs:  
-        gui, Font, s11 cFFC555
-        gui add, text, xp+40 y64 w50 +BackgroundTrans vAcount,0
-        gui, Font, s11 cA38D6D
-
-        gui add, text, xp+50 y64 w45 +BackgroundTrans, Rems: 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+45 y64 w50 +BackgroundTrans vRcount,0
-        gui, Font, s11 cA38D6D
-        gui add, text, xp+50 y64 w75 +BackgroundTrans, Rem/Adds: 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+75 y64 w50 +BackgroundTrans vRAcount,0
-        gui, Font, s11 cA38D6D
-        gui add, text, xp+50 y64 w40 +BackgroundTrans, Other: 
-        gui, Font, s11 cFFC555
-        gui add, text, xp+40 y64 w50 +BackgroundTrans vOcount,0
-        gui, Font, s11 cA38D6D
-; ==================
+    gui add, picture, x+5 yp+0 w%title% h-1 Section, resources\title.png
+    gui add, text, x+5 yp+2, v%version%
+    
     gui Font, s12
-        gui add, text, x460 y10 cGreen vversionText, ! New Version Available !
-    ;gui, Font, s11 cFFC555
-        gui add, Link, x550 y30 vversionLink c0x0d0d0d, <a href="http://github.com/Stregon/PoE-HarvestVendor/releases/latest">Github Link</a>
+    gui add, text, x+10 yp+0 cGreen vversionText Right, % translate("! New Version Available !")
+;gui, Font, s11 cFFC555
+    gui add, Link, xp+0 yp+20 vversionLink c0x0d0d0d Right, <a href="http://github.com/Stregon/PoE-HarvestVendor/releases/latest">Github Link</a>
         
     GuiControl, Hide, versionText
     GuiControl, Hide, versionLink
-     gui Font, s11
-; === Right side ===
-   ;y math: row + (23*rowNum)
     
-    gui add, checkbox, x%xColumn7% y90 valwaysOnTop gAlwaysOnTop, Always on top
-        iniRead tempOnTop, %SettingsPath%, Other, alwaysOnTop
-        if (tempOnTop == "ERROR") { 
-            tempOnTop := 0 
-        }
-    guicontrol,,alwaysOnTop, %tempOnTop%
-    setWindowState(tempOnTop)
-    
-    clear := getImgWidth(A_ScriptDir . "\resources\clear.png")
-    gui add, picture, x%xColumn7% y120 w%clear% h-1 gClear_All vclearAll, resources\clear.png
-    settings := getImgWidth(A_ScriptDir . "\resources\settings.png")
-    gui add, picture, x%xColumn7% y150 w%settings% h-1 gSettings vsettings, resources\settings.png
+    GuiControlGet, Vivid_Scalefruit, HarvestUI:Pos
+    header_Y := Vivid_ScalefruitY + Vivid_ScalefruitH + 5
+    Header_X := Vivid_ScalefruitX
+    borderRight_width := 1
+    borderLeft_width := 1
+    border_width := borderLeft_width + borderRight_width
+    borderTop_height := 1
+    borderBottom_height := 1
+    border_height := borderTop_height + borderBottom_height
+    Row_height := 18 + borderTop_height + borderBottom_height ; 18
+    Type_width := Vivid_ScalefruitW ;60
+    Craft_width := 300 + border_width ; 296
+    Count_width := 36 + border_width
+    Level_width := 44 + border_width
+    Price_width := 44 + border_width 
+; ======================
+; === Text stuff ===
+value_width := 50
+gui, Font, s11 cA38D6D
+        gui add, text, xs yp+5 vValue +BackgroundTrans, % translate("You have:") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumEx, 0
+        gui, Font, s11 cA38D6D
+        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumChaos, 0
+        gui, Font, s11 cA38D6D
+        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c") 
 
+        gui add, text, x+40 yp+0 vcrafts +BackgroundTrans, % translate("Total Crafts:")     
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% vCraftsSum, 0
+        gui, Font, s11 cA38D6D
+
+        gui add, text, xs y+5 +BackgroundTrans, % translate("Augs:")  
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vAcount,0
+        gui, Font, s11 cA38D6D
+
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Reforges:") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vRefcount,0
+        gui, Font, s11 cA38D6D
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Rem/Adds:") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vRAcount,0
+        gui, Font, s11 cA38D6D
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Other:") 
+        gui, Font, s11 cFFC555
+        gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vOcount,0
+        gui, Font, s11 cA38D6D
+; ==================
+; === table headers ===
+    offsetColumn := 4
+    offsetFirstColumn := 4 
+    offsetColumn_Craft := offsetColumn + border_width
+    
+    offsetNRow := offsetColumn + borderTop_height
+    offsetFirstRow := 0
+    offsetRow := offsetFirst
+    gui add, text, x%Header_X% y%header_Y% w%Type_width% h%Row_height% +Right, % translate("Type")
+    gui add, text, x+%offsetFirstColumn% yp+0 w%Count_width% h%Row_height% +Center, % translate("#")
+    gui add, text, x+%offsetFirstColumn% yp+0 w%Craft_width% h%Row_height% +Center, % translate("Crafts")
+    gui add, text, x+%offsetFirstColumn% yp+0 w%Level_width% h%Row_height% +Center, % translate("LvL")
+    gui add, text, x+%offsetFirstColumn% yp+0 w%Price_width% h%Row_height% +Center, % translate("Price")
+
+; === table ===
+    del_ := getImgWidth(A_ScriptDir . "\resources\del.png")
+    up_pic_width := getImgWidth(A_ScriptDir . "\resources\up.png")
+    dn_pic_width := up_pic_width
+    dp_pic_height := 9
+    dp_pic_relX := Row_height - dp_pic_height
+    
+    loop, % settingsApp.MaxRowsCraftTable {
+        if (A_Index != 1) {
+            offsetRow := offsetNRow + borderTop_height
+        }
+        gui, Font, s11 cA38D6D
+            gui add, text, x%Header_X% y+%offsetRow% vtype_%A_Index% w%Type_width% h%Row_height% Right,
+        gui, Font, s11 cFFC555
+        
+        gui add, picture, x+%offsetColumn% yp+0 w%Count_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" count_pic
+            Gui Add, Edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% vcount_%A_Index% gCount_Changed -E0x200 +BackgroundTrans Center
+                Gui Add, UpDown, Range0-20 hp+0 vupDown_%A_Index%, 0
+                GuiControlGet, upDown_%A_Index%, HarvestUI:Pos
+                guicontrol, hide, upDown_%A_Index%
+                upDown_W := upDown_%A_Index%W
+                upDown_X := upDown_%A_Index%X + (upDown_W - up_pic_width - border_width)
+            gui add, picture, x%upDown_X% yp+0 w%up_pic_width% gUp_Click vUp_%A_Index%, % "HBITMAP:*" up_pic
+            gui add, picture, xp+0 yp+%dp_pic_relX% wp+0 hp+0 gDn_Click vDn_%A_Index%, % "HBITMAP:*" dn_pic
+        
+        gui add, picture, x+%offsetColumn_Craft% ys+0 w%Craft_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" craft_pic
+            gui add, edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% -E0x200 +BackgroundTrans vcraft_%A_Index% gCraft_Changed HwndhCraft_%A_Index%
+            ia_craft := IAutoComplete_Create(hCraft_%A_Index%, CraftList
+                , ["UPDOWNKEYDROPSLIST", "AUTOSUGGEST", "WORD_FILTER"], True)
+            IAutoComplete_Crafts.push(ia_craft) ;, "AUTOSUGGEST" "WORD_FILTER"
+
+        gui add, picture, x+%offsetColumn% ys+0 w%Level_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" lvl_pic
+            gui add, edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% -E0x200 +BackgroundTrans Center vlvl_%A_Index% gLevel_Changed
+
+        gui add, picture, x+%offsetColumn% ys+0 w%Price_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" price_pic
+            gui add, edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% -E0x200 +BackgroundTrans Center vprice_%A_Index% gPrice_Changed
+
+        gui add, picture, x+%offsetColumn% ys+0  w-1 hp+0 vdel_%A_Index% gClearRow_Click AltSubmit , % "HBITMAP:*" del_pic ;resources\del.png 
+    }
+; === Right side ===
+    GuiControlGet, del_1, HarvestUI:Pos
+    RightSide_X := del_1X + del_1W + 10
+    leagueDDL_width := 113 + 2
+    offsetForbuttons := 4
+    gui Font, s11
+    gui add, checkbox, x%RightSide_X% y%header_Y% valwaysOnTop gAlwaysOnTop_Changed, % translate("Always on top")
+    guicontrol,,alwaysOnTop, % settingsApp.alwaysOnTop
+    setWindowState(settingsApp.alwaysOnTop)
+    
+     ; addCrafts_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\addCrafts.png")
+    ; gui add, picture, xp+0 y+%offsetForbuttons% w%addCrafts_% h-1 gAddCrafts_Click vaddCrafts, % "resources\" . settingsApp["Language"] . "\addCrafts.png"
+    ; lastArea_ := getImgWidth(A_ScriptDir . "\resources\lastArea.png")
+    ; gui add, picture, xp+0 y+%offsetForbuttons% w%lastArea_% h-1 gLastArea_Click vrescanButton, resources\lastArea.png
+    clear_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\clear.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%clear_% h-1 gClearAll_Click vclearAll, % "resources\" . settingsApp["Language"] . "\clear.png"
+    settings_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\settings.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%settings_% h-1 gSettings_Click vsettings, % "resources\" settingsApp["Language"] "\settings.png"
+    ;help_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\help.png")
+    ;gui add, picture, xp+0 y+%offsetForbuttons% w%help_% h-1 gHelp_Click vhelp, % "resources\" settingsApp["Language"] "\help.png"
+    githubpriceupdate_ := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\UpdatePrices.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%githubpriceupdate_% h-1 gGithubPriceUpdate_Click vgithubpriceupdate, % "resources\" . settingsApp["Language"] . "\UpdatePrices.png"
     ; === Post buttons ===
-    createPost := getImgWidth(A_ScriptDir . "\resources\createPost.png")
-    gui add, picture, x%xColumn7% y251 w%createPost% h-1 vpostAll gPost_all, resources\createPost.png
+    createPost := getImgWidth(A_ScriptDir . "\resources\" . settingsApp["Language"] . "\createPost.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%createPost% h-1 vpostAll gcreatePost_Click, % "resources\" . settingsApp["Language"] . "\createPost.png"
 
     ; === League dropdown ===
-    gui add, text, x%xColumn7% y370, League:
-    gui add, dropdownList, x%xColumn7% y389 w115 -E0x200 +BackgroundTrans vleague gLeague_dropdown
-        leagueList()
+    leagueString := getLeagueList()
+    gui add, text, xp+0 y+10, % translate("League:")
+    gui add, dropdownList, xp+0 y+%offsetForbuttons% w%leagueDDL_width% -E0x200 +BackgroundTrans vleague gLeague_Changed, % leagueString
+    guicontrol, choose, league, % settingsApp.selectedLeague
 
     ; === can stream ===
-    iniRead tempStream, %SettingsPath%, Other, canStream
-    if (tempStream == "ERROR") { 
-        tempStream := 0 
-    }
-    gui add, checkbox, x%xColumn7% y419 vcanStream gCan_stream, Can stream
-    guicontrol,,canStream, %tempStream%
+    gui add, checkbox, xp+0 y+%offsetForbuttons% vcanStream gCanStream_Changed, % translate("Can stream")
+    guicontrol,,canStream, % settingsApp.canStream
 
     ; === IGN ===
-    IniRead, name, %SettingsPath%, IGN, n
-    if (name == "ERROR") {
-        name := ""
-    }
-    gui add, text, x%xColumn7% y440, IGN: 
-        ign := getImgWidth(A_ScriptDir . "\resources\ign.png")
-        gui add, picture, x%xColumn7% y458 w%ign% h-1, resources\ign.png
+    ign_width := 113 + 2
+    ign_height := 18 + 2
+    gui add, text, xp+0 y+%offsetForbuttons%, % translate("IGN:") 
+        ;ign := getImgWidth(A_ScriptDir . "\resources\ign.png")
+        gui add, picture, xp+0 y+%offsetForbuttons% w%ign_width% h%ign_height%, resources\ign.png
         gui, Font, s11 cA38D6D
-            Gui Add, Edit, x%xEditOffset7% y459 w113 h18 -E0x200 +BackgroundTrans vign gIGN, %name%
+            Gui Add, Edit, xp+1 yp+1 wp-2 hp-2 -E0x200 +BackgroundTrans vign gIGN_Changed, % settingsApp.nick
         gui, Font, s11 cFFC555
 
     ; === custom text checkbox ===
-    iniRead tempCustomTextCB, %SettingsPath%, Other, customTextCB
-    if (tempCustomTextCB == "ERROR") { 
-        tempCustomTextCB := 0 
-    }
-    gui add, checkbox, x%xColumn7% y485 vcustomText_cb gCustom_text_cb, Custom Text: 
-        guicontrol,,customText_cb, %tempCustomTextCB%
+    gui add, checkbox, xp-1 y+%offsetForbuttons% vcustomText_cb gCustomTextCB_Changed, % translate("Custom Text:")
+        guicontrol,,customText_cb, % settingsApp.customTextCB
     ; ============================
     ; === custom text input ===
-        text := getImgWidth(A_ScriptDir . "\resources\text.png")
-        gui add, picture,  x%xColumn7% y504 w%text% h-1, resources\text.png
-        iniRead tempCustomText, %SettingsPath%, Other, customText
-        if (tempCustomText == "ERROR") { 
-            tempCustomText := "" 
-        }
-        tempCustomText := StrReplace(tempCustomText, "||", "`n") ;support multilines in custom text
-        gui, Font, s11 cA38D6D
-            Gui Add, Edit, x%xEditOffset7% y505 w113 h65 -E0x200 +BackgroundTrans vcustomText gCustom_text -VScroll, %tempCustomText%
-        gui, Font, s11 cFFC555
+    customText_width := 113  + 2
+    customText_height := 65 + 2
+    ;text := getImgWidth(A_ScriptDir . "\resources\text.png")
+    gui add, picture,  xp+0 y+%offsetForbuttons% w%customText_width% h%customText_height%, resources\text.png
+    gui, Font, s11 cA38D6D
+        Gui Add, Edit, xp+1 yp+1 wp-2 hp-2 -E0x200 +BackgroundTrans vcustomText gCustomText_Changed -VScroll, % settingsApp.customText
+    gui, Font, s11 cFFC555
     ; ============================
-    ;gui add, picture, x%xColumn7% y366, resources\leagueHeader.png
+    GuiControlGet, postAll, HarvestUI:Pos
+    GuiControlGet, versionLink, HarvestUI:Pos
+    newX_versionLink := (postAllX + postAllW) - versionLinkW
+    GuiControl, Move, versionLink, x%newX_versionLink%
+    GuiControlGet, versionText, HarvestUI:Pos
+    newX_versionText := (postAllX + postAllW) - versionTextW 
+    GuiControl, Move, versionText, x%newX_versionText%
 ; ===============================================================================
-    
-; === table headers ===
-    gui add, text, x%xColumn1% y%row% w60 +Right, Type
-    count_beautyOffset := xColumn2 + 5
-    gui add, text, x%count_beautyOffset% y%row%, #
-    gui add, text, x%xColumn3% y%row%, Crafts
-    gui add, text, x%xColumn4% y%row%, LvL
-    gui add, text, x%xColumn5% y%row%, Price
-
-; === table ===
-    count_ := getImgWidth(A_ScriptDir . "\resources\count.png")
-    craft_ := getImgWidth(A_ScriptDir . "\resources\craft.png")
-    lvl_ := getImgWidth(A_ScriptDir . "\resources\lvl.png")  
-    price_ := getImgWidth(A_ScriptDir . "\resources\price.png")
-    del_ := getImgWidth(A_ScriptDir . "\resources\del.png")
-    loop, %MaxRowsCraftTable% {
-        row2 := row + 23 * A_Index
-        row2p := row2 + 1
-        row2dn := row2 + 10
-        row2del := row2 + 5
-        ;gui add, picture, x%xColumn1% y%row2%, resources\type.png
-        gui, Font, s11 cA38D6D
-            gui add, text, x%xColumn1% y%row2% vtype_%A_Index% gType w60 Right,
-        gui, Font, s11 cFFC555
-        
-        gui add, picture, x%xColumn2% y%row2% w%count_% h-1 AltSubmit , % "HBITMAP:*" count_pic ;resources\count.png
-            Gui Add, Edit, x%xEditOffset2% y%row2p% w35 h18 vcount_%A_Index% gCount -E0x200 +BackgroundTrans Center
-                Gui Add, UpDown, Range0-20 vupDown_%A_Index%, 0
-                guicontrol, hide, upDown_%A_Index%
-            gui add, picture, x%xColumnUpDn% y%row2p% gUp vUp_%A_Index%, % "HBITMAP:*" up_pic
-            gui add, picture, x%xColumnUpDn% y%row2dn% gDn vDn_%A_Index%, % "HBITMAP:*" dn_pic
-
-        gui add, picture, x%xColumn3% y%row2% w%craft_% h-1 AltSubmit , % "HBITMAP:*" craft_pic ;resources\craft.png
-            gui add, edit, x%xEditOffset3% y%row2p% w295 h18 -E0x200 +BackgroundTrans vcraft_%A_Index% gcraft HwndhCraft_%A_Index%
-            ia_craft := IAutoComplete_Create(hCraft_%A_Index%, CraftList
-                , ["WORD_FILTER", "AUTOSUGGEST"], True)
-            IAutoComplete_Crafts.push(ia_craft)
-
-        gui add, picture, x%xColumn4% y%row2% w%lvl_% h-1 AltSubmit , % "HBITMAP:*" lvl_pic ;resources\lvl.png
-            gui add, edit, x%xEditOffset4% y%row2p% w23 h18 -E0x200 +BackgroundTrans Center vlvl_%A_Index% glvl
-
-        gui add, picture, x%xColumn5% y%row2% w%price_% h-1 AltSubmit , % "HBITMAP:*" price_pic ; resources\price.png
-            gui add, edit, x%xEditOffset5% y%row2p% w44 h18 -E0x200 +BackgroundTrans Center vprice_%A_Index% gPrice
-
-        gui add, picture, x%xColumn6% y%row2del% w%del_% h-1 vdel_%A_Index% gclearRow AltSubmit , % "HBITMAP:*" del_pic ;resources\del.png 
-    }
     gui, font    
-    gui temp:hide
-}
-
-
-; === Button actions ===
-Up:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    CraftTable[tempRow].count := CraftTable[tempRow].count + 1
-    updateUIRow(tempRow, "count")
-    sumTypes()
-    sumPrices()
-return
-
-Dn:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    tempCount := CraftTable[tempRow].count
-    if (tempCount > 0) {
-        CraftTable[tempRow].count := tempCount - 1
-        updateUIRow(tempRow, "count")
-        sumTypes()
-        sumPrices()
-    }
-return
-
-Clear_all:
-    buttonHold("clearAll", "resources\clear")
-    clearAll()
-    sumTypes()
-    sumPrices()
-return
-
-Count:
-    oldCount := CraftTable[tempRow].count
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, newCount,, count_%tempRow%, value
-    if (oldCount == newCount) {
-        return
-    }
-    if (needToChangeModel) {
-        CraftTable[tempRow].count := newCount
-        sumTypes()
-        sumPrices()
-    }
-return
-
-craft:
-    oldCraft := CraftTable[tempRow].craft
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, newCraft,, craft_%tempRow%, value
-    if (oldCraft == newCraft) {
-        return
-    }
-    if (needToChangeModel) {
-        CraftTable[tempRow].craft := newCraft
-        CraftTable[tempRow].Price := getPriceFor(newCraft)
-        updateUIRow(tempRow, "price")
-        CraftTable[tempRow].type := getTypeFor(newCraft)
-        updateUIRow(tempRow, "type")
-        newLvl := getLevelFor(newCraft)
-        CraftTable[tempRow].lvl := newLvl
-        updateUIRow(tempRow, "lvl")
-        if (newCraft != "" and newCraft.Length() > 15) {
-            iniWrite, %newLvl%, %LevelsPath%, Levels, %newCraft%
-        }
-        sumTypes()
-        sumPrices()
-    }
-return
-
-lvl:
-    if (!needToChangeModel) {
-        return
-    }
-    oldLvl := CraftTable[tempRow].lvl
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, newLvl,, lvl_%tempRow%, value
-    if (oldLvl == newLvl) {
-        return
-    }
-    CraftTable[tempRow].lvl := newLvl
-    craftName := CraftTable[tempRow].craft
-    if (craftName != "" and newCraft.Length() > 15) {
-        iniWrite, %newLvl%, %LevelsPath%, Levels, %craftName%
-    }
-return
-
-type:
+    ;gui temp:hide
+    return
     
-return
-
-Price:
-    oldPrice := CraftTable[tempRow].price
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-    guiControlGet, newPrice,, price_%tempRow%, value
-    if (oldPrice == newPrice) {
-        return
-    }
-    if (needToChangeModel) {
-        CraftTable[tempRow].price := newPrice
-        craftName := CraftTable[tempRow].craft
-        if (craftName != "") {
-            iniWrite, %newPrice%, %PricesPath%, Prices, %craftName%
-        }
-       sumPrices() 
-    }
-return
-
-Can_stream:
-    guiControlGet, strim,,canStream, value
-    iniWrite, %strim%, %SettingsPath%, Other, canStream
-return
-
-IGN:
-    guiControlGet, lastIGN,,IGN, value
-    iniWrite,  %lastIGN%, %SettingsPath%, IGN, n
-return
-
-Custom_text:
-    guiControlGet, cust,,customText, value
-    cust := StrReplace(cust, "`n", "||") ;support multilines in custom text
-    iniWrite, %cust%, %SettingsPath%, Other, customText
-    guicontrol,, customText_cb, 1
-return
-
-Custom_text_cb:
-    guiControlGet, custCB,,customText_cb, value
-    iniWrite, %custCB%, %SettingsPath%, Other, CustomTextCB
-return
-
-ClearRow:
-    GuiControlGet, cntrl, name, %A_GuiControl%
-    tempRow := getRow(cntrl)
-
-    IniRead selLeague, %SettingsPath%, selectedLeague, s
-
-    if GetKeyState("Shift") {
-        row := CraftTable[tempRow]
-        IniRead, league, %SettingsPath%, selectedLeague, s
-        fileLine := A_YYYY . "-" . A_MM . "-" . A_DD . ";" . A_Hour . ":" . A_Min . ";" . league . ";" . row.craft . ";" . row.price . "`r`n"
-
-        FileAppend, %fileLine%, %LogPath%
-        if (row.count > 1) {
-            CraftTable[tempRow].count := row.count - 1
-        } else {
-            clearRowData(tempRow)
-            ;sortCraftTable()
-        }
-    } else {
-        clearRowData(tempRow)
-        ;sortCraftTable()
-    }
-    updateUIRow(tempRow)
-    sumTypes()
-    sumPrices()
-return
-
-Post_all:
-    ;buttonHold("postAll", "resources\postAll")
-    buttonHold("postAll", "resources\createPost")
-
-    ;guiControlGet, selectedLeague,, League, value
-    ;if !(InStr(selectedLeague, "HC") > 0 or InStr(selectedLeague, "Hardcore") > 0 or InStr(selectedLeague, "Standard") > 0){
-    ;   msgbox, You are posting All for Temporary SC league `r`nTFT has split channels based on craft types`r`nThis message will get you timed out
-    ;}
-
-    createPost("All")
-return
-
-League_dropdown:
-    guiControlGet, selectedLeague,,League, value
-    iniWrite, %selectedLeague%, %SettingsPath%, selectedLeague, s
-    ;allowAll()
-return
-
-alwaysOnTop:
-    guiControlGet, onTop,,alwaysOnTop, value
-    iniWrite, %onTop%, %SettingsPath%, Other, alwaysOnTop
-    setWindowState(onTop)
-return
+    HarvestUIGuiEscape:
+    HarvestUIGuiClose:
+        ;rememberSession()
+        saveWindowPosition()
+        hideGUI()
+    return
+}
 
 setWindowState(onTop) {
     mod := (onTop == 1) ? "+" : "-"
     Gui, HarvestUI:%mod%AlwaysOnTop
 }
-;====================================================
-; === Settings UI ===================================
-settings:
-    buttonHold("settings", "resources\settings")
-    hotkey, %GuiKey%, off
-    gui Settings:new,, PoE-HarvestVendor - Settings
-    gui, add, Groupbox, x5 y5 w400 h90, Message formatting
-        Gui, add, text, x10 y25, Output message style:
-        Gui, add, dropdownList, x120 y20 w30 voutStyle goutStyle, 1|2
-        iniRead, tstyle, %SettingsPath%, Other, outStyle
-        guicontrol, choose, outStyle, %tstyle%
-        Gui, add, text, x20 y50, 1 - No Colors, No codeblock = Words are highlighted when using discord search
-        Gui, add, text, x20 y70, 2 - Codeblock, Colors = Words aren't highlighetd when using discord search
-    gui, add, groupbox, x5 y110 w400 h75, Hotkeys       
-        Gui, add, text, x10 y130, Open Harvest vendor: 
-        iniRead, GuiKey,  %SettingsPath%, Other, GuiKey
-        gui,add, hotkey, x120 y130 vGuiKey_v gGuiKey_l, %GuiKey%
-    
-    gui, add, button, x10 y195 h30 w390 gOpenRoaming vSettingsFolder, Open Settings Folder
-    gui, add, button, x10 y235 h30 w390 gSettingsOK, Save
-    gui, Settings:Show, w410 h270
-    
-return
 
-SettingsGuiClose:
-    hotkey, %GuiKey%, on
-    ;hotkey, %ScanKey%, on
-    Gui, Settings:Destroy
-    Gui, HarvestUI:Default
-return
-
-GuiKey_l:
-return
-
-OpenRoaming:
-    explorerpath := "explorer " RoamingDir
-    Run, %explorerpath%
-return
-
-outStyle:
-    guiControlGet, os,,outStyle, value
-    iniWrite, %os%, %SettingsPath%, Other, outStyle
-return
-
-SettingsOK:
-    iniRead, GuiKey,  %SettingsPath%, Other, GuiKey
-    guiControlGet, gk,, GuiKey_v, value
-    if (GuiKey != gk and gk != "ERROR" and gk != "") {
-        hotkey, %GuiKey%, off
-        iniWrite, %gk%, %SettingsPath%, Other, GuiKey
-        hotkey, %gk%, OpenGui
-    } 
-    if (gk != "ERROR" and gk != "") {
-        hotkey, %gk%, on
-    } else {
-        hotkey, %GuiKey%, on
+; === my functions ===
+translate(keyword) {
+    newKeyword := ""
+    if (LanguageDictionary.HasKey(keyword)) {
+        newKeyword := LanguageDictionary[keyword]
     }
+    return newKeyword == "" ? keyword : newKeyword
+}
 
-    Gui, Settings:Destroy
-    Gui, HarvestUI:Default
-return
-;====================================================
+translateToEnglish(text) {
+    if (EnglishDictionary.HasKey(text)) {
+        return EnglishDictionary[text]
+    }
+    return ""
+}
+
 ; === my functions ===
 updateCraftTable(ar) { 
     tempC := ""
@@ -643,18 +932,15 @@ updateCraftTable(ar) {
         tempC := v[1]
         tempLvl := v[2] 
         tempType := v[3]
-
-        loop, %MaxRowsCraftTable% {
-            craftInGui := CraftTable[A_Index].craft
-            lvlInGui := CraftTable[A_Index].lvl
-            if (craftInGui == tempC and lvlInGui == tempLvl) {
-                CraftTable[A_Index].count := CraftTable[A_Index].count + 1
-                updateUIRow(A_Index, "count")
+        for k, row in CraftTable {
+            if (row.craft == tempC and row.lvl == tempLvl) {
+                CraftTable[k].count := row.count + 1
+                updateUIRow(k, "count")
                 break
             }
-            if (craftInGui == "") {
-                insertIntoRow(A_Index, tempC, tempLvl, tempType)
-                updateUIRow(A_Index)
+            if (row.craft == "") {
+                insertIntoRow(k, tempC, tempLvl, tempType)
+                updateUIRow(k)
                 ;isNeedSort := True
                 break
             }
@@ -669,8 +955,7 @@ updateCraftTable(ar) {
 
 sortCraftTable() {
     craftsArr := []
-    loop, %MaxRowsCraftTable% {
-        row := CraftTable[A_Index]
+    for k, row in CraftTable {
         if (row.craft != "") { ;not empty crafts
             craftsArr.push(row)
         }
@@ -688,24 +973,7 @@ sortCraftTable() {
     }
 }
 
-getTypeFor(craft) {
-    if (craft == "") {
-        return ""
-    } 
-    if (inStr(craft, "Augment") = 1 ) {
-        return "Aug"
-    } 
-    if (InStr(craft, "Remove") = 1 and instr(craft, "add") = 0) {
-        return "Rem"
-    } 
-    if (inStr(craft, "Remove") = 1 and instr(craft, "add") > 0 
-        and instr(craft, "non") = 0) {
-        return "Rem/Add"
-    }
-    return "Other"
-}
-
-insertIntoRow(rowCounter, craft, lvl, type) {    
+insertIntoRow(rowCounter, craft, lvl, type) {
     tempP := getPriceFor(craft)
     CraftTable[rowCounter] := {"count": 1, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
@@ -718,204 +986,96 @@ updateUIRow(rowCounter, parameter:="All") {
         GuiControl,HarvestUI:, craft_%rowCounter%, % row.craft
         GuiControl,HarvestUI:, count_%rowCounter%, % row.count
         GuiControl,HarvestUI:, lvl_%rowCounter%, % row.lvl
-        GuiControl,HarvestUI:, type_%rowCounter%, % row.type
+        GuiControl,HarvestUI:, type_%rowCounter%, % translate(row.type)
         GuiControl,HarvestUI:, price_%rowCounter%, % row.price
     } else {
         if (row.HasKey(parameter)) {
-            GuiControl,HarvestUI:, %parameter%_%rowCounter%, % row[parameter]
+            value := row[parameter]
+            value := (parameter == "type") ? translate(value) : value
+            GuiControl,HarvestUI:, %parameter%_%rowCounter%, % value
         }
     }
     needToChangeModel := True
 }
+
 ;added by Stregon#3347
 ;=============================================================================
-getPostRow(count, craft, price, group, lvl) {
-    ;IniRead, outStyle, %SettingsPath%, Other, outStyle
-    postRowString := ""
-    mySpaces := ""
-    spacesCount := 0
-    price := (price == "") ? " " : price
+getPadding(width, maxWidth) {
+    spaces := ""
+    loop, % (maxWidth - width) {
+        spaces .= " "
+    }
+    return spaces
+}
+
+; no colors, no codeblock, but highlighted
+getNoColorStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
     
-    loop, % (maxLengths.count - StrLen(count) + 1) {
-        spaces_count_craft .= " "
+    postRowString := "   ``" . count . "x" . spaces_count_craft . "``**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
     }
-    loop, % (maxLengths.craft - StrLen(craft) + 1) {
-        spaces_craft_lvl .= " "
-    }
-    loop, % (maxLengths.lvl - StrLen(lvl) + 2) {
-        spaces_lvl_price .= " "
-    }
+    
+    return postRowString . "```r`n"
+}
 
-    if (outStyle == 1) { ; no colors, no codeblock, but highlighted
-        postRowString .= "   ``" . count . "x" . spaces_count_craft . "``**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
-        if (price != " ") {
-            postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
-        }
-        postRowString .= "```r`n"
-    }
+; message style with colors, in codeblock but text isnt highlighted in discord search
+getColorStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
 
-    if (outStyle == 2) { ; message style with colors, in codeblock but text isnt highlighted in discord search
-        postRowString .= "  " . count . "x" . spaces_count_craft . "[" . craft . spaces_craft_lvl . "]" . "[" . lvl . "]" 
-        if (price != " ") {
-            postRowString .= spaces_lvl_price . "< " . price . " >"
-        }
-        postRowString .= "`r`n"
+    postRowString := "  " . count . "x" . spaces_count_craft . "[" . craft . spaces_craft_lvl . "]" . "[" . lvl . "]" 
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . "< " . price . " >"
     }
-    return postRowString
+    return postRowString . "`r`n"
+}
+
+getPostRow(count, craft, price, group, lvl) {
+    price := (price == "") ? " " : price
+    ; no colors, no codeblock, but highlighted
+    if (settingsApp.outStyle == 1) { 
+        return getNoColorStyleRow(count, craft, price, lvl)
+    }
+    ; message style with colors, in codeblock but text isnt highlighted in discord search
+    if (settingsApp.outStyle == 2) { 
+        return getColorStyleRow(count, craft, price, lvl)
+    }
+    return ""
 }
 
 getSortedPosts(type) {
     posts := ""
     postsArr := []
-    loop, %MaxRowsCraftTable% {
-        row := CraftTable[A_Index]
-        if ((row["count"] != "" and row["count"] > 0)
-            and (row["type"] == type or type == "All")) {
+    for k, row in CraftTable {
+        if ((row.count != "" and row.count > 0)
+            and (row.type == type or type == "All")) {
             postsArr.push(row)
         }
     }
     postsArr := sortBy(postsArr, ["count", "craft"])
     for Index, row in postsArr {
-        posts .= getPostRow(row["count"], row["craft"], row["price"]
-            , row["type"], row["lvl"])
+        posts .= getPostRow(row.count, row.craft, row.price
+            , row.type, row.lvl)
     }
     return posts
 }
 
 getPosts(type) {
     posts := ""
-    loop, %MaxRowsCraftTable% {
-        row := CraftTable[A_Index]
-        if ((row["count"] != "" and row["count"] > 0)
-            and (row["type"] == type or type == "All")) {
-            posts .= getPostRow(row["count"], row["craft"], row["price"]
-                , row["type"], row["lvl"])
+    for k, row in CraftTable {
+        if ((row.count != "" and row.count > 0)
+            and (row.type == type or type == "All")) {
+            posts .= getPostRow(row.count, row.craft, row.price
+                , row.type, row.lvl)
         }
     }
     return posts
 }
-
-_clone(param_value) {
-    if (isObject(param_value)) {
-        return param_value.Clone()
-    } else {
-        return param_value
-    }
-}
-
-_cloneDeep(param_array) {
-    Objs := {}
-    Obj := param_array.Clone()
-    Objs[&param_array] := Obj ; Save this new array
-    for key, value in Obj {
-        if (isObject(value)) ; if it is a subarray
-            Obj[key] := Objs[&value] ; if we already know of a refrence to this array
-            ? Objs[&value] ; Then point it to the new array
-            : _clone(value) ; Otherwise, clone this sub-array
-    }
-    return Obj
-}
-
-_internal_sort(param_collection, param_iteratees:="") {
-    l_array := _cloneDeep(param_collection)
-
-    ; associative arrays
-    if (param_iteratees != "") {
-        for Index, obj in l_array {
-            value := obj[param_iteratees]
-            if (!isNumber(value)) {
-                value := StrReplace(value, "+", "#")
-            }
-            out .= value "+" Index "|" ; "+" allows for sort to work with just the value
-            ; out will look like: value+index|value+index|
-        }
-        lastvalue := l_array[Index, param_iteratees]
-    } else {
-        ; regular arrays
-        for Index, obj in l_array {
-            value := obj
-            if (!isNumber(obj)) {
-                value := StrReplace(value, "+", "#")
-            }
-            out .= value "+" Index "|"
-        }
-        lastvalue := l_array[l_array.count()]
-    }
-
-    if (isNumber(lastvalue)) {
-        sortType := "N"
-    }
-    stringTrimRight, out, out, 1 ; remove trailing |
-    sort, out, % "D| " sortType
-    arrStorage := []
-    loop, parse, out, |
-    {
-        arrStorage.push(l_array[SubStr(A_LoopField, InStr(A_LoopField, "+") + 1)])
-    }
-    return arrStorage
-}
-
-sortBy(param_collection, param_iteratees:="__identity") {
-    l_array := []
-
-    ; create
-    ; no param_iteratees
-    if (param_iteratees == "__identity") {
-        return _internal_sort(param_collection)
-    }
-    ; property
-    if (isAlnum(param_iteratees)) {
-        return _internal_sort(param_collection, param_iteratees)
-    }
-    ; own method or function
-    ; if (isCallable(param_iteratees)) {
-        ; for key, value in param_collection {
-            ; l_array[A_Index] := {}
-            ; l_array[A_Index].value := value
-            ; l_array[A_Index].key := param_iteratees.call(value)
-        ; }
-        ; l_array := _internal_sort(l_array, "key")
-        ; return this.map(l_array, "value")
-    ; }
-    ; shorthand/multiple keys
-    if (isObject(param_iteratees)) {
-        l_array := _cloneDeep(param_collection)
-        ; sort the collection however many times is requested by the shorthand identity
-        for key, value in param_iteratees {
-            l_array := _internal_sort(l_array, value)
-        }
-        return l_array
-    }
-    return -1
-}
-
-isAlnum(param) {
-    if (isObject(param)) {
-        return false
-    }
-    if param is alnum
-    {
-        return true
-    }
-    return false
-}
-
-; isCallable(param) {
-    ; fn := numGet(&(_ := Func("InStr").bind()), "Ptr")
-    ; return (isFunc(param) || (isObject(param) && (numGet(&param, "Ptr") = fn)))
-; }
-
-isNumber(param) {
-    if (isObject(param)) {
-        return false
-    }
-    if param is number
-    {
-        return true
-    }
-    return false
-}
-;=============================================================================
 
 codeblockWrap(text) {
     if (outStyle == 1) {
@@ -926,74 +1086,76 @@ codeblockWrap(text) {
     }
 }
 
+getNoColorStyleHeader() {
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "**WTS " . tempLeague . "**"
+    if (tempName != "") {
+        tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
+        outString .= " - IGN: **" . tempName . "**" 
+    }
+    outString .= " ``|  generated by HarvestVendor v" . version . "```r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        outString .= "   " . settingsApp.customText . "`r`n"
+    }
+    if (settingsApp.canStream == 1) {
+        outString .= "   *Can stream if requested*`r`n"
+    }
+    return outString
+}
+
+getColorStyleHeader() {
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "#WTS " . tempLeague
+    if (tempName != "") {
+        outString .= " - IGN: " . tempName
+    }
+    outString .= " |  generated by HarvestVendor v" . version . "`r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        outString .= "  " . settingsApp.customText . "`r`n"
+    }
+    if (settingsApp.canStream == 1) {
+        outString .= "  Can stream if requested `r`n"
+    }
+    return outString
+}
+
 ;puts together the whole message that ends up in clipboard
 createPost(type) {
-    IniRead, outStyle, %SettingsPath%, Other, outStyle
-    tempName := ""
-    GuiControlGet, tempLeague,, League, value
-    GuiControlGet, tempName,, IGN, value
-    GuiControlGet, tempStream,, canStream, value
-    GuiControlGet, tempCustomText,, customText, value
-    GuiControlGet, tempCustomTextCB,, customText_cb, value
-    
-    tempLeague := RegExReplace(tempLeague, "SC", "Softcore")
-    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
-    outString := ""
-    ;getMaxLenghts(type)
-    
-    ;added by Stregon#3347
     maxLengths := {}
     maxLengths.count := getMaxLenghtColunm("count")
     maxLengths.craft := getMaxLenghtColunm("craft")
     maxLengths.lvl := getMaxLenghtColunm("lvl")
-    
-    if (outStyle == 1) {
-        outString .= "**WTS " . tempLeague . "**"
-        if (tempName != "") {
-            tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
-            outString .= " - IGN: **" . tempName . "**" 
-        }
-        outString .= " ``|  generated by HarvestVendor v" . version . "```r`n"
-        if (tempCustomText != "" and tempCustomTextCB == 1) {
-            outString .= "   " . tempCustomText . "`r`n"
-        }
-        if (tempStream == 1 ) {
-            outString .= "   *Can stream if requested*`r`n"
-        }
+    header := ""
+    if (settingsApp.outStyle == 1) {
+        header := getNoColorStyleHeader()
     }
-    if (outStyle == 2) {
-        outString .= "#WTS " . tempLeague
-        if (tempName != "") {
-            outString .= " - IGN: " . tempName
-        }
-        outString .= " |  generated by HarvestVendor v" . version . "`r`n"
-        if (tempCustomText != "" and tempCustomTextCB == 1) {
-            outString .= "  " . tempCustomText . "`r`n"
-        }
-        if (tempStream == 1 ) {
-            outString .= "  Can stream if requested `r`n"
-        }
+    if (settingsApp.outStyle == 2) {
+        header := getColorStyleHeader()
     }
-    outString .= getPosts(type) ;getSortedPosts(type)
-    Clipboard := codeblockWrap(outString)
+    Clipboard := codeblockWrap(header . getPosts(type))
     readyTT()
 }
 
 readyTT() {
     ClipWait
-    ToolTip, Paste Ready,,,1
+    ToolTip, % translate("Paste Ready"),,,1
     sleep, 2000
     Tooltip,,,,1
 }
 
 getMaxLenghtColunm(column) {
     MaxLen_column := 0
-    loop, %MaxRowsCraftTable% {
-        tempCount := CraftTable[A_Index].count
-        if (tempCount <= 0) {
+    for k, row in CraftTable {
+        if (row.count <= 0) {
             continue
         }
-        columnValue := CraftTable[A_Index][column] 
+        columnValue := row[column]
         if (StrLen(columnValue) > MaxLen_column) {
             MaxLen_column := StrLen(columnValue)
         }
@@ -1035,6 +1197,25 @@ getLevelFor(craft) {
     }
 }
 
+getTypeFor(craft) {
+    if (craft == "") {
+        return ""
+    }
+    if (inStr(craft, "Reforge") == 1) {
+        return "Ref"
+    }
+    if (inStr(craft, "Augment") == 1) {
+        return "Aug"
+    } 
+    ; if (InStr(craft, "Remove") == 1 and instr(craft, "add") == 0) {
+        ; return "Rem"
+    ; } 
+    if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
+        return "Rem/Add"
+    }
+    return "Other"
+}
+
 getRow(elementVariable) {
     temp := StrSplit(elementVariable, "_")
     return temp[temp.Length()]
@@ -1044,21 +1225,18 @@ sumPrices() {
     tempSumChaos := 0
     tempSumEx := 0
     exaltTemplate := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
-    chaosTemplate := "Oi)^(\d+) *(c|ch|chaos)$"
-    loop, %MaxRowsCraftTable% {
-        craftRow := CraftTable[A_Index]
-        if (craftRow.craft == "" or craftRow.price == "") {
-            continue
+    chaosTemplate := "Oi)^(\d+) *(c|chaos)$"
+    for k, row in CraftTable {
+        if (row.craft == "" or row.price == "") {
+           continue
         }
-        priceCraft := Trim(craftRow.price)
-        countCraft := craftRow.count
-        
+        priceCraft := Trim(row.price)
+        countCraft := row.count
+        matchObj := []
         if (RegExMatch(priceCraft, chaosTemplate, matchObj) > 0) {
             priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumChaos +=  priceCraft * countCraft
-        }
-        
-        if (RegExMatch(priceCraft, exaltTemplate, matchObj) > 0) {
+        } else if (RegExMatch(priceCraft, exaltTemplate, matchObj) > 0) {
             priceCraft := strReplace(matchObj[1], ",", ".")
             tempSumEx += priceCraft * countCraft
         }
@@ -1069,36 +1247,23 @@ sumPrices() {
 }
 
 sumTypes() {
-    Acounter := 0
-    Rcounter := 0
-    RAcounter := 0
-    Ocounter := 0
-    Allcounter := 0
-    loop, %MaxRowsCraftTable% {
-        tempAmount := CraftTable[A_Index].count
+    stats := {"Aug": 0, "Ref": 0, "Rem/Add": 0, "Other": 0, "All": 0}
+    for k, row in CraftTable {
+        tempAmount := row.count
         if (tempAmount == "") {
             continue
         }
-        tempType := CraftTable[A_Index].type
-        if (tempType == "Aug") {
-            Acounter += tempAmount
-        }
-        if (tempType == "Rem") {
-            Rcounter += tempAmount
-        }
-        if (tempType == "Rem/Add") {
-            RAcounter += tempAmount
-        }
-        if (tempType == "Other") {
-            Ocounter += tempAmount
-        }       
+        tempType := row.type
+        if (stats.HasKey(tempType)) {
+            stats[tempType] := stats[tempType] + tempAmount
+            stats["All"] := stats["All"] + tempAmount
+        }   
     }
-    Allcounter := Acounter + Rcounter + RAcounter + Ocounter
-    GuiControl,HarvestUI:, Acount, %Acounter%
-    GuiControl,HarvestUI:, Rcount, %Rcounter%
-    GuiControl,HarvestUI:, RAcount, %RAcounter%
-    GuiControl,HarvestUI:, Ocount, %Ocounter%
-    GuiControl,HarvestUI:, CraftsSum, %Allcounter%
+    GuiControl,HarvestUI:, Acount, % stats["Aug"]
+    GuiControl,HarvestUI:, Refcount, % stats["Ref"]
+    GuiControl,HarvestUI:, RAcount, % stats["Rem/Add"]
+    GuiControl,HarvestUI:, Ocount, % stats["Other"]
+    GuiControl,HarvestUI:, CraftsSum, % stats["All"]
 }
 
 buttonHold(buttonV, picture) {
@@ -1109,63 +1274,36 @@ buttonHold(buttonV, picture) {
     guiControl,, %buttonV%, %picture%.png
 }
 
-allowAll() {
-    IniRead selLeague, %SettingsPath%, selectedLeague, s
-    if (selLeague == "ERROR") {
-        GuiControlGet, selLeague,, LeagueDropdown, value
-    }
-    if (InStr(selLeague, "Standard") = 0 and InStr(selLeague, "Hardcore") = 0 ) {
-        guicontrol, Disable, postAll
-    } else {
-        guicontrol, Enable, postAll
-    }
-}
-
-rememberCraft(row) {
-    rowCraft := CraftTable[row]
-    craftName := rowCraft.craft
-    craftLvl := rowCraft.lvl
-    crafCount := rowCraft.count
-    craftType := rowCraft.type
-    blank := ""
-    if (craftName != "") {
-        IniWrite, %craftName%|%craftLvl%|%crafCount%|%craftType%, %SettingsPath%, LastSession, craft_%row%
-    } else {
-        IniWrite, %blank%, %SettingsPath%, LastSession, craft_%row%
-    }
-}
-
 rememberSession() { 
-    if (!sessionLoading) { 
-        loop, %MaxRowsCraftTable% { 
-            rememberCraft(A_Index)
-        }
+    if (sessionLoading or isLoading or firstGuiOpen) {
+        return
     }
-}
-
-loadLastSessionCraft(row) { 
-    IniRead, lastCraft, %SettingsPath%, LastSession, craft_%row% 
-    if (lastCraft != "" and lastCraft != "ERROR") {
-        split := StrSplit(lastCraft, "|")
-        craft := split[1]
-        lvl := split[2]
-        ccount := split[3]
-        type := split[4]
-
-        tempP := getPriceFor(craft)
-        if (type == "") {
-            type := getTypeFor(craft)
+    for k, row in CraftTable {
+        line := ""
+        if (row.craft != "") {
+            line := row.craft . "|" . row.lvl . "|" . row.count . "|" . row.type
         }
-        CraftTable[row] := {"count": ccount, "craft": craft, "price": tempP
-            , "lvl": lvl, "type": type}
+        IniWrite, %line%, %SettingsPath%, LastSession, craft_%k%
     }
 }
 
 loadLastSession() {
+    if (!firstGuiOpen) {
+        return
+    }
     sessionLoading := True
-    loop, %MaxRowsCraftTable% {
-        loadLastSessionCraft(A_Index)
-        updateUIRow(A_Index)
+    for k in CraftTable {
+        IniRead, lastCraft, %SettingsPath%, LastSession, craft_%k% 
+        if (lastCraft == "ERROR" or lastCraft == "") {
+            continue
+        }
+        split := StrSplit(lastCraft, "|")
+        craft := split[1]
+        tempP := getPriceFor(craft)
+        type := getTypeFor(craft)
+        CraftTable[k] := {"count": split[3], "craft": craft, "price": tempP
+            , "lvl": split[2], "type": type}
+        updateUIRow(k)
     }
     sessionLoading := False
     sumTypes()
@@ -1178,85 +1316,79 @@ clearRowData(rowIndex) {
 }
 
 clearAll() {
-    loop, %MaxRowsCraftTable% {
+    loop, % settingsApp.MaxRowsCraftTable {
         clearRowData(A_Index)
         updateUIRow(A_Index)
     }
+    outArray := {}
 }
 ; === technical stuff i guess ===
 getLeagues() {
-    leagueAPIurl := "http://api.pathofexile.com/leagues?type=main&compact=1" 
-    
+    leagueAPIurl := "http://api.pathofexile.com/leagues?type=main&compact=1"
     if FileExist("curl.exe") {
         ; Hack for people with outdated certificates
         shell := ComObjCreate("WScript.Shell")
         exec := shell.Exec("curl.exe -k " . leagueAPIurl)
-        response := exec.StdOut.ReadAll()       
+        response := exec.StdOut.ReadAll()
     } else {
         oWhr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
         oWhr.Open("GET", leagueAPIurl, false)
-        oWhr.SetRequestHeader("Content-Type", "application/json")    
+        oWhr.SetRequestHeader("Content-Type", "application/json")
         oWhr.Send()
         response := oWhr.ResponseText
     }
     if (oWhr.Status == "200" or FileExist("curl.exe")) {
         if InStr(response, "Standard") > 0 {
-            parsed := Jxon_load(response) 
+            parsed := JSON.Load(response)
+            maxCount := 8
             for k, v in parsed {
-                if (k > 8) { ;take first 8
+                if (k > maxCount) { ;take first 8
                     break
                 }
-                tempParse := v["id"]
-                iniWrite, %tempParse%, %SettingsPath%, Leagues, %k%
+                settingsApp.LeagueList[k] := v["id"]
             }
         } else {
             IniRead, lc, %SettingsPath%, Leagues, 1
             if (lc == "ERROR" or lc == "") {
-                msgbox, Unable to get list of leagues from GGG API`r`nYou will need to copy [Leagues] and [selectedLeague] sections from the example settings.ini on github
+                msgbox, % translate("Unable to get list of leagues from GGG API") . "`r`n" . translate("You will need to copy [Leagues] and [selectedLeague] sections from the example settings.ini on github")
             }
         }
 
         if !FileExist(SettingsPath) {
-            MsgBox, Looks like AHK was unable to create settings.ini`r`nThis might be because the place you have the script is write protected by Windows`r`nYou will need to place this somewhere else
+            MsgBox, % translate("Looks like AHK was unable to create settings.ini") . "`r`n" . translate("This might be because the place you have the script is write protected by Windows") . "`r`n" . translate("You will need to place this somewhere else")
         }
     } else {
-        Msgbox, Unable to get active leagues from GGG API, using placeholder names
-        iniWrite, Temp, %SettingsPath%, Leagues, 1
-        iniWrite, Hardcore Temp, %SettingsPath%, Leagues, 2
-        iniWrite, Standard, %SettingsPath%, Leagues, 3
-        iniWrite, Hardcore, %SettingsPath%, Leagues, 4
+        Msgbox, % translate("Unable to get active leagues from GGG API, using placeholder names")
+        settingsApp.LeagueList[1] := "Temp"
+        settingsApp.LeagueList[2] := "Hardcore Temp"
+        settingsApp.LeagueList[3] := "Standard"
+        settingsApp.LeagueList[4] := "Hardcore"
     }
 }
 
-leagueList() {
+getLeagueList() {
     leagueString := ""
-    loop, 8 {
-        IniRead, tempList, %SettingsPath%, Leagues, %A_Index%     
-        if (templist != "") {      
-            if InStr(tempList, "Hardcore") = 0 and InStr(tempList, "HC") = 0 {
-                tempList .= " SC"
-            } 
-            if (tempList == "Hardcore") {
-                tempList := "Standard HC"
-            }
-            if InStr(tempList,"SSF") = 0 {
-                leagueString .= tempList . "|"
-            }
-            if (InStr(tempList, "Hardcore", true) = 0 and InStr(tempList,"SSF", true) = 0 
-                and InStr(tempList,"Standard", true) = 0 and InStr(tempList,"HC", true) = 0) {
+    defaultLeague := "Standard SC"
+    for k, v in settingsApp.LeagueList {
+        tempList := v
+        if (templist == "" or InStr(tempList, "SSF") > 0) {
+            continue
+        }
+        if !InStr(tempList, "Hardcore") and !InStr(tempList, "HC") {
+            tempList .= " SC"
+            if !InStr(tempList, "Standard", true) {
                 defaultLeague := templist
             }
+        } else if (tempList == "Hardcore") {
+            tempList := "Standard HC"
         }
+        leagueString .= tempList . "|"
     }
-
-    iniRead, leagueCheck, %SettingsPath%, selectedLeague, s
-    guicontrol,, League, %leagueString%
-    if (leagueCheck == "ERROR") {
-        guicontrol, choose, League, %defaultLeague%
-        iniWrite, %defaultLeague%, %SettingsPath%, selectedLeague, s    
-    } else {
-        guicontrol, choose, League, %leagueCheck%   
+    if (settingsApp.selectedLeague == "" 
+        or !InStr(leagueString, settingsApp.selectedLeague)) {
+        settingsApp.selectedLeague := defaultLeague
     }
+    return leagueString
 }
 
 getVersion() {
@@ -1273,7 +1405,7 @@ getVersion() {
         ver.Send()
         response := ver.ResponseText
     }
-    return StrReplace(StrReplace(response,"`r"),"`n")
+    return StrReplace(StrReplace(response, "`r"), "`n")
 }
 
 IsGuiVisible(guiName) {
@@ -1281,16 +1413,16 @@ IsGuiVisible(guiName) {
     return DllCall("User32\IsWindowVisible", "Ptr", guiHwnd)
 }
 
-checkFiles() { 
+checkFiles() {
     if !FileExist(SettingsPath) {
-        msgbox, Looks like you put PoE-HarvestVendor in a write protected place on your PC.`r`nIt needs to be able to create and write into a few text files in its directory.
+        msgbox, % translate("Looks like you put PoE-HarvestVendor in a write protected place on your PC.") . "`r`n" . translate("It needs to be able to create and write into a few text files in its directory.")
         ExitApp
     }
 }
 
 winCheck() {
     if (SubStr(A_OSVersion,1,2) != "10" and !FileExist("curl.exe")) {
-         msgbox, Looks like you aren't running win10. There might be a problem with WinHttpRequest(outdated Certificates).`r`nYou need to download curl, and place the curl.exe (just this 1 file) into the same directory as Harvest Vendor.`r`nLink in the FAQ section in readme on github
+         msgbox, % translate("Looks like you aren't running win10. There might be a problem with WinHttpRequest(outdated Certificates).") . "`r`n" . translate("You need to download curl, and place the curl.exe (just this 1 file) into the same directory as Harvest Vendor.") . "`r`n" . translate("Link in the FAQ section in readme on github")
     }
 }
 
@@ -1300,7 +1432,7 @@ getImgWidth(img) {
     objFolder := objShell.NameSpace(dir)
     objFolderItem := objFolder.ParseName(fn)
     scale := StrSplit(RegExReplace(objFolder.GetDetailsOf(objFolderItem, 31), ".(.+).", "$1"), " x ")
-    Return scale.1 ; {w: scale.1, h: scale.2}
+    return scale.1 ; {w: scale.1, h: scale.2}
 }
 
 ; ========================================================================
@@ -1328,244 +1460,4 @@ WM_MOUSEMOVE() {
     SetTimer, RemoveToolTip, Off
     ToolTip,,,,2
     return
-}
-
-;==== JSON PARSER FROM https://github.com/cocobelgica/AutoHotkey-JSON ====
-Jxon_Load(ByRef src, args*) {
-   
-    static q := Chr(34)
-
-    key := "", is_key := false
-    stack := [ tree := [] ]
-    is_arr := { (tree): 1 }
-    next := q . "{[01234567890-tfn"
-    pos := 0
-    value := ""
-    while ( (ch := SubStr(src, ++pos, 1)) != "" )
-    {
-        if InStr(" `t`n`r", ch)
-            continue
-        if !InStr(next, ch, true)
-        {
-            ln := ObjLength(StrSplit(SubStr(src, 1, pos), "`n"))
-            col := pos - InStr(src, "`n",, -(StrLen(src) - pos + 1))
-
-            msg := Format("{}: line {} col {} (char {})"
-            ,   (next == "")      ? ["Extra data", ch := SubStr(src, pos)][1]
-              : (next == "'")     ? "Unterminated string starting at"
-              : (next == "\")     ? "Invalid \escape"
-              : (next == ":")     ? "Expecting ':' delimiter"
-              : (next == q)       ? "Expecting object key enclosed in double quotes"
-              : (next == q . "}") ? "Expecting object key enclosed in double quotes or object closing '}'"
-              : (next == ",}")    ? "Expecting ',' delimiter or object closing '}'"
-              : (next == ",]")    ? "Expecting ',' delimiter or array closing ']'"
-              : [ "Expecting JSON value(string, number, [true, false, null], object or array)"
-                , ch := SubStr(src, pos, (SubStr(src, pos)~="[\]\},\s]|$") - 1) ][1]
-            , ln, col, pos)
-
-            throw Exception(msg, -1, ch)
-        }
-
-        is_array := is_arr[obj := stack[1]]
-
-        if i := InStr("{[", ch)
-        {
-            val := (proto := args[i]) ? new proto : {}
-            is_array? ObjPush(obj, val) : obj[key] := val
-            ObjInsertAt(stack, 1, val)
-            
-            is_arr[val] := !(is_key := ch == "{")
-            next := q . (is_key ? "}" : "{[]0123456789-tfn")
-        }
-
-        else if InStr("}]", ch)
-        {
-            ObjRemoveAt(stack, 1)
-            next := stack[1] == tree ? "" : is_arr[stack[1]] ? ",]" : ",}"
-        }
-
-        else if InStr(",:", ch)
-        {
-            is_key := (!is_array && ch == ",")
-            next := is_key ? q : q . "{[0123456789-tfn"
-        }
-
-        else ; string | number | true | false | null
-        {
-            if (ch == q) ; string
-            {
-                i := pos
-                while i := InStr(src, q,, i + 1)
-                {
-                    val := StrReplace(SubStr(src, pos + 1, i - pos - 1), "\\", "\u005C")
-                    static end := A_AhkVersion<"2" ? 0 : -1
-                    if (SubStr(val, end) != "\")
-                        break
-                }
-                if !i ? (pos--, next := "'") : 0
-                    continue
-
-                pos := i ; update pos
-
-                  val := StrReplace(val,    "\/",  "/")
-                , val := StrReplace(val, "\" . q,    q)
-                , val := StrReplace(val,    "\b", "`b")
-                , val := StrReplace(val,    "\f", "`f")
-                , val := StrReplace(val,    "\n", "`n")
-                , val := StrReplace(val,    "\r", "`r")
-                , val := StrReplace(val,    "\t", "`t")
-
-                i := 0
-                while i := InStr(val, "\",, i + 1)
-                {
-                    if (SubStr(val, i + 1, 1) != "u") ? (pos -= StrLen(SubStr(val, i)), next := "\") : 0
-                        continue 2
-
-                    ; \uXXXX - JSON unicode escape sequence
-                    xxxx := Abs("0x" . SubStr(val, i + 2, 4))
-                    if (A_IsUnicode || xxxx < 0x100)
-                        val := SubStr(val, 1, i - 1) . Chr(xxxx) . SubStr(val, i + 6)
-                }
-
-                if is_key
-                {
-                    key := val, next := ":"
-                    continue
-                }
-            }
-
-            else ; number | true | false | null
-            {
-                val := SubStr(src, pos, i := RegExMatch(src, "[\]\},\s]|$",, pos) - pos)
-            
-            ; For numerical values, numerify integers and keep floats as is.
-            ; I'm not yet sure if I should numerify floats in v2.0-a ...
-                static number := "number", integer := "integer"
-                if val is %number%
-                {
-                    if val is %integer%
-                        val += 0
-                }
-            ; in v1.1, true,false,A_PtrSize,A_IsUnicode,A_Index,A_EventInfo,
-            ; SOMETIMES return strings due to certain optimizations. Since it
-            ; is just 'SOMETIMES', numerify to be consistent w/ v2.0-a
-                else if (val == "true" || val == "false")
-                    val := %value% + 0
-            ; AHK_H has built-in null, can't do 'val := %value%' where value == "null"
-            ; as it would raise an exception in AHK_H(overriding built-in var)
-                else if (val == "null")
-                    val := ""
-            ; any other values are invalid, continue to trigger error
-                else if (pos--, next := "#")
-                    continue
-                
-                pos += i-1
-            }
-            
-            is_array? ObjPush(obj, val) : obj[key] := val
-            next := (obj == tree) ? "" : is_array ? ",]" : ",}"
-        }
-    }
-
-    return tree[1]
-}
-
-Jxon_Dump(obj, indent:="", lvl:=1) {
-    static q := Chr(34)
-
-    if (IsObject(obj)) {
-        static Type := Func("Type")
-        if Type ? (Type.Call(obj) != "Object") : (ObjGetCapacity(obj) == "")
-            throw Exception("Object type not supported.", -1, Format("<Object at 0x{:p}>", &obj))
-
-        is_array := 0
-        for k in obj
-            is_array := k == A_Index
-        until !is_array
-
-        static integer := "integer"
-        if (indent is %integer%) {
-            if (indent < 0)
-                throw Exception("Indent parameter must be a postive integer.", -1, indent)
-            spaces := indent, indent := ""
-            Loop % spaces
-                indent .= " "
-        }
-        indt := ""
-        Loop, % indent ? lvl : 0
-            indt .= indent
-
-        lvl += 1, out := "" ; Make #Warn happy
-        for k, v in obj {
-            if IsObject(k) || (k == "")
-                throw Exception("Invalid object key.", -1, k ? Format("<Object at 0x{:p}>", &obj) : "<blank>")
-            
-            if !is_array
-                out .= ( ObjGetCapacity([k], 1) ? Jxon_Dump(k) : q . k . q ) ;// key
-                    .  ( indent ? ": " : ":" ) ; token + padding
-            out .= Jxon_Dump(v, indent, lvl) ; value
-                .  ( indent ? ",`n" . indt : "," ) ; token + indent
-        }
-
-        if (out != "") {
-            out := Trim(out, ",`n" . indent)
-            if (indent != "")
-                out := "`n" . indt . out . "`n" . SubStr(indt, StrLen(indent) + 1)
-        }
-        
-        return is_array ? "[" . out . "]" : "{" . out . "}"
-    }
-
-    ; Number
-    else if (ObjGetCapacity([obj], 1) == "")
-        return obj
-
-    ; String (null -> not supported by AHK)
-    if (obj != "") {
-          obj := StrReplace(obj,  "\",    "\\")
-        , obj := StrReplace(obj,  "/",    "\/")
-        , obj := StrReplace(obj,    q, "\" . q)
-        , obj := StrReplace(obj, "`b",    "\b")
-        , obj := StrReplace(obj, "`f",    "\f")
-        , obj := StrReplace(obj, "`n",    "\n")
-        , obj := StrReplace(obj, "`r",    "\r")
-        , obj := StrReplace(obj, "`t",    "\t")
-
-        static needle := (A_AhkVersion < "2" ? "O)" : "") . "[^\x20-\x7e]"
-        while RegExMatch(obj, needle, m)
-            obj := StrReplace(obj, m[0], Format("\u{:04X}", Ord(m[0])))
-    }
-    
-    return q . obj . q
-}
-
-WebPic(WB, Website, Options := "") {
-    RegExMatch(Options, "i)w\K\d+", W), (W = "") ? W := 50 :
-    RegExMatch(Options, "i)h\K\d+", H), (H = "") ? H := 50 :
-    RegExMatch(Options, "i)c\K\d+", C), (C = "") ? C := "EEEEEE" :
-    WB.Silent := True
-    HTML_Page :=
-    (RTRIM
-    "<!DOCTYPE html>
-        <html>
-            <head>
-                <style>
-                    body {
-                        background-color: #" C ";
-                    }
-                    img {
-                        top: 0px;
-                        left: 0px;
-                    }
-                </style>
-            </head>
-            <body>
-                <img src=""" Website """ alt=""Picture"" style=""width:" W "px;height:" H "px;"" />
-            </body>
-        </html>"
-    )
-    While (WB.Busy)
-        Sleep 10
-    WB.Navigate("about:" HTML_Page)
-    Return HTML_Page
 }
