@@ -4,9 +4,10 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.1 korean"
+global version := "0.9.2 korean"
 #include <class_iAutoComplete>
 #include <sortby>
+#include <JSON>
 ; === some global variables ===
 global settingsApp := {"GuiKey": ""
     , "ScanKey": ""
@@ -22,7 +23,8 @@ global settingsApp := {"GuiKey": ""
     , "monitor": 1
     , "scale": 1
     , "gui_position_x": 0
-    , "gui_position_y": 0}
+    , "gui_position_y": 0
+    , "LeagueList": []}
 global outArray := {}
 global canRescan := false
 global x_start := 0
@@ -39,7 +41,6 @@ global ScanKeyHotkey := ""
 global ScanLastAreaHotkey := ""
 global maxLengths := {}
 global sessionLoading := False
-global MaxRowsCraftTable := 20
 global CraftTable := []
 global needToChangeModel := True
 global isLoading := True
@@ -56,6 +57,7 @@ global SettingsPath := RoamingDir . "\settings.ini"
 global PricesPath := RoamingDir . "\prices.ini"
 global LogPath := RoamingDir . "\log.csv"
 global TempPath := RoamingDir . "\temp.txt"
+global tftPrices := RoamingDir . "\tftprices.json"
 
 FileEncoding, UTF-8
 global Language := "Korean"
@@ -174,16 +176,6 @@ loadCraftListFrom(byRef langdict) {
     }
 }
 
-; loadCraftList() {
-    ; craftListFile := A_ScriptDir . "\craftlist.txt"
-    ; Loop, read, %craftListFile%
-    ; {
-        ; line := Trim(A_LoopReadLine)
-        ; if (line != "") {
-            ; CraftList.push(line)
-        ; }
-    ; }
-; }
 ; === Hotkey actions ===
 ;ctrl+shift+g opens the gui, yo go from there
 OpenGui() { 
@@ -345,16 +337,6 @@ SetTextCursorToEnd(control, caretpos) {
     SendMessage, 0xB1, caretpos, caretpos,,ahk_id %hcontrol%
 }
 
-getListForAutoComplete(text) {
-    list := []
-    for k,v in CraftList {
-        if (inStr(v, text) > 0) {
-            list.push(v)
-        }
-    }
-    return list
-}
-
 Craft_Changed() {
     if (!needToChangeModel) {
         return
@@ -459,6 +441,87 @@ ClearRow_Click() {
     updateUIRow(tempRow)
     sumTypes()
     sumPrices()
+}
+
+updatePricesForUI() {
+    for k, row in CraftTable {
+        craftInGui := row.craft
+        if (row.craft == "") {
+            continue
+        }
+        oldPrice := row.price
+        iniRead, newPrice, %PricesPath%, Prices, % row.craft
+        if (newPrice == "ERROR" or newPrice == oldPrice) {
+            continue
+        }
+        CraftTable[k].price := newPrice
+        updateUIRow(k, "price")
+    }
+    sumPrices()
+}
+
+GithubPriceUpdate_Click() {
+    option := (262144 | 4) ;Always-on-top and Yes/No
+    text := translate("This will update all local prices with TFT discord prices(Only those which are high confidence, if there is no high confidence price for certain Harvest, they will be kept as it is in local file.), are you sure you want to continue?")
+    MsgBox, % option,, %text%
+    IfMsgBox, Yes
+    {
+        leagueCheck := settingsApp.selectedLeague
+        ToolTip, % translate("Updating for") " " leagueCheck
+        sleep, 1000
+        Tooltip
+        mapLeagues := {"Standard": "std", "SC": "lsc", "Hardcore": "lhc"}
+        url := "https://raw.githubusercontent.com/The-Forbidden-Trove/tft-data-prices/master/{league}/harvest.json"
+        for league in mapLeagues {
+            if InStr(leagueCheck, league) {
+                url := StrReplace(url, "{league}", mapLeagues[league])
+                UrlDownloadToFile, %url%, %tftPrices%
+                break
+            }
+        }
+        if (!FileExist(tftPrices)) {
+            ToolTip, % translate("Prices NOT Updated")
+            sleep, 1000
+            Tooltip
+            return
+        }
+        FileRead, tftData, %tftPrices%
+        parsed := JSON.Load(tftData)
+        for k, v in parsed.data {
+            lowConfidence := v.lowConfidence
+            if (lowConfidence) {
+                continue
+            }
+            exalt := v.exalt
+            craftName := v.name
+            iniRead, CheckLocalPrice, %PricesPath%, Prices, %craftName%
+            if (exalt >= 1) {
+                template := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
+                type := "ex"
+                craftPrice := exalt
+            } else {
+                template := "Oi)^(\d+) *(c|chaos)$"
+                craftPrice := v.chaos
+                type := "c"
+            }
+            if (RegExMatch(CheckLocalPrice, template, matchObj) > 0) {
+                CheckLocalPrice := matchObj[1]
+            }
+            if (CheckLocalPrice != craftPrice) {
+                craftPrice .= type
+                iniWrite, %craftPrice%, %PricesPath%, Prices, %craftName%
+            }
+        }
+        FileDelete, %tftPrices%
+        updatePricesForUI()
+        ToolTip, % translate("Prices Updated")
+        sleep, 1000
+        Tooltip
+        return
+    }
+    ToolTip, % translate("Prices NOT Updated")
+    sleep, 1000
+    Tooltip
 }
 
 createPost_Click() {
@@ -686,7 +749,7 @@ initSettings() {
         MaxRowsCraftTable := 20
     }
     settingsApp.MaxRowsCraftTable := MaxRowsCraftTable
-    loop, %MaxRowsCraftTable% {
+    loop, % settingsApp.MaxRowsCraftTable {
         CraftTable.push({"count": 0, "craft": "", "price": ""
             , "lvl": "", "type": ""})
     }
@@ -788,6 +851,11 @@ initSettings() {
         tempCustomText := "" 
     }
     settingsApp.customText := StrReplace(tempCustomText, "||", "`n") ;support multilines in custom text
+    iniRead, selectedLeague, %SettingsPath%, selectedLeague, s
+    if (selectedLeague == "ERROR") {
+        selectedLeague := ""
+    }
+    settingsApp.selectedLeague := selectedLeague
 }
 
 saveSettings() {
@@ -961,7 +1029,7 @@ gui, Font, s11 cA38D6D
     dp_pic_height := 9
     dp_pic_relX := Row_height - dp_pic_height
     
-    loop, %MaxRowsCraftTable% {
+    loop, % settingsApp.MaxRowsCraftTable {
         if (A_Index != 1) {
             offsetRow := offsetNRow + borderTop_height
         }
@@ -982,7 +1050,7 @@ gui, Font, s11 cA38D6D
         gui add, picture, x+%offsetColumn_Craft% ys+0 w%Craft_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" craft_pic
             gui add, edit, xp+%borderRight_width% yp+%borderTop_height% wp-%border_width% hp-%border_height% -E0x200 +BackgroundTrans vcraft_%A_Index% gCraft_Changed HwndhCraft_%A_Index%
             ia_craft := IAutoComplete_Create(hCraft_%A_Index%, CraftList
-                , ["UPDOWNKEYDROPSLIST", "AUTOSUGGEST", "WORD_FILTER", "AUTOAPPEND"], True)
+                , ["UPDOWNKEYDROPSLIST", "AUTOSUGGEST", "WORD_FILTER"], True)
             IAutoComplete_Crafts.push(ia_craft) ;, "AUTOSUGGEST" "WORD_FILTER"
 
         gui add, picture, x+%offsetColumn% ys+0 w%Level_width% h%Row_height% Section AltSubmit , % "HBITMAP:*" lvl_pic
@@ -1013,16 +1081,17 @@ gui, Font, s11 cA38D6D
     gui add, picture, xp+0 y+%offsetForbuttons% w%settings_% h-1 gSettings_Click vsettings, resources\settings.png
     help_ := getImgWidth(A_ScriptDir . "\resources\help.png")
     gui add, picture, xp+0 y+%offsetForbuttons% w%help_% h-1 gHelp_Click vhelp, resources\help.png
-
+	githubpriceupdate_ := getImgWidth(A_ScriptDir . "\resources\UpdatePrices.png")
+    gui add, picture, xp+0 y+%offsetForbuttons% w%githubpriceupdate_% h-1 gGithubPriceUpdate_Click vgithubpriceupdate, resources\UpdatePrices.png
     ; === Post buttons ===
     createPost := getImgWidth(A_ScriptDir . "\resources\createPost.png")
     gui add, picture, xp+0 y+%offsetForbuttons% w%createPost% h-1 vpostAll gcreatePost_Click, resources\createPost.png
 
     ; === League dropdown ===
-    
+    leagueString := getLeagueList()
     gui add, text, xp+0 y+10, % translate("League:")
-    gui add, dropdownList, xp+0 y+%offsetForbuttons% w%leagueDDL_width% -E0x200 +BackgroundTrans vleague gLeague_Changed
-    leagueList()
+    gui add, dropdownList, xp+0 y+%offsetForbuttons% w%leagueDDL_width% -E0x200 +BackgroundTrans vleague gLeague_Changed, % leagueString
+    guicontrol, choose, league, % settingsApp.selectedLeague
 
     ; === can stream ===
     gui add, checkbox, xp+0 y+%offsetForbuttons% vcanStream gCanStream_Changed, % translate("Can stream")
@@ -1103,21 +1172,14 @@ TemplateExist(text, template) {
 Handle_Augment(craftText, ByRef out) {
     mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
     if TemplateExist(craftText, translate("non-Influenced")) {
-        augments := ["Caster"
-            , "Physical"
-            , "Fire"
-            , "Attack"
-            , "Life"
-            , "Cold"
-            , "Speed"
-            , "Defence"
-            , "Lightning"
-            , "Chaos"
-            , "Critical"
-            , "a new modifier"]
+        augments := [["a new modifier", "Non-Influence"], ["Caster", "Caster"]
+            , ["Physical", "Physical"], ["Fire", "Fire"]
+            , ["Attack", "Attack"], ["Life", "Life"], ["Cold", "Cold"]
+            , ["Speed", "Speed"], ["Defence", "Defence"], ["Lightning", "Lightning"]
+            , ["Chaos", "Chaos"], ["Critical", "Critical"]]
         for k, v in augments {
-            if TemplateExist(craftText, translate(v)) {
-                out.push(["Augment non-influenced - " . v . mod
+            if TemplateExist(craftText, translate(v[1])) {
+                out.push(["Augment " . v[2] . mod
                         , getLVL(craftText)
                         , "Aug"])
                 return
@@ -1135,10 +1197,10 @@ Handle_Remove(craftText, ByRef out) {
         if TemplateExist(craftText, translate("add")) {
             removes := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical"]
-            mod := TemplateExist(craftText, translate("non")) ? "non-" : ""
+            mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
             for k, v in removes {
                 if TemplateExist(craftText, translate(v)) {
-                    out.push(["Remove " . mod . v . " add " . v
+                    out.push(["Remove " . mod . v . " Add " . v
                         , getLVL(craftText)
                         , "Rem/Add"])
                     return
@@ -1159,7 +1221,7 @@ Handle_Remove(craftText, ByRef out) {
         return
     }
     if TemplateExist(craftText, translate("add")) {
-        mod := TemplateExist(craftText, translate("non")) ? "non-" : ""
+        mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
         out.push(["Remove " . mod . "Influence add Influence"
             , getLVL(craftText)
             , "Rem/Add"])
@@ -1174,7 +1236,7 @@ Handle_Reforge(craftText, ByRef out) {
     ;prefixes
     if TemplateExist(craftText, translate("Prefix")) {
         mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
-        out.push(["Reforge keep Prefixes" . mod
+        out.push(["Reforge keep Prefix" . mod
             , getLVL(craftText)
             , "Ref"])
         return
@@ -1182,29 +1244,19 @@ Handle_Reforge(craftText, ByRef out) {
     ;suffixes
     if TemplateExist(craftText, translate("Suffix")) {
         mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
-        out.push(["Reforge keep Suffixes" . mod
+        out.push(["Reforge keep Suffix" . mod
             , getLVL(craftText)
             , "Ref"])
         return
     }
     ; reforge rares
-    remAddsClean := ["Caster"
-        , "Physical"
-        , "Fire"
-        , "Attack"
-        , "Life"
-        , "Cold"
-        , "Speed"
-        , "Defence"
-        , "Lightning"
-        , "Chaos"
-        , "Critical"
-        , "Influence"]
+    remAddsClean := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
+        , "Speed", "Defence", "Lightning", "Chaos", "Critical", "Influence"]
     if TemplateExist(craftText, translate("including")) { ; 'including' text appears only in reforge rares
         for k, v in remAddsClean {
             if TemplateExist(craftText, translate(v)) {
-                mod := TemplateExist(craftText, translate("more")) ? " more common" : ""
-                out.push(["Reforge Rare - " . v . mod
+                mod := TemplateExist(craftText, translate("more")) ? " More Common" : ""
+                out.push(["Reforge " . v . mod
                         , getLVL(craftText)
                         , "Ref"])
                 return
@@ -1214,13 +1266,13 @@ Handle_Reforge(craftText, ByRef out) {
     } 
     ;reforge same mod
     if TemplateExist(craftText, translate("less likely")) {
-        out.push(["Reforge Rare - Less Likely"
+        out.push(["Reforge Rare Less Likely"
             , getLVL(craftText)
             , "Ref"])
         return
     }
     if TemplateExist(craftText, translate("more likely")) {
-        out.push(["Reforge Rare - More Likely"
+        out.push(["Reforge Rare More Likely"
             , getLVL(craftText)
             , "Ref"])
         return
@@ -1232,11 +1284,11 @@ Handle_Reforge(craftText, ByRef out) {
     ;links
     if TemplateExist(craftText, translate("links")) {
         if TemplateExist(craftText, translate("six")) {
-            out.push(["Six link (6-link)"
+            out.push(["Six Links"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, translate("five")) {
-            out.push(["Five link (5-link)"
+            out.push(["Five Links"
                 , getLVL(craftText)
                 , "Other"])
         }
@@ -1248,16 +1300,16 @@ Handle_Reforge(craftText, ByRef out) {
             reforgeNonColor := ["Red", "Blue", "Green"]
             for k, v in reforgeNonColor {
                 if TemplateExist(craftText, translate(v)) {
-                    out.push(["Reforge Colour: non-" . v . " into " . v
+                    out.push(["Non-" . v . " into " . v . " Socket"
                         , getLVL(craftText)
-                        , "Ref"])
+                        , "Other"])
                     return
                 } 
             }
             return
         }
         if TemplateExist(craftText, translate("White")) {
-            out.push(["Reforge Colour: into White"
+            out.push(["Reforge into White Socket"
                     , getLVL(craftText)
                     , "Ref"])
             return
@@ -1266,25 +1318,25 @@ Handle_Reforge(craftText, ByRef out) {
         blueVal := TemplateExist(craftText, translate("Blue"))
         greenVal := TemplateExist(craftText, translate("Green"))
         if (redVal and blueVal and greenVal) {
-            out.push(["Reforge Colour: into Red, Blue and Green"
+            out.push(["Reforge into Red, Blue and Green Socket"
                     , getLVL(craftText)
                     , "Ref"])
             return
         }
         if (redVal and blueVal) {
-            out.push(["Reforge Colour: into Red and Blue"
+            out.push(["Reforge into Red and Blue Socket"
                     , getLVL(craftText)
                     , "Ref"])
             return
         }
         if (redVal and greenVal) {
-            out.push(["Reforge Colour: into Red and Green"
+            out.push(["Reforge into Red and Green Socket"
                     , getLVL(craftText)
                     , "Ref"])
             return
         }
         if (blueVal and greenVal) {
-            out.push(["Reforge Colour: into Blue and Green"
+            out.push(["Reforge into Blue and Green Socket"
                     , getLVL(craftText)
                     , "Ref"])
             return
@@ -1304,10 +1356,10 @@ Handle_Enchant(craftText, ByRef out) {
     ;weapon
     if TemplateExist(craftText, translate("Weapon")) {
         weapEnchants := ["Critical Strike Chance", "Accuracy", "Attack Speed"
-            , "+1 Weapon Range", "Elemental Damage", "Area of Effect"]
+            , "Weapon Range", "Elemental Damage", "Area of Effect"]
         for k, enchant in weapEnchants {
             if TemplateExist(craftText, translate(enchant)) {
-                out.push(["Enchant Weapon: " . enchant
+                out.push(["Enchant Weapon, " . enchant
                     , getLVL(craftText)
                     , "Other"])
                 return
@@ -1318,10 +1370,10 @@ Handle_Enchant(craftText, ByRef out) {
     ;body armour
     if TemplateExist(craftText, translate("Armour")) { 
         bodyEnchants := ["Maximum Life", "Maximum Mana", "Strength", "Dexterity"
-            , "Intelligence", "Fire Resistance", "Cold Resistance", "Lightning Resistance"]
+            , "Intelligence", "Fire Resist", "Cold Resist", "Lightning Resist"]
         for k, bodyEnchant in bodyEnchants {
             if TemplateExist(craftText, translate(bodyEnchant)) {
-                out.push(["Enchant Body: " . bodyEnchant
+                out.push(["Enchant Body, " . bodyEnchant
                     , getLVL(craftText)
                     , "Other"])
                 return
@@ -1331,7 +1383,7 @@ Handle_Enchant(craftText, ByRef out) {
     }
     ;Map
     if TemplateExist(craftText, translate("Sextant")) {
-        out.push(["Enchant Map: no Sextant use"
+        out.push(["Enchant Map, Doesn't Consume Sextant"
             , getLVL(craftText)
             , "Other"])
         return
@@ -1342,7 +1394,7 @@ Handle_Enchant(craftText, ByRef out) {
             , "Maximum Charges": "inc", "Charges used": "reduced"}
         for flaskEnchant, mod in flaskEnchants {
             if TemplateExist(craftText, translate(flaskEnchant)) {
-                out.push(["Enchant Flask: " . mod . " " . flaskEnchant
+                out.push(["Enchant Flask, " . mod . " " . flaskEnchant
                     , getLVL(craftText)
                     , "Other"])
                 return
@@ -1351,7 +1403,7 @@ Handle_Enchant(craftText, ByRef out) {
         return
     }
     if TemplateExist(craftText, translate("Tormented")) {
-        out.push(["Enchant Map: surrounded by Tormented Spirits"
+        out.push(["Enchant Map, surrounded by Tormented Spirits"
             , getLVL(craftText)
             , "Other"])
         return
@@ -1361,7 +1413,7 @@ Handle_Enchant(craftText, ByRef out) {
 Handle_Attempt(craftText, ByRef out) {
     ;awaken
     if TemplateExist(craftText, translate("Awaken")) {
-        out.push(["Attempt to Awaken a level 20 Support Gem"
+        out.push(["Awaken Level 20 Support Gem"
             , getLVL(craftText)
             , "Other"])
         return
@@ -1384,31 +1436,31 @@ Handle_Change(craftText, ByRef out) {
         rightMostPos := max(firePos, coldPos, lightPos)
         if (rightMostPos == firePos) {
             if (coldPos > 0) {
-                out.push(["Change Resist: Cold to Fire"
+                out.push(["Cold to Fire Resist"
                     , getLVL(craftText)
                     , "Other"])
             } else if (lightPos > 0) {
-                out.push(["Change Resist: Lightning to Fire"
+                out.push(["Lightning to Fire Resist"
                     , getLVL(craftText)
                     , "Other"])
             }
         } else if (rightMostPos == coldPos) {
             if (firePos > 0) {
-                out.push(["Change Resist: Fire to Cold"
+                out.push(["Fire to Cold Resist"
                     , getLVL(craftText)
                     , "Other"])
             } else if (lightPos > 0) {
-                out.push(["Change Resist: Lightning to Cold"
+                out.push(["Lightning to Cold Resist"
                     , getLVL(craftText)
                     , "Other"])
             }
         } else if (rightMostPos == lightPos) {
             if (firePos > 0) {
-                out.push(["Change Resist: Fire to Lightning"
+                out.push(["Fire to Lightning Resist"
                     , getLVL(craftText)
                     , "Other"])
             } else if (coldPos > 0) {
-                out.push(["Change Resist: Cold to Lightning"
+                out.push(["Cold to Lightning Resist"
                     , getLVL(craftText)
                     , "Other"])
             }
@@ -1437,11 +1489,11 @@ Handle_Sacrifice(craftText, ByRef out) {
         for k, v in gemPerc {
             if TemplateExist(craftText, v) {
                 if TemplateExist(craftText, translate("quality")) {
-                    out.push(["Sacrifice gem, get " . v . " qual as GCP"
+                    out.push(["Sacrifice Gem, " . v . " qual As GCP"
                         , getLVL(craftText)
                         , "Other"])
                 } else if TemplateExist(craftText, translate("experience")) {
-                    out.push(["Sacrifice gem, get " . v . " exp as Lens"
+                    out.push(["Sacrifice Gem, " . v . " XP As Facetor Lens"
                         , getLVL(craftText)
                         , "Other"])
                 }
@@ -1453,7 +1505,7 @@ Handle_Sacrifice(craftText, ByRef out) {
     ;div cards gambling
     if TemplateExist(craftText, translate("Divination")) { 
         if TemplateExist(craftText, translate("half a stack")) {
-            out.push(["Sacrifice half stack for 0-2x return"
+            out.push(["Sacrifice Divination Card 0-2x"
                 , getLVL(craftText)
                 , "Other"])
         }
@@ -1477,10 +1529,10 @@ Handle_Improves(craftText, ByRef out) {
 }
 
 Handle_Fracture(craftText, ByRef out) {
-    fracture := {"modifier": "1/5", "Suffix": "1/3", "Prefix": "1/3"}
+    fracture := {"modifier": "1/5", "Suffix": "1/3 Suffix", "Prefix": "1/3 Prefix"}
     for k, v in fracture {
         if TemplateExist(craftText, translate(k)) {
-            out.push(["Fracture " . v . " " . k
+            out.push(["Fracture " . v
                 , getLVL(craftText)
                 , "Other"])
             return
@@ -1516,7 +1568,7 @@ Handle_Randomise(craftText, ByRef out) {
         addInfluence := ["Weapon", "Armour", "Jewellery"]
         for k, v in addInfluence {
             if TemplateExist(craftText, translate(v)) {
-                out.push(["Randomise Influence - " . v
+                out.push(["Randomise Influence " . v
                     , getLVL(craftText)
                     , "Other"])
                 return
@@ -1555,20 +1607,20 @@ Handle_Add(craftText, ByRef out) {
 
 Handle_Set(craftText, ByRef out) {
     if TemplateExist(craftText, translate("Prismatic")) {
-        out.push(["Set Implicit Basic Jewel"
+        out.push(["Set Implicit, Basic Jewel"
             , getLVL(craftText)
             , "Other"])
         return
     }
     if (TemplateExist(craftText, translate("Timeless")) 
         or TemplateExist(craftText, translate("Abyss"))) {
-        out.push(["Set Implicit Abyss/Timeless Jewel"
+        out.push(["Set Implicit, Abyss/Timeless Jewel"
             , getLVL(craftText)
             , "Other"])
         return
     }
     if TemplateExist(craftText, translate("Cluster")) {
-        out.push(["Set Implicit Cluster Jewel"
+        out.push(["Set Implicit, Cluster Jewel"
             , getLVL(craftText)
             , "Other"])
         return
@@ -1603,15 +1655,16 @@ Handle_Upgrade(craftText, ByRef out) {
         return
     }
     if TemplateExist(craftText, translate("Rare")) {
-        mods := {"two random modifiers" : "Upgrade Magic to Rare adding 2 mods"
-            , "two random high-tier modifiers": "Upgrade Magic to Rare adding 2 high-tier mods"
-            , "three random modifiers" : "Upgrade Magic to Rare adding 3 mods"
-            , "three random high-tier modifiers": "Upgrade Magic to Rare adding 3 high-tier mods"
-            , "four random modifiers" : "Upgrade Magic to Rare adding 4 mods"
-            , "four random high-tier modifiers": "Upgrade Magic to Rare adding 4 high-tier mods"}
+        mods := [["two random high-tier modifiers", "Upgrade Magic to Rare adding 2 high-tier mods"]
+            , ["two random modifiers", "Upgrade Magic to Rare adding 2 mods"]
+            , ["three random high-tier modifiers", "Upgrade Magic to Rare adding 3 high-tier mods"]
+            , ["three random modifiers", "Upgrade Magic to Rare adding 3 mods"]
+            , ["four random high-tier modifiers", "Upgrade Magic to Rare adding 4 high-tier mods"]
+            , ["four random modifiers", "Upgrade Magic to Rare adding 4 mods"]]
+            
         for k, v in mods {
-            if TemplateExist(craftText, translate(k)) {
-                out.push([v
+            if TemplateExist(craftText, translate(v[1])) {
+                out.push([v[2]
                     , getLVL(craftText)
                     , "Other"])
                 return
@@ -1693,18 +1746,15 @@ updateCraftTable(ar) {
         tempC := v[1]
         tempLvl := v[2] 
         tempType := v[3]
-
-        loop, %MaxRowsCraftTable% {
-            craftInGui := CraftTable[A_Index].craft
-            lvlInGui := CraftTable[A_Index].lvl
-            if (craftInGui == tempC and lvlInGui == tempLvl) {
-                CraftTable[A_Index].count := CraftTable[A_Index].count + 1
-                updateUIRow(A_Index, "count")
+        for k, row in CraftTable {
+            if (row.craft == tempC and row.lvl == tempLvl) {
+                CraftTable[k].count := row.count + 1
+                updateUIRow(k, "count")
                 break
             }
-            if (craftInGui == "") {
-                insertIntoRow(A_Index, tempC, tempLvl, tempType)
-                updateUIRow(A_Index)
+            if (row.craft == "") {
+                insertIntoRow(k, tempC, tempLvl, tempType)
+                updateUIRow(k)
                 ;isNeedSort := True
                 break
             }
@@ -1719,8 +1769,7 @@ updateCraftTable(ar) {
 
 sortCraftTable() {
     craftsArr := []
-    loop, %MaxRowsCraftTable% {
-        row := CraftTable[A_Index]
+    for k, row in CraftTable {
         if (row.craft != "") { ;not empty crafts
             craftsArr.push(row)
         }
@@ -1738,7 +1787,7 @@ sortCraftTable() {
     }
 }
 
-insertIntoRow(rowCounter, craft, lvl, type) {    
+insertIntoRow(rowCounter, craft, lvl, type) {
     tempP := getPriceFor(craft)
     CraftTable[rowCounter] := {"count": 1, "craft": craft, "price": tempP
             , "lvl": lvl, "type": type}
@@ -1816,8 +1865,7 @@ getPostRow(count, craft, price, group, lvl) {
 getSortedPosts(type) {
     posts := ""
     postsArr := []
-    loop, %MaxRowsCraftTable% {
-        row := CraftTable[A_Index]
+    for k, row in CraftTable {
         if ((row.count != "" and row.count > 0)
             and (row.type == type or type == "All")) {
             postsArr.push(row)
@@ -1833,8 +1881,7 @@ getSortedPosts(type) {
 
 getPosts(type) {
     posts := ""
-    loop, %MaxRowsCraftTable% {
-        row := CraftTable[A_Index]
+    for k, row in CraftTable {
         if ((row.count != "" and row.count > 0)
             and (row.type == type or type == "All")) {
             posts .= getPostRow(row.count, row.craft, row.price
@@ -1854,13 +1901,8 @@ codeblockWrap(text) {
 }
 
 getNoColorStyleHeader() {
-    tempName := ""
-    GuiControlGet, tempLeague,, League, value
-    GuiControlGet, tempName,, IGN, value
-    GuiControlGet, tempStream,, canStream, value
-    GuiControlGet, tempCustomText,, customText, value
-    GuiControlGet, tempCustomTextCB,, customText_cb, value
-    tempLeague := RegExReplace(tempLeague, "SC", "Softcore")
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
     tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
     
     outString := "**WTS " . tempLeague . "**"
@@ -1868,35 +1910,30 @@ getNoColorStyleHeader() {
         tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
         outString .= " - IGN: **" . tempName . "**" 
     }
-    outString .= " ``|  generated by HarvestVendor v" . version . "```r`n"
-    if (tempCustomText != "" and tempCustomTextCB == 1) {
-        outString .= "   " . tempCustomText . "`r`n"
+    outString .= " ``|  generated by HarvestVendor korean```r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        outString .= "   " . settingsApp.customText . "`r`n"
     }
-    if (tempStream == 1) {
+    if (settingsApp.canStream == 1) {
         outString .= "   *Can stream if requested*`r`n"
     }
     return outString
 }
 
 getColorStyleHeader() {
-    tempName := ""
-    GuiControlGet, tempLeague,, League, value
-    GuiControlGet, tempName,, IGN, value
-    GuiControlGet, tempStream,, canStream, value
-    GuiControlGet, tempCustomText,, customText, value
-    GuiControlGet, tempCustomTextCB,, customText_cb, value
-    tempLeague := RegExReplace(tempLeague, "SC", "Softcore")
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
     tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
     
     outString := "#WTS " . tempLeague
     if (tempName != "") {
         outString .= " - IGN: " . tempName
     }
-    outString .= " |  generated by HarvestVendor v" . version . "`r`n"
-    if (tempCustomText != "" and tempCustomTextCB == 1) {
-        outString .= "  " . tempCustomText . "`r`n"
+    outString .= " |  generated by HarvestVendor korean`r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        outString .= "  " . settingsApp.customText . "`r`n"
     }
-    if (tempStream == 1) {
+    if (settingsApp.canStream == 1) {
         outString .= "  Can stream if requested `r`n"
     }
     return outString
@@ -1928,12 +1965,11 @@ readyTT() {
 
 getMaxLenghtColunm(column) {
     MaxLen_column := 0
-    loop, %MaxRowsCraftTable% {
-        tempCount := CraftTable[A_Index].count
-        if (tempCount <= 0) {
+    for k, row in CraftTable {
+        if (row.count <= 0) {
             continue
         }
-        columnValue := CraftTable[A_Index][column] 
+        columnValue := row[column]
         if (StrLen(columnValue) > MaxLen_column) {
             MaxLen_column := StrLen(columnValue)
         }
@@ -1996,14 +2032,13 @@ sumPrices() {
     tempSumChaos := 0
     tempSumEx := 0
     exaltTemplate := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
-    chaosTemplate := "Oi)^(\d+) *(c|ch|chaos)$"
-    loop, %MaxRowsCraftTable% {
-        craftRow := CraftTable[A_Index]
-        if (craftRow.craft == "" or craftRow.price == "") {
+    chaosTemplate := "Oi)^(\d+) *(c|chaos)$"
+    for k, row in CraftTable {
+        if (row.craft == "" or row.price == "") {
            continue
         }
-        priceCraft := Trim(craftRow.price)
-        countCraft := craftRow.count
+        priceCraft := Trim(row.price)
+        countCraft := row.count
         matchObj := []
         if (RegExMatch(priceCraft, chaosTemplate, matchObj) > 0) {
             priceCraft := strReplace(matchObj[1], ",", ".")
@@ -2020,12 +2055,12 @@ sumPrices() {
 
 sumTypes() {
     stats := {"Aug": 0, "Ref": 0, "Rem/Add": 0, "Other": 0, "All": 0}
-    loop, %MaxRowsCraftTable% {
-        tempAmount := CraftTable[A_Index].count
+    for k, row in CraftTable {
+        tempAmount := row.count
         if (tempAmount == "") {
             continue
         }
-        tempType := CraftTable[A_Index].type
+        tempType := row.type
         if (stats.HasKey(tempType)) {
             stats[tempType] := stats[tempType] + tempAmount
             stats["All"] := stats["All"] + tempAmount
@@ -2046,43 +2081,16 @@ buttonHold(buttonV, picture) {
     guiControl,, %buttonV%, %picture%.png
 }
 
-rememberCraft(row) {
-    rowCraft := CraftTable[row]
-    craftName := rowCraft.craft
-    craftLvl := rowCraft.lvl
-    crafCount := rowCraft.count
-    craftType := rowCraft.type
-    blank := ""
-    if (craftName != "") {
-        IniWrite, %craftName%|%craftLvl%|%crafCount%|%craftType%, %SettingsPath%, LastSession, craft_%row%
-    } else {
-        IniWrite, %blank%, %SettingsPath%, LastSession, craft_%row%
-    }
-}
-
 rememberSession() { 
     if (sessionLoading or isLoading or firstGuiOpen) {
         return
     }
-    loop, %MaxRowsCraftTable% {
-        rememberCraft(A_Index)
-    }
-}
-
-loadLastSessionCraft(row) { 
-    IniRead, lastCraft, %SettingsPath%, LastSession, craft_%row% 
-    if (lastCraft != "" and lastCraft != "ERROR") {
-        split := StrSplit(lastCraft, "|")
-        craft := split[1]
-        lvl := split[2]
-        ccount := split[3]
-        ;type := split[4]
-
-        tempP := getPriceFor(craft)
-        type := getTypeFor(craft)
-        
-        CraftTable[row] := {"count": ccount, "craft": craft, "price": tempP
-            , "lvl": lvl, "type": type}
+    for k, row in CraftTable {
+        line := ""
+        if (row.craft != "") {
+            line := row.craft . "|" . row.lvl . "|" . row.count . "|" . row.type
+        }
+        IniWrite, %line%, %SettingsPath%, LastSession, craft_%k%
     }
 }
 
@@ -2091,9 +2099,18 @@ loadLastSession() {
         return
     }
     sessionLoading := True
-    loop, %MaxRowsCraftTable% {
-        loadLastSessionCraft(A_Index)
-        updateUIRow(A_Index)
+    for k in CraftTable {
+        IniRead, lastCraft, %SettingsPath%, LastSession, craft_%k% 
+        if (lastCraft == "ERROR" or lastCraft == "") {
+            continue
+        }
+        split := StrSplit(lastCraft, "|")
+        craft := split[1]
+        tempP := getPriceFor(craft)
+        type := getTypeFor(craft)
+        CraftTable[k] := {"count": split[3], "craft": craft, "price": tempP
+            , "lvl": split[2], "type": type}
+        updateUIRow(k)
     }
     sessionLoading := False
     sumTypes()
@@ -2106,7 +2123,7 @@ clearRowData(rowIndex) {
 }
 
 clearAll() {
-    loop, %MaxRowsCraftTable% {
+    loop, % settingsApp.MaxRowsCraftTable {
         clearRowData(A_Index)
         updateUIRow(A_Index)
     }
@@ -2114,29 +2131,28 @@ clearAll() {
 }
 ; === technical stuff i guess ===
 getLeagues() {
-    leagueAPIurl := "http://api.pathofexile.com/leagues?type=main&compact=1" 
-    
+    leagueAPIurl := "http://api.pathofexile.com/leagues?type=main&compact=1"
     if FileExist("curl.exe") {
         ; Hack for people with outdated certificates
         shell := ComObjCreate("WScript.Shell")
         exec := shell.Exec("curl.exe -k " . leagueAPIurl)
-        response := exec.StdOut.ReadAll()       
+        response := exec.StdOut.ReadAll()
     } else {
         oWhr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
         oWhr.Open("GET", leagueAPIurl, false)
-        oWhr.SetRequestHeader("Content-Type", "application/json")    
+        oWhr.SetRequestHeader("Content-Type", "application/json")
         oWhr.Send()
         response := oWhr.ResponseText
     }
     if (oWhr.Status == "200" or FileExist("curl.exe")) {
         if InStr(response, "Standard") > 0 {
-            parsed := Jxon_load(response) 
+            parsed := JSON.Load(response)
+            maxCount := 8
             for k, v in parsed {
-                if (k > 8) { ;take first 8
+                if (k > maxCount) { ;take first 8
                     break
                 }
-                tempParse := v["id"]
-                iniWrite, %tempParse%, %SettingsPath%, Leagues, %k%
+                settingsApp.LeagueList[k] := v["id"]
             }
         } else {
             IniRead, lc, %SettingsPath%, Leagues, 1
@@ -2150,46 +2166,36 @@ getLeagues() {
         }
     } else {
         Msgbox, % translate("Unable to get active leagues from GGG API, using placeholder names")
-        iniWrite, Temp, %SettingsPath%, Leagues, 1
-        iniWrite, Hardcore Temp, %SettingsPath%, Leagues, 2
-        iniWrite, Standard, %SettingsPath%, Leagues, 3
-        iniWrite, Hardcore, %SettingsPath%, Leagues, 4
+        settingsApp.LeagueList[1] := "Temp"
+        settingsApp.LeagueList[2] := "Hardcore Temp"
+        settingsApp.LeagueList[3] := "Standard"
+        settingsApp.LeagueList[4] := "Hardcore"
     }
 }
 
-leagueList() {
+getLeagueList() {
     leagueString := ""
-    loop, 8 {
-        IniRead, tempList, %SettingsPath%, Leagues, %A_Index%
-        if (tempList != "ERROR" and templist != "") {
-            if InStr(tempList, "Hardcore") = 0 and InStr(tempList, "HC") = 0 {
-                tempList .= " SC"
-            } 
-            if (tempList == "Hardcore") {
-                tempList := "Standard HC"
-            }
-            if InStr(tempList,"SSF") = 0 {
-                leagueString .= tempList . "|"
-            }
-            if (InStr(tempList, "Hardcore", true) = 0 and InStr(tempList,"SSF", true) = 0 
-                and InStr(tempList,"Standard", true) = 0 and InStr(tempList,"HC", true) = 0) {
+    defaultLeague := "Standard SC"
+    for k, v in settingsApp.LeagueList {
+        tempList := v
+        if (templist == "" or InStr(tempList, "SSF") > 0) {
+            continue
+        }
+        if !InStr(tempList, "Hardcore") and !InStr(tempList, "HC") {
+            tempList .= " SC"
+            if !InStr(tempList, "Standard", true) {
                 defaultLeague := templist
             }
+        } else if (tempList == "Hardcore") {
+            tempList := "Standard HC"
         }
+        leagueString .= tempList . "|"
     }
-
-    iniRead, leagueCheck, %SettingsPath%, selectedLeague, s
-    guicontrol,, League, %leagueString%
-    if (leagueCheck == "ERROR") {
-        if (defaultLeague == "") {
-            IniRead, defaultLeague, %SettingsPath%, Leagues, 1
-        }
-        guicontrol, choose, League, %defaultLeague%
+    if (settingsApp.selectedLeague == "" 
+        or !InStr(leagueString, settingsApp.selectedLeague)) {
         settingsApp.selectedLeague := defaultLeague
-    } else {
-        settingsApp.selectedLeague := leagueCheck
-        guicontrol, choose, League, %leagueCheck%
     }
+    return leagueString
 }
 
 getVersion() {
@@ -2402,215 +2408,6 @@ WM_MOUSEMOVE() {
     return
 }
 
-;==== JSON PARSER FROM https://github.com/cocobelgica/AutoHotkey-JSON ====
-Jxon_Load(ByRef src, args*) {
-   
-    static q := Chr(34)
-
-    key := "", is_key := false
-    stack := [ tree := [] ]
-    is_arr := { (tree): 1 }
-    next := q . "{[01234567890-tfn"
-    pos := 0
-    value := ""
-    while ( (ch := SubStr(src, ++pos, 1)) != "" )
-    {
-        if InStr(" `t`n`r", ch)
-            continue
-        if !InStr(next, ch, true)
-        {
-            ln := ObjLength(StrSplit(SubStr(src, 1, pos), "`n"))
-            col := pos - InStr(src, "`n",, -(StrLen(src) - pos + 1))
-
-            msg := Format("{}: line {} col {} (char {})"
-            ,   (next == "")      ? ["Extra data", ch := SubStr(src, pos)][1]
-              : (next == "'")     ? "Unterminated string starting at"
-              : (next == "\")     ? "Invalid \escape"
-              : (next == ":")     ? "Expecting ':' delimiter"
-              : (next == q)       ? "Expecting object key enclosed in double quotes"
-              : (next == q . "}") ? "Expecting object key enclosed in double quotes or object closing '}'"
-              : (next == ",}")    ? "Expecting ',' delimiter or object closing '}'"
-              : (next == ",]")    ? "Expecting ',' delimiter or array closing ']'"
-              : [ "Expecting JSON value(string, number, [true, false, null], object or array)"
-                , ch := SubStr(src, pos, (SubStr(src, pos)~="[\]\},\s]|$") - 1) ][1]
-            , ln, col, pos)
-
-            throw Exception(msg, -1, ch)
-        }
-
-        is_array := is_arr[obj := stack[1]]
-
-        if i := InStr("{[", ch)
-        {
-            val := (proto := args[i]) ? new proto : {}
-            is_array? ObjPush(obj, val) : obj[key] := val
-            ObjInsertAt(stack, 1, val)
-            
-            is_arr[val] := !(is_key := ch == "{")
-            next := q . (is_key ? "}" : "{[]0123456789-tfn")
-        }
-
-        else if InStr("}]", ch)
-        {
-            ObjRemoveAt(stack, 1)
-            next := stack[1] == tree ? "" : is_arr[stack[1]] ? ",]" : ",}"
-        }
-
-        else if InStr(",:", ch)
-        {
-            is_key := (!is_array && ch == ",")
-            next := is_key ? q : q . "{[0123456789-tfn"
-        }
-
-        else ; string | number | true | false | null
-        {
-            if (ch == q) ; string
-            {
-                i := pos
-                while i := InStr(src, q,, i + 1)
-                {
-                    val := StrReplace(SubStr(src, pos + 1, i - pos - 1), "\\", "\u005C")
-                    static end := A_AhkVersion<"2" ? 0 : -1
-                    if (SubStr(val, end) != "\")
-                        break
-                }
-                if !i ? (pos--, next := "'") : 0
-                    continue
-
-                pos := i ; update pos
-
-                  val := StrReplace(val,    "\/",  "/")
-                , val := StrReplace(val, "\" . q,    q)
-                , val := StrReplace(val,    "\b", "`b")
-                , val := StrReplace(val,    "\f", "`f")
-                , val := StrReplace(val,    "\n", "`n")
-                , val := StrReplace(val,    "\r", "`r")
-                , val := StrReplace(val,    "\t", "`t")
-
-                i := 0
-                while i := InStr(val, "\",, i + 1)
-                {
-                    if (SubStr(val, i + 1, 1) != "u") ? (pos -= StrLen(SubStr(val, i)), next := "\") : 0
-                        continue 2
-
-                    ; \uXXXX - JSON unicode escape sequence
-                    xxxx := Abs("0x" . SubStr(val, i + 2, 4))
-                    if (A_IsUnicode || xxxx < 0x100)
-                        val := SubStr(val, 1, i - 1) . Chr(xxxx) . SubStr(val, i + 6)
-                }
-
-                if is_key
-                {
-                    key := val, next := ":"
-                    continue
-                }
-            }
-
-            else ; number | true | false | null
-            {
-                val := SubStr(src, pos, i := RegExMatch(src, "[\]\},\s]|$",, pos) - pos)
-            
-            ; For numerical values, numerify integers and keep floats as is.
-            ; I'm not yet sure if I should numerify floats in v2.0-a ...
-                static number := "number", integer := "integer"
-                if val is %number%
-                {
-                    if val is %integer%
-                        val += 0
-                }
-            ; in v1.1, true,false,A_PtrSize,A_IsUnicode,A_Index,A_EventInfo,
-            ; SOMETIMES return strings due to certain optimizations. Since it
-            ; is just 'SOMETIMES', numerify to be consistent w/ v2.0-a
-                else if (val == "true" || val == "false")
-                    val := %value% + 0
-            ; AHK_H has built-in null, can't do 'val := %value%' where value == "null"
-            ; as it would raise an exception in AHK_H(overriding built-in var)
-                else if (val == "null")
-                    val := ""
-            ; any other values are invalid, continue to trigger error
-                else if (pos--, next := "#")
-                    continue
-                
-                pos += i-1
-            }
-            
-            is_array? ObjPush(obj, val) : obj[key] := val
-            next := (obj == tree) ? "" : is_array ? ",]" : ",}"
-        }
-    }
-
-    return tree[1]
-}
-
-Jxon_Dump(obj, indent:="", lvl:=1) {
-    static q := Chr(34)
-
-    if (IsObject(obj)) {
-        static Type := Func("Type")
-        if Type ? (Type.Call(obj) != "Object") : (ObjGetCapacity(obj) == "")
-            throw Exception("Object type not supported.", -1, Format("<Object at 0x{:p}>", &obj))
-
-        is_array := 0
-        for k in obj
-            is_array := k == A_Index
-        until !is_array
-
-        static integer := "integer"
-        if (indent is %integer%) {
-            if (indent < 0)
-                throw Exception("Indent parameter must be a postive integer.", -1, indent)
-            spaces := indent, indent := ""
-            Loop % spaces
-                indent .= " "
-        }
-        indt := ""
-        Loop, % indent ? lvl : 0
-            indt .= indent
-
-        lvl += 1, out := "" ; Make #Warn happy
-        for k, v in obj {
-            if IsObject(k) || (k == "")
-                throw Exception("Invalid object key.", -1, k ? Format("<Object at 0x{:p}>", &obj) : "<blank>")
-            
-            if !is_array
-                out .= ( ObjGetCapacity([k], 1) ? Jxon_Dump(k) : q . k . q ) ;// key
-                    .  ( indent ? ": " : ":" ) ; token + padding
-            out .= Jxon_Dump(v, indent, lvl) ; value
-                .  ( indent ? ",`n" . indt : "," ) ; token + indent
-        }
-
-        if (out != "") {
-            out := Trim(out, ",`n" . indent)
-            if (indent != "")
-                out := "`n" . indt . out . "`n" . SubStr(indt, StrLen(indent) + 1)
-        }
-        
-        return is_array ? "[" . out . "]" : "{" . out . "}"
-    }
-
-    ; Number
-    else if (ObjGetCapacity([obj], 1) == "")
-        return obj
-
-    ; String (null -> not supported by AHK)
-    if (obj != "") {
-          obj := StrReplace(obj,  "\",    "\\")
-        , obj := StrReplace(obj,  "/",    "\/")
-        , obj := StrReplace(obj,    q, "\" . q)
-        , obj := StrReplace(obj, "`b",    "\b")
-        , obj := StrReplace(obj, "`f",    "\f")
-        , obj := StrReplace(obj, "`n",    "\n")
-        , obj := StrReplace(obj, "`r",    "\r")
-        , obj := StrReplace(obj, "`t",    "\t")
-
-        static needle := (A_AhkVersion < "2" ? "O)" : "") . "[^\x20-\x7e]"
-        while RegExMatch(obj, needle, m)
-            obj := StrReplace(obj, m[0], Format("\u{:04X}", Ord(m[0])))
-    }
-    
-    return q . obj . q
-}
-
 WebPic(WB, url, Options := "") {
     RegExMatch(Options, "i)w\K\d+", W), (W = "") ? W := 50 :
     RegExMatch(Options, "i)h\K\d+", H), (H = "") ? H := 50 :
@@ -2655,5 +2452,3 @@ WebPic(WB, url, Options := "") {
     WB.Navigate("about:" HTML_Page)
     Return HTML_Page
 }
-;<div class=""bg"">
-;<img src=""" url """ alt=""Picture""/>"
