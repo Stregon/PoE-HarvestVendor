@@ -83,5 +83,6 @@ Hidden features=Скрытые фичи
 For when you aren't running PoE on main monitor=Когда PoE запущен не на основном мониторе
 Before using "Scan Recent Area", use the "Scan shortcut (Ctrl+G)" or press the "Scan" button=Нет сохранненой области для использования "Пересканировать"
 This will update all local prices with TFT discord prices(Only those which are high confidence, if there is no high confidence price for certain Harvest, they will be kept as it is in local file.), are you sure you want to continue?=Загрузить и заменить все цены с TFT дискорд #pricing-information ?
+Updating for=Обновление для
 Prices Updated=Цены обновились
 Prices NOT Updated=Цены не обновились

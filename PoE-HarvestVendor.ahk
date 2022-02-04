@@ -499,11 +499,12 @@ updatePricesForUI() {
 
 GithubPriceUpdate_Click() {
     option := (262144 | 4) ;Always-on-top and Yes/No
-    MsgBox, % option, , translate("This will update all local prices with TFT discord prices(Only those which are high confidence, if there is no high confidence price for certain Harvest, they will be kept as it is in local file.), are you sure you want to continue?")
+    text := translate("This will update all local prices with TFT discord prices(Only those which are high confidence, if there is no high confidence price for certain Harvest, they will be kept as it is in local file.), are you sure you want to continue?")
+    MsgBox, % option,, %text%
     IfMsgBox, Yes
     {
         leagueCheck := settingsApp.selectedLeague
-        ToolTip, Updating for %leagueCheck%
+        ToolTip, % translate("Updating for") " " leagueCheck
         sleep, 1000
         Tooltip
         mapLeagues := {"Standard": "std", "SC": "lsc", "Hardcore": "lhc"}
