@@ -507,11 +507,11 @@ GithubPriceUpdate_Click() {
         ToolTip, % translate("Updating for") " " leagueCheck
         sleep, 1000
         Tooltip
-        mapLeagues := {"Standard": "std", "SC": "lsc", "Hardcore": "lhc"}
+        mapLeagues := [["Standard", "std"], ["SC", "lsc"], ["Hardcore", "lhc"]]
         url := "https://raw.githubusercontent.com/The-Forbidden-Trove/tft-data-prices/master/{league}/harvest.json"
-        for league in mapLeagues {
-            if InStr(leagueCheck, league) {
-                url := StrReplace(url, "{league}", mapLeagues[league])
+        for k, league in mapLeagues {
+            if InStr(leagueCheck, league[1]) {
+                url := StrReplace(url, "{league}", league[2])
                 UrlDownloadToFile, %url%, %tftPrices%
                 break
             }
