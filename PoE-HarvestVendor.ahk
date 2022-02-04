@@ -407,13 +407,12 @@ Level_Changed() {
     }
     GuiControlGet, cntrl, name, %A_GuiControl%
     tempRow := getRow(cntrl)
-    oldPrice := CraftTable[tempRow].price
-    guiControlGet, newPrice,, price_%tempRow%, value
-    ;newPrice := removeNonEnglishChars(newPrice)
-    if (oldPrice == newPrice) {
+    oldLvl := CraftTable[tempRow].lvl
+    guiControlGet, newLvl,, lvl_%tempRow%, value
+    if (oldLvl == newLvl) {
         return
     }
-    CraftTable[tempRow].price := newPrice
+    CraftTable[tempRow].lvl := newLvl
 }
 
 Price_Changed() {
@@ -481,7 +480,7 @@ ClearRow_Click() {
     sumPrices()
 }
 
-updatePrices() {
+updatePricesForUI() {
     for k, row in CraftTable {
         craftInGui := row.craft
         if (row.craft == "") {
@@ -549,7 +548,7 @@ GithubPriceUpdate_Click() {
             }
         }
         FileDelete, %tftPrices%
-        updatePrices()
+        updatePricesForUI()
         ToolTip, % translate("Prices Updated")
         sleep, 1000
         Tooltip
@@ -629,7 +628,7 @@ ShowSettingsUI() {
     gui, add, Groupbox, x5 y+10 w%width% Section vlang_Groupbox, % translate("Localization")
         Gui, add, text, xs+5 yp+20, % translate("Language:")
         listDDL := ""
-        for k,v in LanguageList {
+        for k, v in LanguageList {
             listDDL .= v . "|"
         }
         Gui, add, dropdownList, x+10 yp+0 w80 vlangDDL glangDDL_Changed, % listDDL
@@ -1244,7 +1243,7 @@ TemplateExist(text, template) {
 
 Handle_Augment(craftText, ByRef out) {
     if TagExist(craftText, "Influenced") {
-        augments := [["Caster", "Caster"], ["Physical", "Caster"], ["Fire", "Fire"]
+        augments := [["Caster", "Caster"], ["Physical", "Physical"], ["Fire", "Fire"]
         , ["Attack", "Attack"], ["Life", "Life"], ["Cold", "Cold"]
         , ["Speed", "Speed"], ["Defence", "Defence"], ["Lightning", "Lightning"]
         , ["Chaos", "Chaos"], ["Critical", "Critical"], ["a new modifier", "Non-Influence"]]
@@ -1280,7 +1279,7 @@ Handle_Remove(craftText, ByRef out) {
                 if TagExist(craftText, v) {
                     out.push(["Remove " . mod . v . " Add " . v
                         , getLVL(craftText)
-                        , "Other"])
+                        , "Rem/Add"])
                     return
                 }
             }
@@ -1302,7 +1301,7 @@ Handle_Remove(craftText, ByRef out) {
         mod := TagExist(craftText, "non") ? "Non-" : ""
         out.push(["Remove " . mod . "Influence Add Influence"
             , getLVL(craftText)
-            , "Rem"])
+            , "Rem/Add"])
     } else {
         out.push(["Remove Influence"
             , getLVL(craftText)
@@ -1316,7 +1315,7 @@ Handle_Reforge(craftText, ByRef out) {
         mod := TagExist(craftText, "Lucky") ? " Lucky" : ""
         out.push(["Reforge keep Prefix" . mod 
             , getLVL(craftText)
-            , "Other"])
+            , "Ref"])
         return
     }
     ;suffixes
@@ -1324,7 +1323,7 @@ Handle_Reforge(craftText, ByRef out) {
         mod := TagExist(craftText, "Lucky") ? " Lucky" : ""
         out.push(["Reforge keep Suffix" . mod
             , getLVL(craftText)
-            , "Other"])
+            , "Ref"])
         return
     }
     ; reforge rares
@@ -1336,7 +1335,7 @@ Handle_Reforge(craftText, ByRef out) {
                 mod := TagExist(craftText, "more") ? " More Common" : ""
                 out.push(["Reforge " . v . mod
                     , getLVL(craftText)
-                    , "Other"])
+                    , "Ref"])
                 return
             }
         }
@@ -1346,13 +1345,13 @@ Handle_Reforge(craftText, ByRef out) {
     if TemplateExist(craftText, "less.+likely") {
         out.push(["Reforge Rare Less Likely"
             , getLVL(craftText)
-            , "Other"])
+            , "Ref"])
         return
     }
     if TemplateExist(craftText, "more.+likely") {
         out.push(["Reforge Rare More Likely"
             , getLVL(craftText)
-            , "Other"])
+            , "Ref"])
         return
     }
     if TagExist(craftText, "times") {
@@ -1394,7 +1393,7 @@ Handle_Reforge(craftText, ByRef out) {
             if TemplateExist(craftText, colortemp[2]) {
                 out.push(["Reforge into " . colortemp[1] . " Socket"
                     , getLVL(craftText)
-                    , "Other"])
+                    , "Ref"])
                 return
             }
         }
@@ -1403,7 +1402,7 @@ Handle_Reforge(craftText, ByRef out) {
     if TagExist(craftText, "Influence") {
         out.push(["Reforge with Influence mod more common"
             , getLVL(craftText)
-            , "Other"])
+            , "Ref"])
         return
     }
 }
@@ -1558,7 +1557,7 @@ Handle_Sacrifice(craftText, ByRef out) {
         for k, v in gemPerc {
             if TagExist(craftText, v) {
                 if TagExist(craftText, "quality") {
-                    out.push(["Sacrifice Gem, " . v . " qual as GCP"
+                    out.push(["Sacrifice Gem, " . v . " Quality As GCP"
                         , getLVL(craftText)
                         , "Other"])
                 } else if TagExist(craftText, "experience") {

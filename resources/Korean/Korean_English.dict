@@ -84,7 +84,7 @@
 비-치명타 제거후 치명타 부여=Remove Non-Critical Add Critical
 비-카오스 제거후 카오스 부여=Remove Non-Chaos Add Chaos
 비-화염 제거후 화염 부여=Remove Non-Fire Add Fire
-빨강 홈이 아닌 홈을 빨강홈으로 재련=Non-Red into Red Socket
+빨강 홈이 아닌 홈을 빨강홈으로 변경=Non-Red into Red Socket
 생명력 빈도 재련=Reforge Life More Common
 생명력 재련=Reforge Life
 속도 빈도 재련=Reforge Speed More Common
@@ -108,13 +108,13 @@
 접미 유지 재련=Reforge keep Suffix
 접미 행운 유지 재련=Reforge keep Suffix Lucky
 지도인챈트: 육분의 소모 없음=Enchant Map, Doesn't Consume Sextant
-초록 홈이 아닌 홈을 초록홈으로 재련=Non-Green into Green Socket
+초록 홈이 아닌 홈을 초록홈으로 변경=Non-Green into Green Socket
 치명타 빈도 재련=Reforge Critical More Common
 치명타 재련=Reforge Critical
 카드세트소모 0~2배 획득[카드도박]=Sacrifice Divination Card 0-2x
 카오스 빈도 재련=Reforge Chaos More Common
 카오스 재련=Reforge Chaos
-파랑 홈이 아닌 홈을 파랑홈으로 재련=Non-Blue into Blue Socket
+파랑 홈이 아닌 홈을 파랑홈으로 변경=Non-Blue into Blue Socket
 행운 리롤 [. 신성한 오브] 전체=Reroll All Lucky
 행운 리롤 [. 신성한 오브] 접두=Reroll Prefix Lucky
 행운 리롤 [. 신성한 오브] 접미=Reroll Suffix Lucky
