@@ -1172,7 +1172,7 @@ TemplateExist(text, template) {
 Handle_Augment(craftText, ByRef out) {
     mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
     if TemplateExist(craftText, translate("non-Influenced")) {
-        augments := [["a new modifier", "Non-Influence"], ["Caster", "Caster"]
+        augments := [["Caster", "Caster"]
             , ["Physical", "Physical"], ["Fire", "Fire"]
             , ["Attack", "Attack"], ["Life", "Life"], ["Cold", "Cold"]
             , ["Speed", "Speed"], ["Defence", "Defence"], ["Lightning", "Lightning"]
@@ -1185,11 +1185,18 @@ Handle_Augment(craftText, ByRef out) {
                 return
             }
         }
+        if !TemplateExist(craftText, translate("magic")) {
+            out.push(["Augment Non-Influence" . mod
+            , getLVL(craftText)
+            , "Aug"])
+        }
         return
     }
-    out.push(["Augment Influence" . mod
-        , getLVL(craftText)
-        , "Aug"])
+    if TemplateExist(craftText, translate("magic")) {
+        out.push(["Augment Influence" . mod
+            , getLVL(craftText)
+            , "Aug"])
+    }
 }
 
 Handle_Remove(craftText, ByRef out) {
