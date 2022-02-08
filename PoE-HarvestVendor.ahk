@@ -71,8 +71,8 @@ loadLanguageDictionary("English", EnglishDictionary)
 global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe_kor"
 ;blacklist := ".*:&}"
 global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
-global Capture2TextOptions := " -o " . TempPath 
-    . " -l " . Language
+global Capture2TextOptions := " -o """ . TempPath . """" 
+    . " -l " . Language 
     ;. " --blacklist """ . blacklist . """"
     ;. " --tess-config-file """ . TessFile . """"
     ;. " --deskew"
