@@ -79,9 +79,9 @@ global CraftList := []
 global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe"
 whitelist := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,. "
 global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
-global Capture2TextOptions := " -o " . TempPath 
+global Capture2TextOptions := " -o """ . TempPath . """" 
     . " -l English" 
-    . " --whitelist """ . whitelist . """"
+    . " --whitelist """ . whitelist . """" 
     ;. " --trim-capture" 
     . " --tess-config-file """ . TessFile . """"
     ; . " --scale-factor " . scale_factor
