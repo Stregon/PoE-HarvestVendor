@@ -1729,7 +1729,7 @@ Handle_Upgrade(craftText, ByRef out) {
             out.push(["Upgrade Magic to Rare adding 2 mods"
                 , getLVL(craftText)
                 , "Other"])
-        } else if TemplateExist(craftText, "three.+random.+high-tier+modifiers") {
+        } else if TemplateExist(craftText, "three.+random.+high-tier.+modifiers") {
             out.push(["Upgrade Magic to Rare adding 3 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
