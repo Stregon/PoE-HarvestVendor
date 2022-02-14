@@ -96,9 +96,9 @@ global CraftNames := [["Reforge", "Reforge "]
     , ["Sacrifice", "Sacrifice a|Sacrifice up"]
     , ["Randomise", "Randomise "]
     , ["Remove", "Remove "]
-    , ["Synthesise", "Synthesise "]
     , ["Fracture", "Fracture "]
     , ["Augment", "Augment "]
+    , ["Synthesise", "Synthesise "]
     , ["Attempt", "Attempt "]
     , ["Improves", "Improves "]
     , ["Add", "Add a random "]
@@ -1846,7 +1846,7 @@ processCrafts(file) {
         } 
         for k, v in CraftNames {
             craftName := v[1]
-            if TagExist(craftText, craftName) {
+            if TagExist(craftText, v[2]) {
                 if IsFunc("Handle_" . craftName) {
                     Handle_%craftName%(craftText, outArray)
                 }
