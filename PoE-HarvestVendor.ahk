@@ -96,9 +96,9 @@ global CraftNames := [["Reforge", "Reforge "]
     , ["Sacrifice", "Sacrifice a|Sacrifice up"]
     , ["Randomise", "Randomise "]
     , ["Remove", "Remove "]
+    , ["Synthesise", "Synthesise "]
     , ["Fracture", "Fracture "]
     , ["Augment", "Augment "]
-    , ["Synthesise", "Synthesise "]
     , ["Attempt", "Attempt "]
     , ["Improves", "Improves "]
     , ["Add", "Add a random "]
@@ -111,7 +111,7 @@ for k, v in CraftNames {
     TemplateForCrafts .= template . "|"
 }
 TemplateForCrafts := RTrim(TemplateForCrafts, "|") . ")"
-
+global TemplateForLevel := "L[BEeOo][vy][BEeOo][lI1]"
 OnExit("ExitFunc")
 
 initSettings()
@@ -1771,8 +1771,7 @@ Handle_Split(craftText, ByRef out) {
 ;function for "tessedit_pageseg_mode 3" or "tessedit_pageseg_mode 4"
 ;3 = Fully automatic page segmentation, but no OSD(Orientation and script detection).
 getCraftsPlus(craftsText, levelsText) {
-    template := "Leve[l1]"
-    tempLevels := RegExReplace(levelsText, "(" . template . ")", "#$1")
+    tempLevels := RegExReplace(levelsText, "(" . TemplateForLevel . ")", "#$1")
     tempLevels := SubStr(tempLevels, inStr(tempLevels, "#") + 1)
     ArrayedLevels := StrSplit(tempLevels, "#")
     
@@ -2154,8 +2153,8 @@ getRow(elementVariable) {
 }
 
 getLVL(craft) {
-    map_levels := {"S1": "81", "Sz": "82", "SQ": "80", "8i": "81"}
-    lvlpos := RegExMatch(craft, "O)L[BEeOo]v[BEeOo][lI1] *(\w\w).*$", matchObj)   
+    map_levels := {"S1": "81", "Sz": "82", "SQ": "80", "8i": "81", "6g": "68"}
+    lvlpos := RegExMatch(craft, "O)" . TemplateForLevel . " *(\w\w).*$", matchObj)
     lv := matchObj[1]
     if RegExMatch(lv, "\d\d") > 0 {
         if (lv < 37) { ;ppl wouldn't sell lv 30 crafts, but sometimes OCR mistakes 8 for a 3 this just bumps it up for the 76+ rule
