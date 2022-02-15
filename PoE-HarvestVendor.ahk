@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.4"
+global version := "0.8.4a"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
