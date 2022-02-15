@@ -91,7 +91,7 @@ global CraftNames := [["Reforge", "Reforge "]
     , ["Change", "Change "]
     , ["Reroll", "Reroll "]
     , ["Enchant", "Enchant "]
-    , ["Set", "Set "]
+    , ["Set", "Set(a|ai|ta|ca)*? "]
     , ["Upgrade", "Upgrade "]
     , ["Sacrifice", "Sacrifice a|Sacrifice up"]
     , ["Randomise", "Randomise "]
@@ -1239,6 +1239,10 @@ TagExist(text, tag) {
     return InStr(text, tag) > 0
 }
 
+TagExistInStart(text, tag) {
+    return InStr(text, tag) == 1
+}
+
 TemplateExist(text, template) {
     return RegExMatch(text, template) > 0
 }
@@ -1846,7 +1850,7 @@ processCrafts(file) {
         } 
         for k, v in CraftNames {
             craftName := v[1]
-            if TagExist(craftText, v[2]) {
+            if TagExistInStart(craftText, craftName) {
                 if IsFunc("Handle_" . craftName) {
                     Handle_%craftName%(craftText, outArray)
                 }
