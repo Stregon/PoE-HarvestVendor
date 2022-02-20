@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.2 korean"
+global version := "0.9.3 korean"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -37,8 +37,11 @@ global Vivid_Scalefruit := 0
 global MonitorsDDL := ""
 global ScaleEdit := ""
 global GuiKeyHotkey := ""
+global GuiKeyHotkeyDefault := "^+g"
 global ScanKeyHotkey := ""
+global ScanKeyHotkeyDefault := "^a"
 global ScanLastAreaHotkey := ""
+global ScanLastAreaHotkeyDefault := "^+f"
 global maxLengths := {}
 global sessionLoading := False
 global CraftTable := []
@@ -192,7 +195,7 @@ OpenGui() {
     OnMessage(0x200, "WM_MOUSEMOVE")
 }
 
-;ctrl+g launches straight into the capture, opens gui afterwards
+;ctrl+a launches straight into the capture, opens gui afterwards
 Scan() {
     if (isLoading) {
         MsgBox, % translate("Please wait until the program is fully loaded")
@@ -210,7 +213,7 @@ Scan() {
         updateCraftTable(outArray)
     } else {
         ; If processCrafts failed (e.g. the user pressed Escape), we should show the
-        ; HarvestUI only if it was visible to the user before they pressed Ctrl+G
+        ; HarvestUI only if it was visible to the user before they pressed Ctrl+A
         if (_wasVisible) {
             loadLastSession()
             showGUI()
@@ -224,7 +227,7 @@ ScanLastArea() {
         return
     }
     if (!canRescan) {
-        text := translate("Before using ""Scan Recent Area"", use the ""Scan shortcut (Ctrl+G)"" or press the ""Scan"" button")
+        text := translate("Before using ""Scan Recent Area"", use the ""Scan shortcut (Ctrl+A)"" or press the ""Scan"" button")
         MsgBox, % text
         return
     }
@@ -275,11 +278,13 @@ setScreenRect() {
     return true
 }
 
-AddCrafts_Click() { 
+AddCrafts_Click() {
+	hotkey, % settingsApp["ScanKey"], off
     buttonHold("addCrafts", "resources\addCrafts")
     hideGUI()
     if (!setScreenRect()) {
         showGUI()
+        hotkey, % settingsApp["ScanKey"], on
         return
     }
     canRescan := True
@@ -287,13 +292,16 @@ AddCrafts_Click() {
         updateCraftTable(outArray)
     }
     showGUI()
+    hotkey, % settingsApp["ScanKey"], on
 }
 
 LastArea_Click() {
+    hotkey, % settingsApp["ScanLastAreaKey"], off
     buttonHold("rescanButton", "resources\lastArea")
     if (!canRescan) {
-        text := translate("Before using ""Scan Recent Area"", use the ""Scan shortcut (Ctrl+G)"" or press the ""Scan"" button")
+        text := translate("Before using ""Scan Recent Area"", use the ""Scan shortcut (Ctrl+A)"" or press the ""Scan"" button")
         MsgBox, % text
+        hotkey, % settingsApp["ScanLastAreaKey"], on
         return
     }
     hideGUI()
@@ -301,6 +309,7 @@ LastArea_Click() {
         updateCraftTable(outArray)
     }
     showGUI()
+    hotkey, % settingsApp["ScanLastAreaKey"], on
 }
 
 ClearAll_Click() {
@@ -559,11 +568,11 @@ ShowSettingsUI() {
     gui Settings:new,, % "PoE-HarvestVendor -" . translate("Settings")
     gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
         Gui, add, text, xs+5 yp+20, % translate("Output message style:")
-        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle gOutStyle_Changed, 1|2
+        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3
         guicontrol, choose, outStyle, % settingsApp.outStyle
         widthT := width - 20
         Gui, add, text, xs+15 y+5 w%widthT%, % "1 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
-        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
+        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2, 3 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
     ;calculate a new height for Groupbox
     guiControlGet, mf_Groupbox, Settings:Pos
     guiControlGet, lastText1, Settings:Pos
@@ -573,12 +582,12 @@ ShowSettingsUI() {
     gui, add, Groupbox, x5 y+10 w%width% vms_GroupBox, % translate("Monitor Settings")
         monitors := getMonCount()
         Gui add, text, xp+5 yp+20, % translate("Select monitor:")
-        Gui add, dropdownList, x+10 yp+0 w30 Section vMonitorsDDL gMonitors_Changed, %monitors%
+        Gui add, dropdownList, x+10 yp+0 w30 Section vMonitorsDDL, %monitors%
             global MonitorsDDL_TT := translate("For when you aren't running PoE on main monitor")
         guicontrol, choose, MonitorsDDL, % settingsApp.monitor
 
         gui, add, text, x10 y+5, % translate("Scale") 
-        gui, add, edit, xs yp+0 w30 vScaleEdit gScale_Changed, % settingsApp.scale
+        gui, add, edit, xs yp+0 w30 vScaleEdit, % settingsApp.scale
         text := translate("use this when you are using Other than 100% scale in windows display settings")
         Gui, add, text, x20 y+5 w%widthT%, % "- " . text
         Gui, add, text, xp+0 y+5 wp+0 vlastText2, % "- 100`% = 1, 150`% = 1.5 " . translate("and so on")
@@ -600,7 +609,7 @@ ShowSettingsUI() {
 
     ;width := width - 10
     gui, add, button, x5 y+10 h30 w%width% gOpenSettingsFolder_Click vOpenSettingsFolder, % translate("Open Settings Folder")
-    gui, add, button, xp+0 y+5 hp+0 wp+0 gSettingsOK_Click, % translate("Save")
+    gui, add, button, xp+0 y+5 hp+0 wp+0 gSettingsSave_Click, % translate("Save")
     gui, Settings:Show ;, w410 h370
     return
     
@@ -618,22 +627,7 @@ OpenSettingsFolder_Click() {
     Run, %explorerpath%
 }
 
-OutStyle_Changed() {
-    guiControlGet, os,,outStyle, value
-    settingsApp.outStyle := os
-}
-
-Monitors_Changed() {
-    guiControlGet, mon,,MonitorsDDL, value
-    settingsApp.monitor := mon
-}
-
-Scale_Changed() {
-    guiControlGet, sc,,ScaleEdit, value
-    settingsApp.scale := sc
-}
-
-SettingsOK_Click() {
+SettingsSave_Click() {
     guiControlGet, gk,, GuiKeyHotkey, value
     guiControlGet, sk,, ScanKeyHotkey, value
     guiControlGet, slak,, ScanLastAreaHotKey, value
@@ -655,7 +649,6 @@ SettingsOK_Click() {
         settingsApp.ScanLastAreaKey := slak
         hotkey, % settingsApp["ScanLastAreaKey"], ScanLastArea
     } 
-
     if (gk != "ERROR" and gk != "") {
         hotkey, %gk%, on
     } else {
@@ -673,7 +666,14 @@ SettingsOK_Click() {
     } else {
         hotkey, % settingsApp["ScanLastAreaKey"], on
     }
+    guiControlGet, os,,outStyle, value
+    settingsApp.outStyle := os
 
+    guiControlGet, mon,,MonitorsDDL, value
+    settingsApp.monitor := mon
+
+    guiControlGet, sc,,ScaleEdit, value
+    settingsApp.scale := sc
 
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
@@ -695,7 +695,7 @@ ShowHelpUI() {
 gui, font, s14 wBold
     Gui, add, text, x5 y5 w%columnWidth%, % translate("Step 1")
 gui, font, s10 wNorm 
-    gui, add, text, xp+10 y+5 wp-10, % translate("Default Hotkey to open the UI - Ctrl + Shift + G") "`r`n" translate("Default Hotkey to start capture - Ctrl + G") "`r`n" translate("Hotkeys can be changed in settings")
+    gui, add, text, xp+10 y+5 wp-10, % translate("Default Hotkey to open the UI - Ctrl + Shift + G") "`r`n" translate("Default Hotkey to start capture - Ctrl + A") "`r`n" translate("Hotkeys can be changed in settings")
 
 ;step 2 
 gui, font, s14 wBold
@@ -764,7 +764,7 @@ initSettings() {
     IniRead, GuiKey, %SettingsPath%, Other, GuiKey
     checkNoValidChars := RegExMatch(GuiKey, "[^a-zA-Z\+\^!]+") > 0
     if (GuiKey == "ERROR" or GuiKey == "" or checkNoValidChars) {
-        GuiKey := "^+g"
+        GuiKey := GuiKeyHotkeyDefault
         if (checkNoValidChars) {
             msgBox, % translate("Open GUI hotkey was set to a non latin letter or number, it was reset to ctrl+shift+g")
         }
@@ -775,9 +775,9 @@ initSettings() {
     IniRead, ScanKey, %SettingsPath%, Other, ScanKey
     checkNoValidChars := RegExMatch(ScanKey, "[^a-zA-Z\+\^!]+") > 0
     if (ScanKey == "ERROR" or ScanKey == "" or checkNoValidChars) {
-        ScanKey := "^g"
+        ScanKey := ScanKeyHotkeyDefault
         if (checkNoValidChars) {
-            msgBox, % translate("Scan hotkey was set to a non latin letter or number, it was reset to ctrl+g")
+            msgBox, % translate("Scan hotkey was set to a non latin letter or number, it was reset to ctrl+a")
         }
     }
     settingsApp.ScanKey := ScanKey
@@ -786,7 +786,7 @@ initSettings() {
     IniRead, ScanLastAreaKey, %SettingsPath%, Other, ScanLastAreaKey
     checkNoValidChars := RegExMatch(ScanLastAreaKey, "[^a-zA-Z\+\^!]+") > 0
     if (ScanLastAreaKey == "ERROR" or ScanLastAreaKey == "" or checkNoValidChars) {
-        ScanLastAreaKey := "^+f"
+        ScanLastAreaKey := ScanLastAreaKeyDefault
         if (checkNoValidChars) {
             msgBox, % translate("Scan from last area hotkey was set to a non latin letter or number, it was reset to ctrl+shift+f")
         }
@@ -795,7 +795,7 @@ initSettings() {
     hotkey, % settingsApp["ScanLastAreaKey"], ScanLastArea
     
     IniRead, outStyle, %SettingsPath%, Other, outStyle
-    if (outStyle == "ERROR") {
+    if (outStyle == "ERROR" or outStyle == "" or outStyle < 1 or outStyle > 3) {
         outStyle := 1
     }
     settingsApp.outStyle := outStyle
@@ -1651,23 +1651,23 @@ Handle_Exchange(craftText, ByRef out) {
 Handle_Upgrade(craftText, ByRef out) {
     if TemplateExist(craftText, translate("Normal")) {
         if TemplateExist(craftText, translate("one random ")) {
-            out.push(["Upgrade Normal to Magic adding 1 high-tier mod"
+            out.push(["Upgrade Normal to Magic, 1 high-tier mod"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, translate("two random ")) {
-            out.push(["Upgrade Normal to Magic adding 2 high-tier mods"
+            out.push(["Upgrade Normal to Magic, 2 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
         }
         return
     }
     if TemplateExist(craftText, translate("Rare")) {
-        mods := [["two random high-tier modifiers", "Upgrade Magic to Rare adding 2 high-tier mods"]
-            , ["two random modifiers", "Upgrade Magic to Rare adding 2 mods"]
-            , ["three random high-tier modifiers", "Upgrade Magic to Rare adding 3 high-tier mods"]
-            , ["three random modifiers", "Upgrade Magic to Rare adding 3 mods"]
-            , ["four random high-tier modifiers", "Upgrade Magic to Rare adding 4 high-tier mods"]
-            , ["four random modifiers", "Upgrade Magic to Rare adding 4 mods"]]
+        mods := [["two random high-tier modifiers", "Upgrade Magic to Rare, 2 high-tier mods"]
+            , ["two random modifiers", "Upgrade Magic to Rare, 2 mods"]
+            , ["three random high-tier modifiers", "Upgrade Magic to Rare, 3 high-tier mods"]
+            , ["three random modifiers", "Upgrade Magic to Rare, 3 mods"]
+            , ["four random high-tier modifiers", "Upgrade Magic to Rare, 4 high-tier mods"]
+            , ["four random modifiers", "Upgrade Magic to Rare, 4 mods"]]
             
         for k, v in mods {
             if TemplateExist(craftText, translate(v[1])) {
@@ -1856,6 +1856,20 @@ getColorStyleRow(count, craft, price, lvl) {
     return postRowString . "`r`n"
 }
 
+getElixirStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 1)
+    specChar := Chr(10008) ; Format("{:i}", "0x9755")
+    LvlChar := Chr(9409) ;
+    priceChar := "$ " ;Chr(128176) ;
+    postRowString := "  " . count . specChar . "" . spaces_count_craft . """" . craft . """" spaces_craft_lvl . LvlChar . "" . lvl
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . priceChar . "" . price
+    }
+    return postRowString . "`r`n"
+}
+
 getPostRow(count, craft, price, group, lvl) {
     price := (price == "") ? " " : price
     ; no colors, no codeblock, but highlighted
@@ -1865,6 +1879,10 @@ getPostRow(count, craft, price, group, lvl) {
     ; message style with colors, in codeblock but text isnt highlighted in discord search
     if (settingsApp.outStyle == 2) { 
         return getColorStyleRow(count, craft, price, lvl)
+    }
+    
+    if (settingsApp.outStyle == 3) { 
+        return getElixirStyleRow(count, craft, price, lvl)
     }
     return ""
 }
@@ -1899,11 +1917,14 @@ getPosts(type) {
 }
 
 codeblockWrap(text) {
-    if (outStyle == 1) {
+    if (settingsApp.outStyle == 1) {
         return text
     }
-    if (outStyle == 2) {
+    if (settingsApp.outStyle == 2) {
         return "``````md`r`n" . text . "``````"
+    }
+    if (settingsApp.outStyle == 3) {
+        return "```````elixir`r`n" . text . "``````"
     }
 }
 
@@ -1919,10 +1940,31 @@ getNoColorStyleHeader() {
     }
     outString .= " ``|  generated by HarvestVendor korean```r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
-        outString .= "   " . settingsApp.customText . "`r`n"
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n   ")
+        outString .= "   " . customText . "`r`n"
     }
     if (settingsApp.canStream == 1) {
         outString .= "   *Can stream if requested*`r`n"
+    }
+    return outString
+}
+
+getElixirStyleHeader() {
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "$WTS " . tempLeague
+    if (tempName != "") {
+        outString .= " IGN: " . tempName
+    }
+    outString .= " #generated by HarvestVendor korean`r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n  ")
+        outString .= "  " . customText . "`r`n"
+    }
+    if (settingsApp.canStream == 1) {
+        outString .= "  Can stream if requested `r`n"
     }
     return outString
 }
@@ -1938,7 +1980,8 @@ getColorStyleHeader() {
     }
     outString .= " |  generated by HarvestVendor korean`r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
-        outString .= "  " . settingsApp.customText . "`r`n"
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n  ")
+        outString .= "  " . customText . "`r`n"
     }
     if (settingsApp.canStream == 1) {
         outString .= "  Can stream if requested `r`n"
@@ -1959,6 +2002,10 @@ createPost(type) {
     if (settingsApp.outStyle == 2) {
         header := getColorStyleHeader()
     }
+    if (settingsApp.outStyle == 3) {
+        header := getElixirStyleHeader()
+    }
+    Clipboard := ""
     Clipboard := codeblockWrap(header . getPosts(type))
     readyTT()
 }
@@ -2299,8 +2346,6 @@ Options: (White space separated)
 ;full screen overlay
 ;press Escape to cancel
 
-    ;iniRead tempMon, %SettingsPath%, Other, mon
-    ;iniRead, scale, %SettingsPath%, Other, scale
     scale := settingsApp.scale
     cover := monitorInfo(settingsApp.monitor)
     coverX := cover[1]
@@ -2356,7 +2401,7 @@ Options: (White space separated)
         While (GetKeyState("LButton") and !SelectAreaEscapePressed)
         {
             Sleep, 10
-            MouseGetPos, MXend, MYend        
+            MouseGetPos, MXend, MYend
             w := abs((MX / scale) - (MXend / scale)), h := abs((MY / scale) - (MYend / scale))
             X := (MX < MXend) ? MX : MXend
             Y := (MY < MYend) ? MY : MYend
