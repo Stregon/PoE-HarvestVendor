@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.3 light"
+global version := "0.8.4 light"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -255,7 +255,7 @@ Craft_Changed() {
     newLvl := getLevelFor(newCraft)
     CraftTable[tempRow].lvl := newLvl
     updateUIRow(tempRow, "lvl")
-    if (newCraft != "" and newCraft.Length() > 15) {
+    if (newCraft != "" and StrLen(newCraft) > 10) {
         iniWrite, %newLvl%, %LevelsPath%, Levels, %newCraft%
     }
     
@@ -277,7 +277,7 @@ Level_Changed() {
     newLvl := removeNonEnglishChars(newLvl)
     CraftTable[tempRow].lvl := newLvl
     craftName := CraftTable[tempRow].craft
-    if (craftName != "" and newCraft.Length() > 15) {
+    if (craftName != "" and StrLen(craftName) > 10) {
         iniWrite, %newLvl%, %LevelsPath%, Levels, %craftName%
     }
 }
@@ -461,11 +461,11 @@ ShowSettingsUI() {
     gui Settings:new,, % "PoE-HarvestVendor -" . translate("Settings")
     gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
         Gui, add, text, xs+5 yp+20, % translate("Output message style:")
-        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle gOutStyle_Changed, 1|2
+        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3
         guicontrol, choose, outStyle, % settingsApp.outStyle
         widthT := width - 20
         Gui, add, text, xs+15 y+5 w%widthT%, % "1 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
-        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
+        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2, 3 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
     ;calculate a new height for Groupbox
     guiControlGet, mf_Groupbox, Settings:Pos
     guiControlGet, lastText1, Settings:Pos
@@ -478,7 +478,7 @@ ShowSettingsUI() {
         for k, v in LanguageList {
             listDDL .= v . "|"
         }
-        Gui, add, dropdownList, x+10 yp+0 w80 vlangDDL glangDDL_Changed, % listDDL
+        Gui, add, dropdownList, x+10 yp+0 w80 vlangDDL, % listDDL
         guicontrol, choose, langDDL, % LanguageList[settingsApp.Language]
         Gui, add, text, xs+15 y+5 w%widthT% vlastText2 , % translate("Need to restart the program for using a new language!")
     ;calculate a new height for Groupbox
@@ -493,7 +493,7 @@ ShowSettingsUI() {
 
     ;width := width - 10
     gui, add, button, x5 y+10 h30 w%width% gOpenSettingsFolder_Click vOpenSettingsFolder, % translate("Open Settings Folder")
-    gui, add, button, xp+0 y+5 hp+0 wp+0 gSettingsOK_Click, % translate("Save")
+    gui, add, button, xp+0 y+5 hp+0 wp+0 gSettingsSave_Click, % translate("Save")
     gui, Settings:Show ;, w410 h370
     return
     
@@ -509,17 +509,7 @@ OpenSettingsFolder_Click() {
     Run, %explorerpath%
 }
 
-OutStyle_Changed() {
-    guiControlGet, os,,outStyle, value
-    settingsApp.outStyle := os
-}
-
-langDDL_Changed() {
-    guiControlGet, lang,, langDDL, value
-    settingsApp.Language := LanguageReverseList[lang]
-}
-
-SettingsOK_Click() {
+SettingsSave_Click() {
     guiControlGet, gk,, GuiKeyHotkey, value
 
     if (settingsApp.GuiKey != gk and gk != "ERROR" and gk != "") {
@@ -532,7 +522,11 @@ SettingsOK_Click() {
     } else {
         hotkey, % settingsApp["GuiKey"], on
     }
+	guiControlGet, os,,outStyle, value
+    settingsApp.outStyle := os
 
+    guiControlGet, lang,, langDDL, value
+    settingsApp.Language := LanguageReverseList[lang]
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
 }
@@ -580,7 +574,7 @@ initSettings() {
     hotkey, % settingsApp["GuiKey"], OpenGui
 
     IniRead, outStyle, %SettingsPath%, Other, outStyle
-    if (outStyle == "ERROR") {
+    if (outStyle == "ERROR" or outStyle == "" or outStyle < 1 or outStyle > 3) {
         outStyle := 1
     }
     settingsApp.outStyle := outStyle
@@ -1042,6 +1036,20 @@ getColorStyleRow(count, craft, price, lvl) {
     return postRowString . "`r`n"
 }
 
+getElixirStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 1)
+    specChar := Chr(10008) ; Format("{:i}", "0x9755")
+    LvlChar := Chr(9409) ;
+    priceChar := "$ " ;Chr(128176) ;
+    postRowString := "  " . count . specChar . "" . spaces_count_craft . """" . craft . """" spaces_craft_lvl . LvlChar . "" . lvl
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . priceChar . "" . price
+    }
+    return postRowString . "`r`n"
+}
+
 getPostRow(count, craft, price, group, lvl) {
     price := (price == "") ? " " : price
     ; no colors, no codeblock, but highlighted
@@ -1051,6 +1059,10 @@ getPostRow(count, craft, price, group, lvl) {
     ; message style with colors, in codeblock but text isnt highlighted in discord search
     if (settingsApp.outStyle == 2) { 
         return getColorStyleRow(count, craft, price, lvl)
+    }
+    
+    if (settingsApp.outStyle == 3) { 
+        return getElixirStyleRow(count, craft, price, lvl)
     }
     return ""
 }
@@ -1085,11 +1097,14 @@ getPosts(type) {
 }
 
 codeblockWrap(text) {
-    if (outStyle == 1) {
+    if (settingsApp.outStyle == 1) {
         return text
     }
-    if (outStyle == 2) {
+    if (settingsApp.outStyle == 2) {
         return "``````md`r`n" . text . "``````"
+    }
+    if (settingsApp.outStyle == 3) {
+        return "```````elixir`r`n" . text . "``````"
     }
 }
 
@@ -1101,14 +1116,35 @@ getNoColorStyleHeader() {
     outString := "**WTS " . tempLeague . "**"
     if (tempName != "") {
         tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
-        outString .= " - IGN: **" . tempName . "**" 
+        outString .= " - IGN: **" . tempName . "**"
     }
     outString .= " ``|  generated by HarvestVendor light```r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
-        outString .= "   " . settingsApp.customText . "`r`n"
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n   ")
+        outString .= "   " . customText . "`r`n"
     }
     if (settingsApp.canStream == 1) {
         outString .= "   *Can stream if requested*`r`n"
+    }
+    return outString
+}
+
+getElixirStyleHeader() {
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "$WTS " . tempLeague
+    if (tempName != "") {
+        outString .= " IGN: " . tempName
+    }
+    outString .= " #generated by HarvestVendor fork`r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n  #")
+        outString .= "  #" . customText . "`r`n"
+    }
+    if (settingsApp.canStream == 1) {
+        outString .= "  #Can stream if requested `r`n"
     }
     return outString
 }
@@ -1124,7 +1160,8 @@ getColorStyleHeader() {
     }
     outString .= " |  generated by HarvestVendor light`r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
-        outString .= "  " . settingsApp.customText . "`r`n"
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n  ")
+        outString .= "  " . customText . "`r`n"
     }
     if (settingsApp.canStream == 1) {
         outString .= "  Can stream if requested `r`n"
@@ -1145,6 +1182,10 @@ createPost(type) {
     if (settingsApp.outStyle == 2) {
         header := getColorStyleHeader()
     }
+    if (settingsApp.outStyle == 3) {
+        header := getElixirStyleHeader()
+    }
+    Clipboard := ""
     Clipboard := codeblockWrap(header . getPosts(type))
     readyTT()
 }
