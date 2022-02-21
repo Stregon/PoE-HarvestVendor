@@ -786,7 +786,7 @@ initSettings() {
     IniRead, ScanLastAreaKey, %SettingsPath%, Other, ScanLastAreaKey
     checkNoValidChars := RegExMatch(ScanLastAreaKey, "[^a-zA-Z\+\^!]+") > 0
     if (ScanLastAreaKey == "ERROR" or ScanLastAreaKey == "" or checkNoValidChars) {
-        ScanLastAreaKey := ScanLastAreaKeyDefault
+        ScanLastAreaKey := ScanLastAreaHotkeyDefault
         if (checkNoValidChars) {
             msgBox, % translate("Scan from last area hotkey was set to a non latin letter or number, it was reset to ctrl+shift+f")
         }
