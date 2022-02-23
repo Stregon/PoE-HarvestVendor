@@ -232,7 +232,7 @@ Scan() {
         }
     }
 }
-;ctrl+F scan from last area
+;ctrl+shift+F scan from last area
 ScanLastArea() {
     if (isLoading) {
         MsgBox, % translate("Please wait until the program is fully loaded")
@@ -290,11 +290,13 @@ setScreenRect() {
     return true
 }
 
-AddCrafts_Click() { 
+AddCrafts_Click() {
+    hotkey, % settingsApp["ScanKey"], off
     buttonHold("addCrafts", "resources\" . settingsApp["Language"] . "\addCrafts")
     hideGUI()
     if (!setScreenRect()) {
         showGUI()
+        hotkey, % settingsApp["ScanKey"], on
         return
     }
     canRescan := True
@@ -302,13 +304,16 @@ AddCrafts_Click() {
         updateCraftTable(outArray)
     }
     showGUI()
+    hotkey, % settingsApp["ScanKey"], on
 }
 
 LastArea_Click() {
+    hotkey, % settingsApp["ScanLastAreaKey"], off
     buttonHold("rescanButton", "resources\" . settingsApp["Language"] . "\lastArea")
     if (!canRescan) {
         text := translate("Before using ""Scan Recent Area"", use the ""Scan shortcut (Ctrl+G)"" or press the ""Scan"" button")
         MsgBox, % text
+        hotkey, % settingsApp["ScanLastAreaKey"], on
         return
     }
     hideGUI()
@@ -316,6 +321,7 @@ LastArea_Click() {
         updateCraftTable(outArray)
     }
     showGUI()
+    hotkey, % settingsApp["ScanLastAreaKey"], on
 }
 
 ClearAll_Click() {
@@ -598,11 +604,11 @@ ShowSettingsUI() {
     gui Settings:new,, % "PoE-HarvestVendor fork -" . translate("Settings")
     gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
         Gui, add, text, xs+5 yp+20, % translate("Output message style:")
-        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle gOutStyle_Changed, 1|2
+        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3
         guicontrol, choose, outStyle, % settingsApp.outStyle
         widthT := width - 20
         Gui, add, text, xs+15 y+5 w%widthT%, % "1 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
-        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
+        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2, 3 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
     ;calculate a new height for Groupbox
     guiControlGet, mf_Groupbox, Settings:Pos
     guiControlGet, lastText1, Settings:Pos
@@ -612,12 +618,12 @@ ShowSettingsUI() {
     gui, add, Groupbox, x5 y+10 w%width% vms_GroupBox, % translate("Monitor Settings")
         monitors := getMonCount()
         Gui add, text, xp+5 yp+20, % translate("Select monitor:")
-        Gui add, dropdownList, x+10 yp+0 w30 Section vMonitorsDDL gMonitors_Changed, %monitors%
+        Gui add, dropdownList, x+10 yp+0 w30 Section vMonitorsDDL, %monitors%
             global MonitorsDDL_TT := translate("For when you aren't running PoE on main monitor")
         guicontrol, choose, MonitorsDDL, % settingsApp.monitor
 
         gui, add, text, x10 y+5, % translate("Scale") 
-        gui, add, edit, xs yp+0 w30 vScaleEdit gScale_Changed, % settingsApp.scale
+        gui, add, edit, xs yp+0 w30 vScaleEdit, % settingsApp.scale
         text := translate("use this when you are using Other than 100% scale in windows display settings")
         Gui, add, text, x20 y+5 w%widthT%, % "- " . text
         Gui, add, text, xp+0 y+5 wp+0 vlastText2, % "- 100`% = 1, 150`% = 1.5 " . translate("and so on")
@@ -633,7 +639,7 @@ ShowSettingsUI() {
         for k, v in LanguageList {
             listDDL .= v . "|"
         }
-        Gui, add, dropdownList, x+10 yp+0 w80 vlangDDL glangDDL_Changed, % listDDL
+        Gui, add, dropdownList, x+10 yp+0 w80 vlangDDL, % listDDL
         guicontrol, choose, langDDL, % LanguageList[settingsApp.Language]
         Gui, add, text, xs+15 y+5 w%widthT% vlastText3 , % translate("Need to restart the program for using a new language!")
     ;calculate a new height for Groupbox
@@ -654,7 +660,7 @@ ShowSettingsUI() {
 
     ;width := width - 10
     gui, add, button, x5 y+10 h30 w%width% gOpenSettingsFolder_Click vOpenSettingsFolder, % translate("Open Settings Folder")
-    gui, add, button, xp+0 y+5 hp+0 wp+0 gSettingsOK_Click, % translate("Save")
+    gui, add, button, xp+0 y+5 hp+0 wp+0 gSettingsSave_Click, % translate("Save")
     gui, Settings:Show ;, w410 h370
     return
     
@@ -672,27 +678,7 @@ OpenSettingsFolder_Click() {
     Run, %explorerpath%
 }
 
-OutStyle_Changed() {
-    guiControlGet, os,,outStyle, value
-    settingsApp.outStyle := os
-}
-
-langDDL_Changed() {
-    guiControlGet, lang,, langDDL, value
-    settingsApp.Language := LanguageReverseList[lang]
-}
-
-Monitors_Changed() {
-    guiControlGet, mon,,MonitorsDDL, value
-    settingsApp.monitor := mon
-}
-
-Scale_Changed() {
-    guiControlGet, sc,,ScaleEdit, value
-    settingsApp.scale := sc
-}
-
-SettingsOK_Click() {
+SettingsSave_Click() {
     guiControlGet, gk,, GuiKeyHotkey, value
     guiControlGet, sk,, ScanKeyHotkey, value
     guiControlGet, slak,, ScanLastAreaHotKey, value
@@ -732,6 +718,17 @@ SettingsOK_Click() {
     } else {
         hotkey, % settingsApp["ScanLastAreaKey"], on
     }
+    guiControlGet, os,,outStyle, value
+    settingsApp.outStyle := os
+
+    guiControlGet, lang,, langDDL, value
+    settingsApp.Language := LanguageReverseList[lang]
+
+    guiControlGet, mon,,MonitorsDDL, value
+    settingsApp.monitor := mon
+
+    guiControlGet, sc,,ScaleEdit, value
+    settingsApp.scale := sc
 
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
@@ -868,7 +865,7 @@ initSettings() {
     hotkey, % settingsApp["ScanLastAreaKey"], ScanLastArea
 
     IniRead, outStyle, %SettingsPath%, Other, outStyle
-    if (outStyle == "ERROR") {
+    if (outStyle == "ERROR" or outStyle == "" or outStyle < 1 or outStyle > 3) {
         outStyle := 1
     }
     settingsApp.outStyle := outStyle
@@ -1726,27 +1723,27 @@ Handle_Exchange(craftText, ByRef out) {
 Handle_Upgrade(craftText, ByRef out) {
     if TagExist(craftText, "Rare") {
         if TemplateExist(craftText, "two.+random.+high-tier.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 2 high-tier mods"
+            out.push(["Upgrade Magic to Rare, 2 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, "two.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 2 mods"
+            out.push(["Upgrade Magic to Rare, 2 mods"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, "three.+random.+high-tier.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 3 high-tier mods"
+            out.push(["Upgrade Magic to Rare, 3 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, "three.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 3 mods"
+            out.push(["Upgrade Magic to Rare, 3 mods"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, "four.+random.+high-tier.+modifiers") {
-                    out.push(["Upgrade Magic to Rare adding 4 high-tier mods"
+                    out.push(["Upgrade Magic to Rare, 4 high-tier mods"
                         , getLVL(craftText)
                         , "Other"])
         } else if TemplateExist(craftText, "four.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare adding 4 mods"
+            out.push(["Upgrade Magic to Rare, 4 mods"
                 , getLVL(craftText)
                 , "Other"])
         }
@@ -1754,11 +1751,11 @@ Handle_Upgrade(craftText, ByRef out) {
     }
     if TagExist(craftText, "Normal") {
         if TemplateExist(craftText, "one.+random") {
-            out.push(["Upgrade Normal to Magic adding 1 high-tier mod"
+            out.push(["Upgrade Normal to Magic, 1 high-tier mod"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, "two.+random") {
-            out.push(["Upgrade Normal to Magic adding 2 high-tier mods"
+            out.push(["Upgrade Normal to Magic, 2 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
         }
@@ -1965,8 +1962,9 @@ getNoColorStyleRow(count, craft, price, lvl) {
     spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
     spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
     spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
-    
-    postRowString := "   ``" . count . "x" . spaces_count_craft . "``**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
+    LvlChar := Chr(9409)
+    lvlText := "[" . lvl . "]" ;LvlChar . lvl
+    postRowString := "   ``" . count . "x" . spaces_count_craft . "``**``" . craft . "``**``" . spaces_craft_lvl . lvlText
     if (price != " ") {
         postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
     }
@@ -1987,6 +1985,20 @@ getColorStyleRow(count, craft, price, lvl) {
     return postRowString . "`r`n"
 }
 
+getElixirStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 1)
+    specChar := Chr(10008) ; Format("{:i}", "0x9755")
+    LvlChar := Chr(9409) ;
+    priceChar := "$ " ;Chr(128176) ;
+    postRowString := "  " . count . specChar . "" . spaces_count_craft . """" . craft . """" spaces_craft_lvl . LvlChar . "" . lvl
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . priceChar . "" . price
+    }
+    return postRowString . "`r`n"
+}
+
 getPostRow(count, craft, price, group, lvl) {
     price := (price == "") ? " " : price
     ; no colors, no codeblock, but highlighted
@@ -1996,6 +2008,10 @@ getPostRow(count, craft, price, group, lvl) {
     ; message style with colors, in codeblock but text isnt highlighted in discord search
     if (settingsApp.outStyle == 2) { 
         return getColorStyleRow(count, craft, price, lvl)
+    }
+    
+    if (settingsApp.outStyle == 3) { 
+        return getElixirStyleRow(count, craft, price, lvl)
     }
     return ""
 }
@@ -2036,6 +2052,9 @@ codeblockWrap(text) {
     if (settingsApp.outStyle == 2) {
         return "``````md`r`n" . text . "``````"
     }
+    if (settingsApp.outStyle == 3) {
+        return "```````elixir`r`n" . text . "``````"
+    }
 }
 
 getNoColorStyleHeader() {
@@ -2046,14 +2065,35 @@ getNoColorStyleHeader() {
     outString := "**WTS " . tempLeague . "**"
     if (tempName != "") {
         tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
-        outString .= " - IGN: **" . tempName . "**" 
+        outString .= " - IGN: **" . tempName . "**"
     }
     outString .= " ``|  generated by HarvestVendor fork```r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
-        outString .= "   " . settingsApp.customText . "`r`n"
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n   ")
+        outString .= "   " . customText . "`r`n"
     }
     if (settingsApp.canStream == 1) {
         outString .= "   *Can stream if requested*`r`n"
+    }
+    return outString
+}
+
+getElixirStyleHeader() {
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "$WTS " . tempLeague
+    if (tempName != "") {
+        outString .= " IGN: " . tempName
+    }
+    outString .= " #generated by HarvestVendor fork`r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n  #")
+        outString .= "  #" . customText . "`r`n"
+    }
+    if (settingsApp.canStream == 1) {
+        outString .= "  #Can stream if requested `r`n"
     }
     return outString
 }
@@ -2069,7 +2109,8 @@ getColorStyleHeader() {
     }
     outString .= " |  generated by HarvestVendor fork`r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
-        outString .= "  " . settingsApp.customText . "`r`n"
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n  ")
+        outString .= "  " . customText . "`r`n"
     }
     if (settingsApp.canStream == 1) {
         outString .= "  Can stream if requested `r`n"
@@ -2090,6 +2131,10 @@ createPost(type) {
     if (settingsApp.outStyle == 2) {
         header := getColorStyleHeader()
     }
+    if (settingsApp.outStyle == 3) {
+        header := getElixirStyleHeader()
+    }
+    Clipboard := ""
     Clipboard := codeblockWrap(header . getSortedPosts(type))
     readyTT()
 }
@@ -2494,7 +2539,7 @@ Options: (White space separated)
         While (GetKeyState("LButton") and !SelectAreaEscapePressed)
         {
             Sleep, 10
-            MouseGetPos, MXend, MYend        
+            MouseGetPos, MXend, MYend
             w := abs((MX / scale) - (MXend / scale)), h := abs((MY / scale) - (MYend / scale))
             X := (MX < MXend) ? MX : MXend
             Y := (MY < MYend) ? MY : MYend
