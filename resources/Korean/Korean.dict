@@ -1,4 +1,137 @@
-﻿You Have:=보유
+﻿Level=L[BEeOo][vy][BEeOo][lI1]
+
+Augment=Augment 
+Influenced=i)influenced
+Caster=Caster
+Physical=Physical
+Fire=Fire
+Attack=Attack
+Life=Life
+Cold=Cold
+Speed=Speed
+Defence=Defence
+Lightning=Lightning
+Chaos=Chaos
+Critical=Critical
+a new modifier=a new modifier
+Lucky=Lucky
+
+Remove=Remove 
+add=add
+non=non
+
+Reforge=Reforge 
+Prefixes=Prefixes
+Suffixes=Suffixes
+Influence=Influence
+including=including
+more=more
+less likely=less.+likely
+more likely=more.+likely
+times=times
+links=links
+six=six
+five=five
+colour=colour
+non-Red=non.+Red
+non-Blue=non.+Blue
+non-Green=non.+Green
+Red, Blue and Green=Red.+Blue.+and.+Green
+Red and Green=Red.+and.+Green
+Blue and Green=them.+Blue.+and.+Green
+Red and Blue=Red.+and.+Blue
+White=White
+
+
+Enchant=Enchant 
+Weapon=Weapon
+Critical Strike Chance=Critical.+Strike.+Chance
+Accuracy=Accuracy
+Attack Speed=Attack.+Speed
+Weapon Range=Weapon.+Range
+Elemental Damage=Elemental
+Area of Effect=Area.+of.+Effect
+
+Armour=Armour
+Maximum Life=Maximum.+L[il]fe
+Maximum Mana=Maximum.+Mana
+Strength=Strength
+Dexterity=Dexterity
+Intelligence=Intelligence
+Fire Resist=Fire.+Resistance
+Cold Resist=Cold.+Resistance
+Lightning Resist=Lightning.+Resistance
+
+Sextant=Sextant
+Tormented=Tormented
+
+Flask=Flask
+inc Duration=Duration
+inc Effect=Effect
+inc Maximum Charges=Maximum.+Charges
+reduced Charges used=Charges.+used
+
+Attempt=Attempt 
+Awaken=Awaken
+Scarab=Scarab
+
+Change=Change 
+Resistance=Resistance
+ChangeFire=Fire
+ChangeCold=Cold
+ChangeLightning=Lightning
+Bestiary=Bestiary|Lures
+Delirium=Delirium
+
+Sacrifice=Sacrifice a|Sacrifice up
+Gem=Gem
+quality=quality
+experience=experience
+Divination=Divination
+half a stack=half.+a.+stack
+
+Improves=Improves 
+
+Fracture=Fracture 
+modifier=modifier
+Suffix=Suffix
+Prefix=Prefix
+
+Reroll=Reroll 
+Implicit=Implicit
+
+Randomise=Randomise 
+Jewellery=Jewellery
+numeric values=numeric values
+
+Add=Add a random 
+
+Set=Set(a|ai|ta|ca)*? 
+Prismatic=Prismatic
+Abyss/Timeless=Timeless|Abyss
+Timeless=Timeless
+Abyss=Abyss
+Cluster=Cluster
+
+Synthesise=Synthesise 
+
+Corrupt=Corrupt 
+
+Exchange=Exchange 
+
+Upgrade=Upgrade 
+Normal=Normal
+one random=one.+random
+two random=two.+random
+Rare=Rare
+high-tier=high-tier
+two random modifiers=two.+random.+modifiers
+three random modifiers=three.+random.+modifiers
+four random modifiers=four.+random.+modifiers
+
+Split=Split 
+
+You Have:=보유
 ex=엑잘
 c=카오스
 Total Crafts:=전체 수량

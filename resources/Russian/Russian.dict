@@ -1,4 +1,137 @@
-﻿You Have:=Вы имеете:
+﻿Level=Уровень
+
+Augment=Усилить 
+Influenced=без влияния
+Caster=чар
+Physical=физическое
+Fire=огня
+Attack=атак
+Life=здоровья
+Cold=холода
+Speed=скорости
+Defence=защиты
+Lightning=молнии
+Chaos=хаоса
+Critical=критического удара
+a new modifier=значение нового
+Lucky=удачлив
+
+Remove=Убрать 
+add=добавить
+non=не-
+
+Reforge=Перековать 
+Prefixes=префиксы
+Suffixes=суффиксы
+Influence=влияния
+including=включая
+more=увеличен
+less likely=значительно.+уменьшен
+more likely=значительно.+увеличен
+times=10 раз
+links=связи
+six=шесть
+five=пять
+colour=цвет
+non-Red=не-красного
+non-Blue=не-синего
+non-Green=не-зелёного
+Red, Blue and Green=красный.+зелёный.+синий
+Red and Green=красный.+зелёный
+Blue and Green=синий.+зелёный
+Red and Blue=красный.+синий
+White=белый
+
+
+Enchant=Зачаровать 
+Weapon=оружи[eи]
+Critical Strike Chance=шанса.+критического.+удара
+Accuracy=меткости
+Attack Speed=скорости.+атаки
+Weapon Range=дальности+.оружия
+Elemental Damage=стихий
+Area of Effect=области.+действия
+
+Armour=доспех
+Maximum Life=максимуму.+здоровья
+Maximum Mana=максимуму.+маны
+Strength=силе
+Dexterity=ловкости
+Intelligence=интеллекту
+Fire Resist=сопротивлению огню
+Cold Resist=сопротивлению холоду
+Lightning Resist=сопротивлению молнии
+
+Sextant=секстант
+Tormented=страдающими
+
+Flask=флакон
+inc Duration=увеличение.+длительности
+inc Effect=усиление.+эффекта
+inc Maximum Charges=увеличение.+количества
+reduced Charges used=уменьшение.+количества
+
+Attempt=Попытаться 
+Awaken=пробудить
+Scarab=скарабея
+
+Change=Заменить |Обменять стопку|Обменять уникальный
+Resistance=сопротивление
+ChangeFire=i)огню
+ChangeCold=i)холо[дл]у
+ChangeLightning=i)молнии
+Bestiary=Бестиария
+Delirium=Делириума
+
+Sacrifice=Пожертвовать |Потратить 
+Gem=камень|камня
+quality=качества
+experience=опыта
+Divination=гадальных
+half a stack=половины колоды
+
+Improves=Повысить 
+
+Fracture=Расколоть 
+modifier=свойство
+Suffix=суффикс
+Prefix=префикс
+
+Reroll=Изменить значения
+Implicit=собственных
+
+Randomise=Случайным образом
+Jewellery=бижутерии
+numeric values=числовые
+
+Add=Add a random 
+
+Set=Добавить новое
+Prismatic=радужный
+Abyss/Timeless=Бездны|вневременной
+Timeless=вневременной
+Abyss=Бездны
+Cluster=кластерный
+
+Synthesise=Синтезировать 
+
+Corrupt=Осквернить 
+
+Exchange=Exchange 
+
+Upgrade=Улучшить 
+Normal=обычный
+one random=одно.+случайное
+two random=два.+случайных
+Rare=редкого
+high-tier=высокого уровня
+two random modifiers=два.+случайных.+свойства
+three random modifiers=три.+случайных.+свойства
+four random modifiers=четыре.+случайных.+свойства
+
+Split=Split 
+
+You Have:=Вы имеете:
 ex=вых
 c=хаосов
 Total Crafts:=Всего:

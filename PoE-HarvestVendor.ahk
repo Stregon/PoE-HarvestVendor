@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.5"
+global version := "0.9beta"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -77,41 +77,36 @@ global IAutoComplete_Crafts := []
 global CraftList := []
 
 global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe"
-whitelist := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,. "
+whitelistEn := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,. "
+whitelistRu := "0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ-+%,. "
 global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
 global Capture2TextOptions := " -o """ . TempPath . """" 
-    . " -l English" 
-    . " --whitelist """ . whitelist . """" 
     ;. " --trim-capture" 
     . " --tess-config-file """ . TessFile . """"
     ; . " --scale-factor " . scale_factor
     ;. " -d --debug-timestamp" 
+global aspectRatioForLevel := 0.18
 
-global CraftNames := [["Reforge", "Reforge "]
-    , ["Change", "Change "]
-    , ["Reroll", "Reroll "]
-    , ["Enchant", "Enchant "]
-    , ["Set", "Set(a|ai|ta|ca)*? "]
-    , ["Upgrade", "Upgrade "]
-    , ["Sacrifice", "Sacrifice a|Sacrifice up"]
-    , ["Randomise", "Randomise "]
-    , ["Remove", "Remove "]
-    , ["Fracture", "Fracture "]
-    , ["Augment", "Augment "]
-    , ["Synthesise", "Synthesise "]
-    , ["Attempt", "Attempt "]
-    , ["Improves", "Improves "]
-    , ["Add", "Add a random "]
-    , ["Corrupt", "Corrupt "]
-    , ["Exchange", "Exchange "]
-    , ["Split", "Split "]]
+global CraftNames := ["Reforge"
+    , "Change"
+    , "Reroll"
+    , "Enchant"
+    , "Set"
+    , "Upgrade"
+    , "Sacrifice"
+    , "Randomise"
+    , "Remove"
+    , "Fracture"
+    , "Augment"
+    , "Synthesise"
+    , "Attempt"
+    , "Improves"
+    , "Add"
+    , "Corrupt"
+    , "Exchange"
+    , "Split"]
 global TemplateForCrafts := "("
-for k, v in CraftNames {
-    template := v[2]
-    TemplateForCrafts .= template . "|"
-}
-TemplateForCrafts := RTrim(TemplateForCrafts, "|") . ")"
-global TemplateForLevel := "L[BEeOo][vy][BEeOo][lI1]"
+global TemplateForLevel := "Level"
 OnExit("ExitFunc")
 
 initSettings()
@@ -728,7 +723,7 @@ SettingsSave_Click() {
     settingsApp.monitor := mon
 
     guiControlGet, sc,,ScaleEdit, value
-    settingsApp.scale := sc
+    settingsApp.scale := (sc == "" or sc < 1) ? 1 : Format("{:.1f}", sc)
 
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
@@ -807,11 +802,27 @@ initSettings() {
         Language := "English"
     }
     settingsApp.Language := Language
-    if (settingsApp.Language != "English") {
-        loadLanguageDictionary(settingsApp.Language, LanguageDictionary)
-    }
+    loadLanguageDictionary(settingsApp.Language, LanguageDictionary)
     loadLanguageDictionary(settingsApp.Language . "_English", EnglishDictionary)
     loadCraftListFrom(EnglishDictionary)
+    
+    TemplateForLevel := translate("Level")
+    if (settingsApp.Language == "Russian") {
+        whitelist := whitelistRu
+        language := settingsApp.Language
+        aspectRatioForLevel := 0.2
+    } else {
+        whitelist := whitelistEn
+        language := "English"
+        aspectRatioForLevel := 0.18
+    }
+    for k, v in CraftNames {
+        template := translate(v)
+        TemplateForCrafts .= template . "|"
+    }
+    TemplateForCrafts := RTrim(TemplateForCrafts, "|") . ")"
+    Capture2TextOptions .= " -l " . language
+        . " --whitelist """ . whitelist . """" 
     
     iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
     if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == ""
@@ -865,26 +876,28 @@ initSettings() {
     hotkey, % settingsApp["ScanLastAreaKey"], ScanLastArea
 
     IniRead, outStyle, %SettingsPath%, Other, outStyle
-    if (outStyle == "ERROR" or outStyle == "" or outStyle < 1 or outStyle > 3) {
+    if (outStyle == "ERROR" or outStyle == "" 
+        or outStyle < 1 or outStyle > 3) {
         outStyle := 1
     }
     settingsApp.outStyle := outStyle
 
     iniRead tempMon, %SettingsPath%, Other, mon
-    if (tempMon == "ERROR" or tempMon == "") { 
+    sysGet, monCount, MonitorCount
+    if (tempMon == "ERROR" or tempMon == "" 
+        or tempMon < 1 or tempMon > monCount) {
         tempMon := 1
     }
     settingsApp.monitor := tempMon
 
     iniRead, sc, %SettingsPath%, Other, scale
-    if (sc == "ERROR") {
+    if (sc == "ERROR" or sc == "" or sc < 1) {
         sc := 1
     }
-    settingsApp.scale := sc
-    
+    settingsApp.scale := Format("{:.1f}", sc)
     iniRead tempOnTop, %SettingsPath%, Other, alwaysOnTop
-    if (tempOnTop == "ERROR") { 
-        tempOnTop := 0 
+    if (tempOnTop == "ERROR" or tempOnTop == "") {
+        tempOnTop := 0
     }
     settingsApp.alwaysOnTop := tempOnTop
     
@@ -900,7 +913,7 @@ initSettings() {
     
     iniRead tempStream, %SettingsPath%, Other, canStream
     if (tempStream == "ERROR") { 
-        tempStream := 0 
+        tempStream := 0
     }
     settingsApp.canStream := tempStream
     
@@ -1237,7 +1250,7 @@ TagExist(text, tag) {
 }
 
 TagExistInStart(text, tag) {
-    return InStr(text, tag) == 1
+    return RegExMatch(text, tag) == 1
 }
 
 TemplateExist(text, template) {
@@ -1245,14 +1258,14 @@ TemplateExist(text, template) {
 }
 
 Handle_Augment(craftText, ByRef out) {
-    if TagExist(craftText, "Influenced") {
+    if TemplateExist(craftText, "Influenced") {
         augments := [["Caster", "Caster"], ["Physical", "Physical"], ["Fire", "Fire"]
         , ["Attack", "Attack"], ["Life", "Life"], ["Cold", "Cold"]
         , ["Speed", "Speed"], ["Defence", "Defence"], ["Lightning", "Lightning"]
         , ["Chaos", "Chaos"], ["Critical", "Critical"], ["a new modifier", "Non-Influence"]]
         for k, v in augments {
-            if TagExist(craftText, v[1]) {
-                mod := TagExist(craftText, "Lucky") ? " Lucky" : ""
+            if TagExist(craftText, translate(v[1])) {
+                mod := TagExist(craftText, translate("Lucky")) ? " Lucky" : ""
                 out.push(["Augment " . v[2] . mod
                     , getLVL(craftText)
                     , "Aug"])
@@ -1261,7 +1274,7 @@ Handle_Augment(craftText, ByRef out) {
         }
         return
     }
-    if TagExist(craftText, "Lucky"){
+    if TagExist(craftText, translate("Lucky")){
         out.push(["Augment Influence Lucky"
             , getLVL(craftText)
             , "Aug"])
@@ -1273,13 +1286,13 @@ Handle_Augment(craftText, ByRef out) {
 }
 
 Handle_Remove(craftText, ByRef out) {
-    if (TagExist(craftText, "Influenced") or TagExist(craftText, "influenced")) {
+    if (TemplateExist(craftText, translate("Influenced"))) {
         if TagExist(craftText, "add") {
             removes := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical"]
-            mod := TagExist(craftText, "non") ? "Non-" : ""
+            mod := TagExist(craftText, translate("non")) ? "Non-" : ""
             for k, v in removes {
-                if TagExist(craftText, v) {
+                if TagExist(craftText, translate(v)) {
                     out.push(["Remove " . mod . v . " Add " . v
                         , getLVL(craftText)
                         , "Rem/Add"])
@@ -1290,7 +1303,7 @@ Handle_Remove(craftText, ByRef out) {
             augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
             for k, v in augments {
-                if TagExist(craftText, v) {
+                if TagExist(craftText, translate(v)) {
                     out.push(["Remove " . v
                         , getLVL(craftText)
                         , "Rem"])
@@ -1300,8 +1313,8 @@ Handle_Remove(craftText, ByRef out) {
         }
         return
     }
-    if TagExist(craftText, "add") {
-        mod := TagExist(craftText, "non") ? "Non-" : ""
+    if TagExist(craftText, translate("add")) {
+        mod := TagExist(craftText, translate("non")) ? "Non-" : ""
         out.push(["Remove " . mod . "Influence Add Influence"
             , getLVL(craftText)
             , "Rem/Add"])
@@ -1314,16 +1327,16 @@ Handle_Remove(craftText, ByRef out) {
 
 Handle_Reforge(craftText, ByRef out) {
     ;prefixes
-    if TagExist(craftText, "Prefixes") {
-        mod := TagExist(craftText, "Lucky") ? " Lucky" : ""
+    if TagExist(craftText, translate("Prefixes")) {
+        mod := TagExist(craftText, translate("Lucky")) ? " Lucky" : ""
         out.push(["Reforge keep Prefix" . mod 
             , getLVL(craftText)
             , "Ref"])
         return
     }
     ;suffixes
-    if TagExist(craftText, "Suffixes") {
-        mod := TagExist(craftText, "Lucky") ? " Lucky" : ""
+    if TagExist(craftText, translate("Suffixes")) {
+        mod := TagExist(craftText, translate("Lucky")) ? " Lucky" : ""
         out.push(["Reforge keep Suffix" . mod
             , getLVL(craftText)
             , "Ref"])
@@ -1332,10 +1345,10 @@ Handle_Reforge(craftText, ByRef out) {
     ; reforge rares
     remAddsClean := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
         , "Speed", "Defence", "Lightning", "Chaos", "Critical", "Influence"]
-    if TagExist(craftText, "including") { ; 'including' text appears only in reforge rares
+    if TagExist(craftText, translate("including")) { ; 'including' text appears only in reforge rares
         for k, v in remAddsClean {
-            if TagExist(craftText, v) {
-                mod := TagExist(craftText, "more") ? " More Common" : ""
+            if TagExist(craftText, translate(v)) {
+                mod := TagExist(craftText, translate("more")) ? " More Common" : ""
                 out.push(["Reforge " . v . mod
                     , getLVL(craftText)
                     , "Ref"])
@@ -1345,29 +1358,29 @@ Handle_Reforge(craftText, ByRef out) {
         return
     } 
     ;reforge same mod
-    if TemplateExist(craftText, "less.+likely") {
+    if TemplateExist(craftText, translate("less likely")) {
         out.push(["Reforge Rare Less Likely"
             , getLVL(craftText)
             , "Ref"])
         return
     }
-    if TemplateExist(craftText, "more.+likely") {
+    if TemplateExist(craftText, translate("more likely")) {
         out.push(["Reforge Rare More Likely"
             , getLVL(craftText)
             , "Ref"])
         return
     }
-    if TagExist(craftText, "times") {
+    if TagExist(craftText, translate("times")) {
         ;Reforge the links between sockets/links on an item 10 times
         return
     }
     ;links
-    if TagExist(craftText, "links") {
-        if TagExist(craftText,"six") {
+    if TagExist(craftText, translate("links")) {
+        if TagExist(craftText, translate("six")) {
             out.push(["Six Links"
                 , getLVL(craftText)
                 , "Other"])
-        } else if TagExist(craftText, "five") {
+        } else if TagExist(craftText, translate("five")) {
             out.push(["Five Links"
                 , getLVL(craftText)
                 , "Other"])
@@ -1375,26 +1388,26 @@ Handle_Reforge(craftText, ByRef out) {
         return
     }
     ;colour
-    if TagExist(craftText, "colour") {
-        reforgeNonColor := {"Red": "non.+Red"
-            , "Blue": "non.+Blue"
-            , "Green": "non.+Green"}
+    if TagExist(craftText, translate("colour")) {
+        reforgeNonColor := {"Red": "non-Red"
+            , "Blue": "non-Blue"
+            , "Green": "non-Green"}
         for color, v in reforgeNonColor {
-            if TemplateExist(craftText, v) {
+            if TemplateExist(craftText, translate(v)) {
                 out.push(["Non-" . color . " into " . color . " Socket"
                     , getLVL(craftText)
                     , "Other"])
                 return
             } 
         }
-        reforge2color := [["Red, Blue and Green", "Red.+Blue.+and.+Green"]
-            , ["Red and Green", "Red.+and.+Green"]
-            , ["Blue and Green", "them.+Blue.+and.+Green"]
-            , ["Red and Blue", "Red.+and.+Blue"]
-            , ["White", "White"]]
-        for color, colortemp in reforge2color {
-            if TemplateExist(craftText, colortemp[2]) {
-                out.push(["Reforge into " . colortemp[1] . " Socket"
+        reforge2color := ["Red, Blue and Green"
+            , "Red and Green"
+            , "Blue and Green"
+            , "Red and Blue"
+            , "White"]
+        for color in reforge2color {
+            if TemplateExist(craftText, translate(color)) {
+                out.push(["Reforge into " . color . " Socket"
                     , getLVL(craftText)
                     , "Ref"])
                 return
@@ -1402,7 +1415,7 @@ Handle_Reforge(craftText, ByRef out) {
         }
         return
     }
-    if TagExist(craftText, "Influence") {
+    if TagExist(craftText, translate("Influence")) {
         out.push(["Reforge with Influence mod more common"
             , getLVL(craftText)
             , "Ref"])
@@ -1412,15 +1425,15 @@ Handle_Reforge(craftText, ByRef out) {
 
 Handle_Enchant(craftText, ByRef out) {
     ;weapon
-    if TagExist(craftText, "Weapon") {
-        weapEnchants := {"Critical Strike Chance": "Critical.+Strike.+Chance"
-            , "Accuracy": "Accuracy"
-            , "Attack Speed": "Attack.+Speed"
-            , "Weapon Range": "Weapon.+Range"
-            , "Elemental Damage": "Elemental"
-            , "Area of Effect": "Area.+of.+Effect"}
-        for enchant, enchanttemp in weapEnchants {
-            if TemplateExist(craftText, enchanttemp) {
+    if TagExist(craftText, translate("Weapon")) {
+        weapEnchants := ["Critical Strike Chance"
+            , "Accuracy"
+            , "Attack Speed"
+            , "Weapon Range"
+            , "Elemental Damage"
+            , "Area of Effect"]
+        for enchant in weapEnchants {
+            if TemplateExist(craftText, translate(enchant)) {
                 out.push(["Enchant Weapon, " . enchant
                     , getLVL(craftText)
                     , "Other"])
@@ -1430,17 +1443,17 @@ Handle_Enchant(craftText, ByRef out) {
         return
     }
     ;body armour
-    if TagExist(craftText, "Armour") { 
-        bodyEnchants := {"Maximum Life": "Maximum.+L[il]fe"
-            , "Maximum Mana": "Maximum.+Mana"
-            , "Strength": "Strength"
-            , "Dexterity": "Dexterity"
-            , "Intelligence": "Intelligence"
-            , "Fire Resist": "Fire.+Resistance"
-            , "Cold Resist": "Cold.+Resistance"
-            , "Lightning Resist": "Lightning.+Resistance"}
+    if TagExist(craftText, translate("Armour")) { 
+        bodyEnchants := ["Maximum Life"
+            , "Maximum Mana"
+            , "Strength"
+            , "Dexterity"
+            , "Intelligence"
+            , "Fire Resist"
+            , "Cold Resist"
+            , "Lightning Resist"]
         for enchant, enchanttemp in bodyEnchants {
-            if TemplateExist(craftText, enchanttemp) {
+            if TemplateExist(craftText, translate(enchant)) {
                 out.push(["Enchant Body, " . enchant
                     , getLVL(craftText)
                     , "Other"])
@@ -1450,26 +1463,26 @@ Handle_Enchant(craftText, ByRef out) {
         return
     }
     ;Map
-    if TagExist(craftText, "Sextant") {
+    if TagExist(craftText, translate("Sextant")) {
         out.push(["Enchant Map, Doesn't Consume Sextant"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TagExist(craftText, "Tormented") {
+    if TagExist(craftText, translate("Tormented")) {
         out.push(["Enchant Map, surrounded by Tormented Spirits"
             , getLVL(craftText)
             , "Other"])
         return
     }
     ;flask
-    if TagExist(craftText, "Flask") {
-        flaskEnchants := {"inc Duration": "Duration"
-            , "inc Effect": "Effect"
-            , "inc Maximum Charges": "Maximum.+Charges"
-            , "reduced Charges used": "Charges.+used"}
-        for flaskEnchant, flasktemp in flaskEnchants {
-            if TemplateExist(craftText, flasktemp) {
+    if TagExist(craftText, translate("Flask")) {
+        flaskEnchants := ["inc Duration"
+            , "inc Effect"
+            , "inc Maximum Charges"
+            , "reduced Charges used"]
+        for flaskEnchant in flaskEnchants {
+            if TemplateExist(craftText, translate(flaskEnchant)) {
                 out.push(["Enchant Flask, " . flaskEnchant
                     , getLVL(craftText)
                     , "Other"])
@@ -1482,14 +1495,14 @@ Handle_Enchant(craftText, ByRef out) {
 
 Handle_Attempt(craftText, ByRef out) {
     ;awaken
-    if TagExist(craftText, "Awaken") {
+    if TagExist(craftText, translate("Awaken")) {
         out.push(["Awaken Level 20 Support Gem"
             , getLVL(craftText)
             , "Other"])
         return
     }
     ;scarab upgrade
-    if TagExist(craftText, "Scarab") { 
+    if TagExist(craftText, translate("Scarab")) {
         out.push(["Attempt to upgrade a Scarab"
             , getLVL(craftText)
             , "Other"])
@@ -1499,10 +1512,10 @@ Handle_Attempt(craftText, ByRef out) {
 
 Handle_Change(craftText, ByRef out) {
     ; res mods
-    if TagExist(craftText, "Resistance") {
-        firePos := InStr(craftText, "Fire")
-        coldPos := InStr(craftText, "Cold")
-        lightPos := InStr(craftText, "Lightning")
+    if TagExist(craftText, translate("Resistance")) {
+        firePos := RegExMatch(craftText, translate("ChangeFire"))
+        coldPos := RegExMatch(craftText, translate("ChangeCold"))
+        lightPos := RegExMatch(craftText, translate("ChangeLightning"))
 
         rightMostPos := max(firePos, coldPos, lightPos)
         if (rightMostPos == firePos) {
@@ -1538,13 +1551,13 @@ Handle_Change(craftText, ByRef out) {
         }
         return
     }
-    if TemplateExist(craftText, "(Bestiary|Lures)") {
+    if TemplateExist(craftText, translate("Bestiary")) {
         out.push(["Change Unique Bestiary item or item with Aspect into Lures"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TagExist(craftText, "Delirium") {
+    if TagExist(craftText, translate("Delirium")) {
         out.push(["Change a stack of Delirium Orbs"
             , getLVL(craftText)
             , "Other"])
@@ -1555,15 +1568,15 @@ Handle_Change(craftText, ByRef out) {
 
 Handle_Sacrifice(craftText, ByRef out) {
     ;gem for gcp/xp
-    if TagExist(craftText, "Gem") {
+    if TemplateExist(craftText, translate("Gem")) {
         gemPerc := ["20%", "30%", "40%", "50%"]
         for k, v in gemPerc {
             if TagExist(craftText, v) {
-                if TagExist(craftText, "quality") {
+                if TagExist(craftText, translate("quality")) {
                     out.push(["Sacrifice Gem, " . v . " Quality As GCP"
                         , getLVL(craftText)
                         , "Other"])
-                } else if TagExist(craftText, "experience") {
+                } else if TagExist(craftText, translate("experience")) {
                     out.push(["Sacrifice Gem, " . v . " XP As Facetor Lens"
                         , getLVL(craftText)
                         , "Other"])
@@ -1574,8 +1587,8 @@ Handle_Sacrifice(craftText, ByRef out) {
         return
     }
     ;div cards gambling
-    if TagExist(craftText, "Divination") { 
-        if TemplateExist(craftText, "half.+a.+stack") {
+    if TagExist(craftText, translate("Divination")) {
+        if TemplateExist(craftText, translate("half a stack")) {
             out.push(["Sacrifice Divination Card 0-2x"
                 , getLVL(craftText)
                 , "Other"])
@@ -1598,13 +1611,13 @@ Handle_Sacrifice(craftText, ByRef out) {
 }
 
 Handle_Improves(craftText, ByRef out) {
-    if TagExist(craftText, "Gem") {
+    if TemplateExist(craftText, translate("Gem")) {
         out.push(["Improves the Quality of a Gem"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TagExist(craftText, "Flask") {
+    if TagExist(craftText, translate("Flask")) {
         out.push(["Improves the Quality of a Flask"
             , getLVL(craftText)
             , "Other"])
@@ -1615,7 +1628,7 @@ Handle_Improves(craftText, ByRef out) {
 Handle_Fracture(craftText, ByRef out) {
     fracture := {"modifier": "1/5", "Suffix": "1/3 Suffix", "Prefix": "1/3 Prefix"}
     for k, v in fracture {
-        if TagExist(craftText, k) {
+        if TagExist(craftText, translate(k)) {
             out.push(["Fracture " . v
                 , getLVL(craftText)
                 , "Other"])
@@ -1625,19 +1638,19 @@ Handle_Fracture(craftText, ByRef out) {
 }
 
 Handle_Reroll(craftText, ByRef out) {
-    if TagExist(craftText, "Implicit") {
+    if TagExist(craftText, translate("Implicit")) {
         out.push(["Reroll All Lucky"
             , getLVL(craftText)
             , "Other"])
-        return  
+        return
     }
-    if TagExist(craftText, "Prefix") {
+    if TagExist(craftText, translate("Prefix")) {
         out.push(["Reroll Prefix Lucky"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TagExist(craftText, "Suffix") {
+    if TagExist(craftText, translate("Suffix")) {
         out.push(["Reroll Suffix Lucky"
             , getLVL(craftText)
             , "Other"])
@@ -1646,37 +1659,40 @@ Handle_Reroll(craftText, ByRef out) {
 }
 
 Handle_Randomise(craftText, ByRef out) {
-    if TagExist(craftText, "Influence") { 
+    if TagExist(craftText, translate("Influence")) {
         addInfluence := ["Weapon", "Armour", "Jewellery"]
         for k, v in addInfluence {
-            if TagExist(craftText, v) {
+            if TemplateExist(craftText, translate(v)) {
                 out.push(["Randomise Influence " . v
                     , getLVL(craftText)
                     , "Other"])
                 return
             }
         }
-        return
-    }
-    if TagExist(craftText, "numeric") {
-        augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
-            , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
-        for k, v in augments {
-            if TagExist(craftText, v) {
-                out.push(["Randomise values of " . v . " mods"
-                    , getLVL(craftText)
-                    , "Other"])
-                return
-            }
+        if TagExist(craftText, translate("numeric values")) {
+            out.push(["Randomise values of Influence mods"
+                , getLVL(craftText)
+                , "Other"])
         }
         return
     }
+    augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
+        , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
+    for k, v in augments {
+        if TagExist(craftText, translate(v)) {
+            out.push(["Randomise values of " . v . " mods"
+                , getLVL(craftText)
+                , "Other"])
+            return
+        }
+    }
+    return
 }
 
 Handle_Add(craftText, ByRef out) {
     addInfluence := ["Weapon", "Armour", "Jewellery"]
     for k, v in addInfluence {
-        if TagExist(craftText, v) {
+        if TemplateExist(craftText, translate(v)) {
             out.push(["Add Influence to " . v
                 , getLVL(craftText)
                 , "Other"])
@@ -1686,19 +1702,19 @@ Handle_Add(craftText, ByRef out) {
 }
 
 Handle_Set(craftText, ByRef out) {
-    if TagExist(craftText, "Prismatic") {
+    if TagExist(craftText, translate("Prismatic")) {
         out.push(["Set Implicit, Basic Jewel"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TemplateExist(craftText, "(Timeless|Abyss)") {
+    if TemplateExist(craftText, translate("Abyss/Timeless")) {
         out.push(["Set Implicit, Abyss/Timeless Jewel"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TagExist(craftText, "Cluster") {
+    if TagExist(craftText, translate("Cluster")) {
         out.push(["Set Implicit, Cluster Jewel"
             , getLVL(craftText)
             , "Other"])
@@ -1721,40 +1737,29 @@ Handle_Exchange(craftText, ByRef out) {
 }
 
 Handle_Upgrade(craftText, ByRef out) {
-    if TagExist(craftText, "Rare") {
-        if TemplateExist(craftText, "two.+random.+high-tier.+modifiers") {
-            out.push(["Upgrade Magic to Rare, 2 high-tier mods"
+    if TagExist(craftText, translate("Rare")) {
+        mod_tier := TagExist(craftText, translate("high-tier")) ? "high-tier " : ""
+        if TemplateExist(craftText, translate("two random modifiers")) {
+            out.push(["Upgrade Magic to Rare, 2 " . mod_tier . "mods"
                 , getLVL(craftText)
                 , "Other"])
-        } else if TemplateExist(craftText, "two.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare, 2 mods"
+        } else if TemplateExist(craftText, translate("three random modifiers")) {
+            out.push(["Upgrade Magic to Rare, 3 " . mod_tier . "mods"
                 , getLVL(craftText)
                 , "Other"])
-        } else if TemplateExist(craftText, "three.+random.+high-tier.+modifiers") {
-            out.push(["Upgrade Magic to Rare, 3 high-tier mods"
-                , getLVL(craftText)
-                , "Other"])
-        } else if TemplateExist(craftText, "three.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare, 3 mods"
-                , getLVL(craftText)
-                , "Other"])
-        } else if TemplateExist(craftText, "four.+random.+high-tier.+modifiers") {
-                    out.push(["Upgrade Magic to Rare, 4 high-tier mods"
-                        , getLVL(craftText)
-                        , "Other"])
-        } else if TemplateExist(craftText, "four.+random.+modifiers") {
-            out.push(["Upgrade Magic to Rare, 4 mods"
+        } else if TemplateExist(craftText, translate("four random modifiers")) {
+            out.push(["Upgrade Magic to Rare, 4 " . mod_tier . "mods"
                 , getLVL(craftText)
                 , "Other"])
         }
         return
     }
-    if TagExist(craftText, "Normal") {
-        if TemplateExist(craftText, "one.+random") {
+    if TagExist(craftText, translate("Normal")) {
+        if TemplateExist(craftText, translate("one random")) {
             out.push(["Upgrade Normal to Magic, 1 high-tier mod"
                 , getLVL(craftText)
                 , "Other"])
-        } else if TemplateExist(craftText, "two.+random") {
+        } else if TemplateExist(craftText, translate("two random")) {
             out.push(["Upgrade Normal to Magic, 2 high-tier mods"
                 , getLVL(craftText)
                 , "Other"])
@@ -1777,8 +1782,8 @@ getCraftsPlus(craftsText, levelsText) {
     ArrayedLevels := StrSplit(tempLevels, "#")
     
     craftsText := RegExReplace(craftsText, "[\.\,]+", " ") ;remove all "," and "."
-    craftsText := RegExReplace(craftsText, " +?[^a1234567890] +?", " ") ;remove all single symbols except "a" and digits
-    craftsText := Trim(RegExReplace(craftsText, " +", " ")) ;remove possible double spaces    
+    ;craftsText := RegExReplace(craftsText, " +?[^a1234567890] +?", " ") ;remove all single symbols except "a" and digits
+    craftsText := Trim(RegExReplace(craftsText, " +", " ")) ;remove possible double spaces
     NewLined := RegExReplace(craftsText, TemplateForCrafts, "#$1")
     NewLined := SubStr(NewLined, inStr(NewLined, "#") + 1) ; remove all before "#" and "#" too
     
@@ -1810,7 +1815,6 @@ processCrafts(file) {
     
     ; screen_rect := " -s """ . x_start . " " . y_start . " " 
         ; . x_end . " " . y_end . """"
-    aspectRatioForLevel := 0.18
     areaWidthLevel := Floor(aspectRatioForLevel * (x_end - x_start)) ; area width "Level"
     x_areaLevelStart := x_end - areaWidthLevel ; starting X-position "Level"
     screen_rect_Craft := " -s """ . x_start . " " . y_start . " " 
@@ -1846,8 +1850,9 @@ processCrafts(file) {
             continue ;skip empty or short fields
         } 
         for k, v in CraftNames {
-            craftName := v[1]
-            if TagExistInStart(craftText, craftName) {
+            craftName := v
+            if TagExistInStart(craftText, translate(craftName)) {
+                ;MsgBox, % craftName
                 if IsFunc("Handle_" . craftName) {
                     Handle_%craftName%(craftText, outArray)
                 }
