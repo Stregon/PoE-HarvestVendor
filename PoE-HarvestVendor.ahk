@@ -2419,7 +2419,7 @@ IsGuiVisible(guiName) {
 
 checkFiles() {
     if !FileExist("Capture2Text") {
-        if FileExist("Capture2Text.exe") {
+        if FileExist("Capture2Text_CLI.exe") {
             msgbox, % translate("Looks like you put PoE-HarvestVendor.ahk into the Capture2Text folder") . "`r`n" . translate("This is wrong") . "`r`n" . translate("Take the file out of this folder")
         } else {
             msgbox, % translate("I don't see the Capture2Text folder, did you download the tool ?") . "`r`n" . translate("Link is in the GitHub readme under Getting started section")
