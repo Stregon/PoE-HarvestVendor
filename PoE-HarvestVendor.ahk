@@ -1258,7 +1258,7 @@ TemplateExist(text, template) {
 }
 
 Handle_Augment(craftText, ByRef out) {
-    if TemplateExist(craftText, "Influenced") {
+    if TemplateExist(craftText, translate("Influenced")) {
         augments := [["Caster", "Caster"], ["Physical", "Physical"], ["Fire", "Fire"]
         , ["Attack", "Attack"], ["Life", "Life"], ["Cold", "Cold"]
         , ["Speed", "Speed"], ["Defence", "Defence"], ["Lightning", "Lightning"]
@@ -1287,7 +1287,7 @@ Handle_Augment(craftText, ByRef out) {
 
 Handle_Remove(craftText, ByRef out) {
     if (TemplateExist(craftText, translate("Influenced"))) {
-        if TagExist(craftText, "add") {
+        if TagExist(craftText, translate("add")) {
             removes := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical"]
             mod := TagExist(craftText, translate("non")) ? "Non-" : ""
