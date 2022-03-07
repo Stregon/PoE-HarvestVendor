@@ -44,7 +44,7 @@ White=белый
 
 
 Enchant=Зачаровать 
-Weapon=оружи[eи]
+Weapon=оружи[еи]
 Critical Strike Chance=шанса.+критического.+удара
 Accuracy=меткости
 Attack Speed=скорости.+атаки
@@ -58,9 +58,9 @@ Maximum Mana=максимуму.+маны
 Strength=силе
 Dexterity=ловкости
 Intelligence=интеллекту
-Fire Resist=сопротивлению огню
-Cold Resist=сопротивлению холоду
-Lightning Resist=сопротивлению молнии
+Fire Resist=сопротивлению.+огню
+Cold Resist=сопротивлению.+холоду
+Lightning Resist=сопротивлению.+молнии
 
 Sextant=секстант
 Tormented=страдающими
@@ -88,7 +88,7 @@ Gem=камень|камня
 quality=качества
 experience=опыта
 Divination=гадальных
-half a stack=половины колоды
+half a stack=половины.+колоды
 
 Improves=Повысить 
 

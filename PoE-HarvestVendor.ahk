@@ -1425,7 +1425,7 @@ Handle_Reforge(craftText, ByRef out) {
 
 Handle_Enchant(craftText, ByRef out) {
     ;weapon
-    if TagExist(craftText, translate("Weapon")) {
+    if TemplateExist(craftText, translate("Weapon")) {
         weapEnchants := ["Critical Strike Chance"
             , "Accuracy"
             , "Attack Speed"
@@ -1443,7 +1443,7 @@ Handle_Enchant(craftText, ByRef out) {
         return
     }
     ;body armour
-    if TagExist(craftText, translate("Armour")) { 
+    if TagExist(craftText, translate("Armour")) {
         bodyEnchants := ["Maximum Life"
             , "Maximum Mana"
             , "Strength"
@@ -1515,15 +1515,15 @@ Handle_Change(craftText, ByRef out) {
     if TagExist(craftText, translate("Resistance")) {
         firePos := RegExMatch(craftText, translate("ChangeFire"))
         coldPos := RegExMatch(craftText, translate("ChangeCold"))
-        lightPos := RegExMatch(craftText, translate("ChangeLightning"))
+        lightningPos := RegExMatch(craftText, translate("ChangeLightning"))
 
-        rightMostPos := max(firePos, coldPos, lightPos)
+        rightMostPos := max(firePos, coldPos, lightningPos)
         if (rightMostPos == firePos) {
             if (coldPos > 0) {
                 out.push(["Cold to Fire Resist"
                     , getLVL(craftText)
                     , "Other"])
-            } else if (lightPos > 0) {
+            } else if (lightningPos > 0) {
                 out.push(["Lightning to Fire Resist"
                     , getLVL(craftText)
                     , "Other"])
@@ -1533,12 +1533,12 @@ Handle_Change(craftText, ByRef out) {
                 out.push(["Fire to Cold Resist"
                     , getLVL(craftText)
                     , "Other"])
-            } else if (lightPos > 0) {
+            } else if (lightningPos > 0) {
                 out.push(["Lightning to Cold Resist"
                     , getLVL(craftText)
                     , "Other"])
             }
-        } else if (rightMostPos == lightPos) {
+        } else if (rightMostPos == lightningPos) {
             if (firePos > 0) {
                 out.push(["Fire to Lightning Resist"
                     , getLVL(craftText)
