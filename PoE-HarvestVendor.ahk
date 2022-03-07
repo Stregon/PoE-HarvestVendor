@@ -1263,10 +1263,10 @@ Handle_Augment(craftText, ByRef out) {
         , ["Attack", "Attack"], ["Life", "Life"], ["Cold", "Cold"]
         , ["Speed", "Speed"], ["Defence", "Defence"], ["Lightning", "Lightning"]
         , ["Chaos", "Chaos"], ["Critical", "Critical"], ["a new modifier", "Non-Influence"]]
-        for k, v in augments {
-            if TagExist(craftText, translate(v[1])) {
+        for k, augment in augments {
+            if TagExist(craftText, translate(augment[1])) {
                 mod := TagExist(craftText, translate("Lucky")) ? " Lucky" : ""
-                out.push(["Augment " . v[2] . mod
+                out.push(["Augment " . augment[2] . mod
                     , getLVL(craftText)
                     , "Aug"])
                 return
@@ -1302,9 +1302,9 @@ Handle_Remove(craftText, ByRef out) {
         } else {
             augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
-            for k, v in augments {
-                if TagExist(craftText, translate(v)) {
-                    out.push(["Remove " . v
+            for k, augment in augments {
+                if TagExist(craftText, translate(augment)) {
+                    out.push(["Remove " . augment
                         , getLVL(craftText)
                         , "Rem"])
                     return
@@ -1405,7 +1405,7 @@ Handle_Reforge(craftText, ByRef out) {
             , "Blue and Green"
             , "Red and Blue"
             , "White"]
-        for color in reforge2color {
+        for k, color in reforge2color {
             if TemplateExist(craftText, translate(color)) {
                 out.push(["Reforge into " . color . " Socket"
                     , getLVL(craftText)
@@ -1432,7 +1432,7 @@ Handle_Enchant(craftText, ByRef out) {
             , "Weapon Range"
             , "Elemental Damage"
             , "Area of Effect"]
-        for enchant in weapEnchants {
+        for k, enchant in weapEnchants {
             if TemplateExist(craftText, translate(enchant)) {
                 out.push(["Enchant Weapon, " . enchant
                     , getLVL(craftText)
@@ -1452,7 +1452,7 @@ Handle_Enchant(craftText, ByRef out) {
             , "Fire Resist"
             , "Cold Resist"
             , "Lightning Resist"]
-        for enchant, enchanttemp in bodyEnchants {
+        for k, enchant in bodyEnchants {
             if TemplateExist(craftText, translate(enchant)) {
                 out.push(["Enchant Body, " . enchant
                     , getLVL(craftText)
@@ -1481,7 +1481,7 @@ Handle_Enchant(craftText, ByRef out) {
             , "inc Effect"
             , "inc Maximum Charges"
             , "reduced Charges used"]
-        for flaskEnchant in flaskEnchants {
+        for k, flaskEnchant in flaskEnchants {
             if TemplateExist(craftText, translate(flaskEnchant)) {
                 out.push(["Enchant Flask, " . flaskEnchant
                     , getLVL(craftText)
@@ -2425,7 +2425,7 @@ checkFiles() {
             msgbox, % translate("I don't see the Capture2Text folder, did you download the tool ?") . "`r`n" . translate("Link is in the GitHub readme under Getting started section")
         }
         ExitApp
-    }   
+    }
     
     if !FileExist(SettingsPath) {
         msgbox, % translate("Looks like you put PoE-HarvestVendor in a write protected place on your PC.") . "`r`n" . translate("It needs to be able to create and write into a few text files in its directory.")
