@@ -1821,7 +1821,7 @@ getCraftLines(temp) {
 
 processCrafts(file) {
     ; the file parameter is just for the purpose of running a test script with different input files of crafts instead of doing scans
-    ;WinActivate, Path of Exile
+    WinActivate, Path of Exile
     sleep, 500
     Tooltip, % translate("Please Wait"), x_end, y_end
     
