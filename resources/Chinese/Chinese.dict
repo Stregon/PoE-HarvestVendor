@@ -1,0 +1,220 @@
+﻿Level=(等级|寺级|村级)
+
+Augment=添加
+Influenced=非影响效果
+Caster=施法
+Physical=物理
+Fire=火焰
+Attack=攻击
+Life=生命
+Cold=(冰|水)
+Speed=(速度|速)
+Defence=防御
+Lightning=(闪|电)
+Chaos=(混沌|混)
+Critical=暴击
+a new modifier=一个新词缀
+Lucky=幸运
+
+Remove=移除
+add2=(加一|加个)
+non=非
+
+Reforge=(重铸|量铸|重锛|重任|重铺)
+Prefixes=(前缀|前)
+Suffixes=(后缀|后)
+Influence=影响效果
+including=包括
+more=(更常见|常见)
+less likely=大概率不会
+more likely=大概率会
+times=10 次
+links=连接
+six=六
+five=五
+colour=红|蓝|绿|白
+non-Red=非红
+non-Blue=非蓝
+non-Green=非绿
+Red, Blue and Green=红.+蓝.+绿
+Red and Green=红.+绿
+Blue and Green=蓝.+绿
+Red and Blue=红.+蓝
+White=白
+
+Enchant=附魔
+Weapon=武器
+Critical Strike Chance=暴击率
+Accuracy=命中值
+Attack Speed=攻击速度
+Weapon Range=武器范
+Elemental Damage=元素伤害
+Area of Effect=效果区域
+
+Armour=护甲|身体装备
+Maximum Life=生命上限
+Maximum Mana=魔力上限
+Strength=力量
+Dexterity=敏捷
+Intelligence=智慧
+Fire Resist=火焰抗性
+Cold Resist=冰霜抗性
+Lightning Resist=闪电抗性
+
+Sextant=六分仪
+Tormented=Tormented
+
+Flask=药剂
+inc Duration=延长持续时间
+inc Effect=提高效果
+inc Maximum Charges=增加最大使用次数
+reduced Charges used=减少使用次数
+
+Attempt=尝试
+Awaken=强化|觉醒
+Scarab=甲虫
+
+Change=变为
+Resistance=抗性
+ChangeFire=火焰
+ChangeCold=(冰|水)
+ChangeLightning=(闪|电)
+Bestiary=猎魔物品
+Delirium=雾魇
+
+Sacrifice=(献祭|献)
+Gem=(宝石|技能石)
+quality=品质
+experience=经验
+Divination=命运
+half a stack=半
+
+Improves=提高
+
+Fracture=锁定
+modifier=词缀
+Suffix=后缀
+Prefix=(前缀|前组)
+
+Reroll=(重置|重填)
+Implicit=基底
+
+Randomise=随机改变
+Jewellery=饰品
+numeric values=numeric values
+
+Add=Add a random 
+
+Set=设置
+Prismatic=三相
+Abyss/Timeless=深渊|永恒
+Timeless=永恒
+Abyss=深渊
+Cluster=星团
+
+Synthesise=忆境
+
+Corrupt=Corrupt
+
+Exchange=交换
+
+Upgrade=升级
+Normal=普通
+one random=一个随机
+two random=(二个随机|两个随机)
+Rare=稀有
+high-tier=高阶
+two random modifiers=(二个随机|两个随机)
+three random modifiers=三个随机
+four random modifiers=四个随机
+
+Split=分裂
+
+You Have:=You Have:
+ex=ex
+c=c
+Total Crafts:=Total Crafts:
+Augs:=Augs:
+Aug=Aug
+Rems:=Rems:
+Rem=Rem
+Reforges:=Reforges:
+Ref=Ref
+Rem/Adds:=Rem/Adds:
+Rem/Add=Rem/Add
+Other:=Other:
+Other=Other
+Type=Type
+#=#
+Crafts=Crafts
+LvL=LvL
+Price=Price
+Always on top=Always on top
+League:=League:
+Can stream=Can stream
+IGN:=IGN:
+Custom Text:=Custom Text:
+! New Version Available !=! New Version Available !
+Please wait until the program is fully loaded=Please wait until the program is fully loaded
+loading... Initializing Settings=loading... Initializing Settings
+loading... Checking AHK version=loading... Checking AHK version
+loading... Grabbing active leagues=loading... Grabbing active leagues
+loading... building GUI=loading... building GUI
+ready=ready
+Please Wait=Please Wait
+Paste Ready=Paste Ready
+- We were unable to create temp.txt to store text recognition results.=
+- The tool most likely doesnt have permission to write where it is.=
+- Moving it into a location that isnt write protected, or running as admin will fix this.=
+Scan hotkey was set to a non latin letter or number, it was reset to ctrl+g=Scan hotkey was set to a non latin letter or number, it was reset to ctrl+g
+Open GUI hotkey was set to a non latin letter or number, it was reset to ctrl+shift+g=Open GUI hotkey was set to a non latin letter or number, it was reset to ctrl+shift+g
+Please update your AHK=Please update your AHK
+Your version:=Your version:
+Required: 1.1.27.00 or more=Required: 1.1.27.00 or more
+Settings=Settings
+Message formatting=Message formatting
+Output message style:=Output message style:
+No Colors, No codeblock - Words are highlighted when using discord search=No Colors, No codeblock - Words are highlighted when using discord search
+Codeblock, Colors - Words aren't highlighetd when using discord search=Codeblock, Colors - Words aren't highlighetd when using discord search
+Localization=Localization
+Language:=Language:
+Need to restart the program for using a new language!=Need to restart the program for using a new language!
+Monitor Settings=Monitor Settings
+Select monitor:=Select monitor:
+Scale=Scale
+use this when you are using Other than 100% scale in windows display settings=use this when you are using Other than 100% scale in windows display settings
+Hotkeys=Hotkeys
+Open Harvest vendor:=Open Harvest vendor:
+Add crafts:=Add crafts:
+Add from last area:=Add from last area:
+Open Settings Folder=Open Settings Folder
+Save=Save
+and so on=and so on
+Help=Help
+Default Hotkey to open the UI - Ctrl + Shift + G=Default Hotkey to open the UI - Ctrl + Shift + G
+Default Hotkey to start capture - Ctrl + G=Default Hotkey to start capture - Ctrl + G
+Hotkeys can be changed in settings=Hotkeys can be changed in settings
+Start the capture by either clicking Add Crafts button, =Start the capture by either clicking Add Crafts button, 
+or pressing the Capture hotkey.=or pressing the Capture hotkey.
+Select the area with crafts:=Select the area with crafts:
+this can be done repeatedly to add crafts to the list=this can be done repeatedly to add crafts to the list
+Fill in the prices (they will be remembered)=Fill in the prices (they will be remembered)
+and other info like: Can stream, IGN and so on if you wish to=and other info like: Can stream, IGN and so on if you wish to
+Step 1=Step 1
+Step 2=Step 2
+Step 3=Step 3
+Step 4=Step 4
+click: Post Augments/Removes... for the set you want to post=click: Post Augments/Removes... for the set you want to post
+Now your message is in clipboard=Now your message is in clipboard
+Careful about Post All on TFT discord, it has separate channels for different craft types.=Careful about Post All on TFT discord, it has separate channels for different craft types.
+Important:=Important:
+If you are using Big resolution (more than 1080p) and have scaling for display set in windows to more than 100% (in Display settings)=If you are using Big resolution (more than 1080p) and have scaling for display set in windows to more than 100% (in Display settings)
+You need to go into Settings in HarvestVendor and set Scale to match whats set in windows=You need to go into Settings in HarvestVendor and set Scale to match whats set in windows
+Hidden features=Hidden features
+- Holding shift while clicking the X in a row will reduce the count by 1 and also write the craft and price into log.csv (you can find it through the Settings folder button in Settings)=- Holding shift while clicking the X in a row will reduce the count by 1 and also write the craft and price into log.csv (you can find it through the Settings folder button in Settings)
+For when you aren't running PoE on main monitor=For when you aren't running PoE on main monitor
+Before using "Scan Recent Area", use the "Scan shortcut (Ctrl+G)" or press the "Scan" button=Before using "Scan Recent Area", use the "Scan shortcut (Ctrl+G)" or press the "Scan" button
+This will update all local prices with TFT discord prices(Only those which are high confidence, if there is no high confidence price for certain Harvest, they will be kept as it is in local file.), are you sure you want to continue?=This will update all local prices with TFT discord prices(Only those which are high confidence, if there is no high confidence price for certain Harvest, they will be kept as it is in local file.), are you sure you want to continue?
+Updating for=Updating for
+Prices Updated=Prices Updated
+Prices NOT Updated=Prices NOT Updated
