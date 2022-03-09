@@ -65,41 +65,43 @@ FileEncoding, UTF-8
 ;global Language := ""
 global LanguageDictionary := {}
 global EnglishDictionary := {}
-global LanguageList := {"English": "English", "Russian": "Русский", "Korean": "한국어"}
+global LanguageList := {"English": "English", "Russian": "Русский"
+    , "Korean": "한국어", "Chinese": "Chinese - Simplified"}
 global LanguageReverseList := {}
-for k,v in LanguageList {
+for k, v in LanguageList {
     LanguageReverseList[v] := k
 }
 global Messages := {"Korean": "사전을 찾을수 없습니다: "
     , "English": "Cant found the dictionary: "
-    , "Russian": "Не могу найти словарь: "}
+    , "Russian": "Не могу найти словарь: "
+    , "Chinese": "Cant found the dictionary: "}
 global IAutoComplete_Crafts := []
 global CraftList := []
 
-global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe"
-whitelistEn := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,. "
-whitelistRu := "0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ-+%,. "
+;global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe"
+global whitelistEn := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,. "
+global whitelistRu := "0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ-+%,. "
 global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
 global Capture2TextOptions := " -o """ . TempPath . """" 
     ;. " --trim-capture" 
-    . " --tess-config-file """ . TessFile . """"
+    ;. " --tess-config-file """ . TessFile . """"
     ; . " --scale-factor " . scale_factor
-    ;. " -d --debug-timestamp" 
+    ;. " -d --debug-timestamp"
 global aspectRatioForLevel := 0.18
 
-global CraftNames := ["Reforge"
+global CraftNames := ["Randomise"
+    , "Reforge"
     , "Change"
     , "Reroll"
     , "Enchant"
     , "Set"
+    , "Attempt"
     , "Upgrade"
     , "Sacrifice"
-    , "Randomise"
     , "Remove"
     , "Fracture"
     , "Augment"
     , "Synthesise"
-    , "Attempt"
     , "Improves"
     , "Add"
     , "Corrupt"
@@ -357,6 +359,10 @@ isEnglish(text) {
     return false
     ;pattern := "[a-zA-Z]+"
     ;return RegExMatch(text, pattern) > 0
+}
+
+isChinese(text) {
+    return false
 }
 
 removeNonEnglishChars(text) {
@@ -808,11 +814,15 @@ initSettings() {
     
     TemplateForLevel := translate("Level")
     if (settingsApp.Language == "Russian") {
-        whitelist := whitelistRu
+        whitelist := " --whitelist """ . whitelistRu . """"
         language := settingsApp.Language
         aspectRatioForLevel := 0.2
+    } else if (settingsApp.Language == "Chinese") {
+        whitelist := ""
+        language := settingsApp.Language . " - Simplified"
+        aspectRatioForLevel := 0.19
     } else {
-        whitelist := whitelistEn
+        whitelist := " --whitelist """ . whitelistEn . """"
         language := "English"
         aspectRatioForLevel := 0.18
     }
@@ -821,8 +831,10 @@ initSettings() {
         TemplateForCrafts .= template . "|"
     }
     TemplateForCrafts := RTrim(TemplateForCrafts, "|") . ")"
-    Capture2TextOptions .= " -l " . language
-        . " --whitelist """ . whitelist . """" 
+    Capture2TextOptions .= " -l """ . language . """"
+        . whitelist
+        . " --poe-harvest --level-pattern """ . TemplateForLevel . """"
+        . " --aspectratio-Level """ . aspectRatioForLevel . """"
     
     iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
     if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == ""
@@ -1264,8 +1276,8 @@ Handle_Augment(craftText, ByRef out) {
         , ["Speed", "Speed"], ["Defence", "Defence"], ["Lightning", "Lightning"]
         , ["Chaos", "Chaos"], ["Critical", "Critical"], ["a new modifier", "Non-Influence"]]
         for k, augment in augments {
-            if TagExist(craftText, translate(augment[1])) {
-                mod := TagExist(craftText, translate("Lucky")) ? " Lucky" : ""
+            if TemplateExist(craftText, translate(augment[1])) {
+                mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
                 out.push(["Augment " . augment[2] . mod
                     , getLVL(craftText)
                     , "Aug"])
@@ -1274,7 +1286,7 @@ Handle_Augment(craftText, ByRef out) {
         }
         return
     }
-    if TagExist(craftText, translate("Lucky")){
+    if TemplateExist(craftText, translate("Lucky")){
         out.push(["Augment Influence Lucky"
             , getLVL(craftText)
             , "Aug"])
@@ -1287,12 +1299,12 @@ Handle_Augment(craftText, ByRef out) {
 
 Handle_Remove(craftText, ByRef out) {
     if (TemplateExist(craftText, translate("Influenced"))) {
-        if TagExist(craftText, translate("add")) {
+        if TemplateExist(craftText, translate("add2")) {
             removes := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical"]
-            mod := TagExist(craftText, translate("non")) ? "Non-" : ""
+            mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
             for k, v in removes {
-                if TagExist(craftText, translate(v)) {
+                if TemplateExist(craftText, translate(v)) {
                     out.push(["Remove " . mod . v . " Add " . v
                         , getLVL(craftText)
                         , "Rem/Add"])
@@ -1303,7 +1315,7 @@ Handle_Remove(craftText, ByRef out) {
             augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
             for k, augment in augments {
-                if TagExist(craftText, translate(augment)) {
+                if TemplateExist(craftText, translate(augment)) {
                     out.push(["Remove " . augment
                         , getLVL(craftText)
                         , "Rem"])
@@ -1313,8 +1325,8 @@ Handle_Remove(craftText, ByRef out) {
         }
         return
     }
-    if TagExist(craftText, translate("add")) {
-        mod := TagExist(craftText, translate("non")) ? "Non-" : ""
+    if TemplateExist(craftText, translate("add2")) {
+        mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
         out.push(["Remove " . mod . "Influence Add Influence"
             , getLVL(craftText)
             , "Rem/Add"])
@@ -1327,16 +1339,16 @@ Handle_Remove(craftText, ByRef out) {
 
 Handle_Reforge(craftText, ByRef out) {
     ;prefixes
-    if TagExist(craftText, translate("Prefixes")) {
-        mod := TagExist(craftText, translate("Lucky")) ? " Lucky" : ""
+    if TemplateExist(craftText, translate("Prefixes")) {
+        mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
         out.push(["Reforge keep Prefix" . mod 
             , getLVL(craftText)
             , "Ref"])
         return
     }
     ;suffixes
-    if TagExist(craftText, translate("Suffixes")) {
-        mod := TagExist(craftText, translate("Lucky")) ? " Lucky" : ""
+    if TemplateExist(craftText, translate("Suffixes")) {
+        mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
         out.push(["Reforge keep Suffix" . mod
             , getLVL(craftText)
             , "Ref"])
@@ -1345,10 +1357,10 @@ Handle_Reforge(craftText, ByRef out) {
     ; reforge rares
     remAddsClean := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
         , "Speed", "Defence", "Lightning", "Chaos", "Critical", "Influence"]
-    if TagExist(craftText, translate("including")) { ; 'including' text appears only in reforge rares
+    if TemplateExist(craftText, translate("including")) { ; 'including' text appears only in reforge rares
         for k, v in remAddsClean {
-            if TagExist(craftText, translate(v)) {
-                mod := TagExist(craftText, translate("more")) ? " More Common" : ""
+            if TemplateExist(craftText, translate(v)) {
+                mod := TemplateExist(craftText, translate("more")) ? " More Common" : ""
                 out.push(["Reforge " . v . mod
                     , getLVL(craftText)
                     , "Ref"])
@@ -1370,17 +1382,17 @@ Handle_Reforge(craftText, ByRef out) {
             , "Ref"])
         return
     }
-    if TagExist(craftText, translate("times")) {
+    if TemplateExist(craftText, translate("times")) {
         ;Reforge the links between sockets/links on an item 10 times
         return
     }
     ;links
-    if TagExist(craftText, translate("links")) {
-        if TagExist(craftText, translate("six")) {
+    if TemplateExist(craftText, translate("links")) {
+        if TemplateExist(craftText, translate("six")) {
             out.push(["Six Links"
                 , getLVL(craftText)
                 , "Other"])
-        } else if TagExist(craftText, translate("five")) {
+        } else if TemplateExist(craftText, translate("five")) {
             out.push(["Five Links"
                 , getLVL(craftText)
                 , "Other"])
@@ -1388,7 +1400,7 @@ Handle_Reforge(craftText, ByRef out) {
         return
     }
     ;colour
-    if TagExist(craftText, translate("colour")) {
+    if TemplateExist(craftText, translate("colour")) {
         reforgeNonColor := {"Red": "non-Red"
             , "Blue": "non-Blue"
             , "Green": "non-Green"}
@@ -1415,7 +1427,7 @@ Handle_Reforge(craftText, ByRef out) {
         }
         return
     }
-    if TagExist(craftText, translate("Influence")) {
+    if TemplateExist(craftText, translate("Influence")) {
         out.push(["Reforge with Influence mod more common"
             , getLVL(craftText)
             , "Ref"])
@@ -1443,7 +1455,7 @@ Handle_Enchant(craftText, ByRef out) {
         return
     }
     ;body armour
-    if TagExist(craftText, translate("Armour")) {
+    if TemplateExist(craftText, translate("Armour")) {
         bodyEnchants := ["Maximum Life"
             , "Maximum Mana"
             , "Strength"
@@ -1463,20 +1475,20 @@ Handle_Enchant(craftText, ByRef out) {
         return
     }
     ;Map
-    if TagExist(craftText, translate("Sextant")) {
+    if TemplateExist(craftText, translate("Sextant")) {
         out.push(["Enchant Map, Doesn't Consume Sextant"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TagExist(craftText, translate("Tormented")) {
+    if TemplateExist(craftText, translate("Tormented")) {
         out.push(["Enchant Map, surrounded by Tormented Spirits"
             , getLVL(craftText)
             , "Other"])
         return
     }
     ;flask
-    if TagExist(craftText, translate("Flask")) {
+    if TemplateExist(craftText, translate("Flask")) {
         flaskEnchants := ["inc Duration"
             , "inc Effect"
             , "inc Maximum Charges"
@@ -1495,14 +1507,14 @@ Handle_Enchant(craftText, ByRef out) {
 
 Handle_Attempt(craftText, ByRef out) {
     ;awaken
-    if TagExist(craftText, translate("Awaken")) {
+    if TemplateExist(craftText, translate("Awaken")) {
         out.push(["Awaken Level 20 Support Gem"
             , getLVL(craftText)
             , "Other"])
         return
     }
     ;scarab upgrade
-    if TagExist(craftText, translate("Scarab")) {
+    if TemplateExist(craftText, translate("Scarab")) {
         out.push(["Attempt to upgrade a Scarab"
             , getLVL(craftText)
             , "Other"])
@@ -1512,7 +1524,7 @@ Handle_Attempt(craftText, ByRef out) {
 
 Handle_Change(craftText, ByRef out) {
     ; res mods
-    if TagExist(craftText, translate("Resistance")) {
+    if TemplateExist(craftText, translate("Resistance")) {
         firePos := RegExMatch(craftText, translate("ChangeFire"))
         coldPos := RegExMatch(craftText, translate("ChangeCold"))
         lightningPos := RegExMatch(craftText, translate("ChangeLightning"))
@@ -1557,7 +1569,7 @@ Handle_Change(craftText, ByRef out) {
             , "Other"])
         return
     }
-    if TagExist(craftText, translate("Delirium")) {
+    if TemplateExist(craftText, translate("Delirium")) {
         out.push(["Change a stack of Delirium Orbs"
             , getLVL(craftText)
             , "Other"])
@@ -1572,11 +1584,11 @@ Handle_Sacrifice(craftText, ByRef out) {
         gemPerc := ["20%", "30%", "40%", "50%"]
         for k, v in gemPerc {
             if TagExist(craftText, v) {
-                if TagExist(craftText, translate("quality")) {
+                if TemplateExist(craftText, translate("quality")) {
                     out.push(["Sacrifice Gem, " . v . " Quality As GCP"
                         , getLVL(craftText)
                         , "Other"])
-                } else if TagExist(craftText, translate("experience")) {
+                } else if TemplateExist(craftText, translate("experience")) {
                     out.push(["Sacrifice Gem, " . v . " XP As Facetor Lens"
                         , getLVL(craftText)
                         , "Other"])
@@ -1587,7 +1599,7 @@ Handle_Sacrifice(craftText, ByRef out) {
         return
     }
     ;div cards gambling
-    if TagExist(craftText, translate("Divination")) {
+    if TemplateExist(craftText, translate("Divination")) {
         if TemplateExist(craftText, translate("half a stack")) {
             out.push(["Sacrifice Divination Card 0-2x"
                 , getLVL(craftText)
@@ -1617,7 +1629,7 @@ Handle_Improves(craftText, ByRef out) {
             , "Other"])
         return
     }
-    if TagExist(craftText, translate("Flask")) {
+    if TemplateExist(craftText, translate("Flask")) {
         out.push(["Improves the Quality of a Flask"
             , getLVL(craftText)
             , "Other"])
@@ -1628,7 +1640,7 @@ Handle_Improves(craftText, ByRef out) {
 Handle_Fracture(craftText, ByRef out) {
     fracture := {"modifier": "1/5", "Suffix": "1/3 Suffix", "Prefix": "1/3 Prefix"}
     for k, v in fracture {
-        if TagExist(craftText, translate(k)) {
+        if TemplateExist(craftText, translate(k)) {
             out.push(["Fracture " . v
                 , getLVL(craftText)
                 , "Other"])
@@ -1638,19 +1650,19 @@ Handle_Fracture(craftText, ByRef out) {
 }
 
 Handle_Reroll(craftText, ByRef out) {
-    if TagExist(craftText, translate("Implicit")) {
+    if TemplateExist(craftText, translate("Implicit")) {
         out.push(["Reroll All Lucky"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TagExist(craftText, translate("Prefix")) {
+    if TemplateExist(craftText, translate("Prefix")) {
         out.push(["Reroll Prefix Lucky"
             , getLVL(craftText)
             , "Other"])
         return
     }
-    if TagExist(craftText, translate("Suffix")) {
+    if TemplateExist(craftText, translate("Suffix")) {
         out.push(["Reroll Suffix Lucky"
             , getLVL(craftText)
             , "Other"])
@@ -1659,7 +1671,7 @@ Handle_Reroll(craftText, ByRef out) {
 }
 
 Handle_Randomise(craftText, ByRef out) {
-    if TagExist(craftText, translate("Influence")) {
+    if TemplateExist(craftText, translate("Influence")) {
         addInfluence := ["Weapon", "Armour", "Jewellery"]
         for k, v in addInfluence {
             if TemplateExist(craftText, translate(v)) {
@@ -1669,7 +1681,7 @@ Handle_Randomise(craftText, ByRef out) {
                 return
             }
         }
-        if TagExist(craftText, translate("numeric values")) {
+        if TemplateExist(craftText, translate("numeric values")) {
             out.push(["Randomise values of Influence mods"
                 , getLVL(craftText)
                 , "Other"])
@@ -1679,7 +1691,7 @@ Handle_Randomise(craftText, ByRef out) {
     augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
         , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
     for k, v in augments {
-        if TagExist(craftText, translate(v)) {
+        if TemplateExist(craftText, translate(v)) {
             out.push(["Randomise values of " . v . " mods"
                 , getLVL(craftText)
                 , "Other"])
@@ -1702,7 +1714,7 @@ Handle_Add(craftText, ByRef out) {
 }
 
 Handle_Set(craftText, ByRef out) {
-    if TagExist(craftText, translate("Prismatic")) {
+    if TemplateExist(craftText, translate("Prismatic")) {
         out.push(["Set Implicit, Basic Jewel"
             , getLVL(craftText)
             , "Other"])
@@ -1714,7 +1726,7 @@ Handle_Set(craftText, ByRef out) {
             , "Other"])
         return
     }
-    if TagExist(craftText, translate("Cluster")) {
+    if TemplateExist(craftText, translate("Cluster")) {
         out.push(["Set Implicit, Cluster Jewel"
             , getLVL(craftText)
             , "Other"])
@@ -1737,8 +1749,8 @@ Handle_Exchange(craftText, ByRef out) {
 }
 
 Handle_Upgrade(craftText, ByRef out) {
-    if TagExist(craftText, translate("Rare")) {
-        mod_tier := TagExist(craftText, translate("high-tier")) ? "high-tier " : ""
+    if TemplateExist(craftText, translate("Rare")) {
+        mod_tier := TemplateExist(craftText, translate("high-tier")) ? "high-tier " : ""
         if TemplateExist(craftText, translate("two random modifiers")) {
             out.push(["Upgrade Magic to Rare, 2 " . mod_tier . "mods"
                 , getLVL(craftText)
@@ -1754,7 +1766,7 @@ Handle_Upgrade(craftText, ByRef out) {
         }
         return
     }
-    if TagExist(craftText, translate("Normal")) {
+    if TemplateExist(craftText, translate("Normal")) {
         if TemplateExist(craftText, translate("one random")) {
             out.push(["Upgrade Normal to Magic, 1 high-tier mod"
                 , getLVL(craftText)
@@ -1773,9 +1785,6 @@ Handle_Split(craftText, ByRef out) {
     ;skipping Split scarab craft
 }
 
-; === my functions ===
-;function for "tessedit_pageseg_mode 3" or "tessedit_pageseg_mode 4"
-;3 = Fully automatic page segmentation, but no OSD(Orientation and script detection).
 getCraftsPlus(craftsText, levelsText) {
     tempLevels := RegExReplace(levelsText, "(" . TemplateForLevel . ")", "#$1")
     tempLevels := SubStr(tempLevels, inStr(tempLevels, "#") + 1)
@@ -1796,62 +1805,50 @@ getCraftsPlus(craftsText, levelsText) {
     return arr
 }
 
-;function for "tessedit_pageseg_mode 6" by default in Capture2Text.exe
-;6 = Assume a single uniform block of text.
-getCrafts(temp) {
-    NewLined := RegExReplace(temp, TemplateForCrafts, "#$1")
-    NewLined := SubStr(NewLined, inStr(NewLined, "#") + 1) ; remove all before "#" and "#" too
-    
+getCraftLines(temp) {
+    if (settingsApp.Language == "English" or settingsApp.Language == "Russian") {
+        tempArr := StrSplit(temp, "#")
+        craftsText := tempArr[1]
+        levelsText := tempArr[2]
+        return getCraftsPlus(craftsText, levelsText)
+    }
+    craftsText := Trim(RegExReplace(temp, " +", " "))
     arr := {}
-    arr := StrSplit(NewLined, "#")
+    arr := StrSplit(craftsText, "||")
+    ;MsgBox, % arr.Length()
     return arr
 }
 
 processCrafts(file) {
     ; the file parameter is just for the purpose of running a test script with different input files of crafts instead of doing scans
-    WinActivate, Path of Exile
+    ;WinActivate, Path of Exile
     sleep, 500
     Tooltip, % translate("Please Wait"), x_end, y_end
     
-    ; screen_rect := " -s """ . x_start . " " . y_start . " " 
-        ; . x_end . " " . y_end . """"
-    areaWidthLevel := Floor(aspectRatioForLevel * (x_end - x_start)) ; area width "Level"
-    x_areaLevelStart := x_end - areaWidthLevel ; starting X-position "Level"
-    screen_rect_Craft := " -s """ . x_start . " " . y_start . " " 
-        . x_areaLevelStart . " " . y_end . """" ; 82% of the area for "Craft"
-    screen_rect_Level := " -s """ . x_areaLevelStart . " " . y_start . " " 
-    . x_end . " " . y_end . """" ;  18% of the area for "Level"
-    temp := {}
-    for k, v in [screen_rect_Craft, screen_rect_Level] {
-        command := Capture2TextExe . v . Capture2TextOptions
-        RunWait, %command%,,Hide
-        
-        if !FileExist(TempPath) {
-            MsgBox, % translate("- We were unable to create temp.txt to store text recognition results.") . "`r`n" . translate("- The tool most likely doesnt have permission to write where it is.") . "`r`n" . translate("- Moving it into a location that isnt write protected, or running as admin will fix this.")
-            return false
-        }
-        FileRead, curtemp, %file%
-        temp.push(curtemp)
+    screen_rect := " -s """ . x_start . " " . y_start . " " 
+        . x_end . " " . y_end . """"
+    command := Capture2TextExe . screen_rect . Capture2TextOptions
+    RunWait, %command% ;,,Hide
+    if !FileExist(TempPath) {
+        MsgBox, % translate("- We were unable to create temp.txt to store text recognition results.") . "`r`n" . translate("- The tool most likely doesnt have permission to write where it is.") . "`r`n" . translate("- Moving it into a location that isnt write protected, or running as admin will fix this.")
+        return false
     }
+    FileRead, curtemp, %file%
     WinActivate, ahk_pid %PID%
     Tooltip
-    ;add craftsText and levelsText in temp.txt
-    FileDelete, %file%
-    FileAppend, % temp[1] . temp[2], %file%
-    ;FileRead, temp, test2.txt
 
-    Arrayed := getCraftsPlus(temp[1], temp[2])
+    Arrayed := getCraftLines(curtemp)
     outArray := {}
     ;outArrayCount := 0
-    for index in Arrayed {  
+    for index in Arrayed {
         craftText := Trim(Arrayed[index])
         ;StrLen("Set an item to six sockets") = 26. its min length for craft
-        if (craftText == "" or StrLen(craftText) < 26) {
+        if (craftText == "") {
             continue ;skip empty or short fields
         } 
         for k, v in CraftNames {
             craftName := v
-            if TagExistInStart(craftText, translate(craftName)) {
+            if TemplateExist(craftText, translate(craftName)) {
                 ;MsgBox, % craftName
                 if IsFunc("Handle_" . craftName) {
                     Handle_%craftName%(craftText, outArray)
@@ -2208,8 +2205,8 @@ getRow(elementVariable) {
 
 getLVL(craft) {
     map_levels := {"S1": "81", "Sz": "82", "SQ": "80", "8i": "81", "6g": "68"}
-    lvlpos := RegExMatch(craft, "O)" . TemplateForLevel . " *(\w\w).*$", matchObj)
-    lv := matchObj[1]
+    lvlpos := RegExMatch(craft, "O)" . TemplateForLevel . " *(\w\w)", matchObj)
+    lv := matchObj[2]
     if RegExMatch(lv, "\d\d") > 0 {
         if (lv < 37) { ;ppl wouldn't sell lv 30 crafts, but sometimes OCR mistakes 8 for a 3 this just bumps it up for the 76+ rule
             lv += 50
