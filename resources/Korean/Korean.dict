@@ -90,3 +90,13 @@ This will update all local prices with TFT discord prices(Only those which are h
 Updating for=업데이트
 Prices Updated=TFT 정가 업데이트
 Prices NOT Updated=TFT 정가 업데이트 하지않음
+Icon_chromatic=:chromatic:
+Icon_chaos=:chaos:
+Icon_ex=:ex:
+Icon_divine=:divine:
+Icon_regal=:regal:
+Icon_fusing=:fusing:
+Icon_annul_ex=:annul_ex:
+Icon_divination=:sdeck:
+Icon_enchant=:enchant:
+Icon_empty=:gear:

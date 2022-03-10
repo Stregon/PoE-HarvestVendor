@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.4 light"
+global version := "0.8.5 light"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -461,10 +461,10 @@ ShowSettingsUI() {
     gui Settings:new,, % "PoE-HarvestVendor -" . translate("Settings")
     gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
         Gui, add, text, xs+5 yp+20, % translate("Output message style:")
-        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3
+        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3|4
         guicontrol, choose, outStyle, % settingsApp.outStyle
         widthT := width - 20
-        Gui, add, text, xs+15 y+5 w%widthT%, % "1 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
+        Gui, add, text, xs+15 y+5 w%widthT%, % "1, 4 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
         Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2, 3 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
     ;calculate a new height for Groupbox
     guiControlGet, mf_Groupbox, Settings:Pos
@@ -538,9 +538,7 @@ initSettings() {
         Language := "English"
     }
     settingsApp.Language := Language
-    if (settingsApp.Language != "English") {
-        loadLanguageDictionary(settingsApp.Language, LanguageDictionary)
-    }
+    loadLanguageDictionary(settingsApp.Language, LanguageDictionary)
     loadLanguageDictionary(settingsApp.Language . "_English", EnglishDictionary)
     loadCraftListFrom(EnglishDictionary)
     
@@ -574,7 +572,8 @@ initSettings() {
     hotkey, % settingsApp["GuiKey"], OpenGui
 
     IniRead, outStyle, %SettingsPath%, Other, outStyle
-    if (outStyle == "ERROR" or outStyle == "" or outStyle < 1 or outStyle > 3) {
+    if (outStyle == "ERROR" or outStyle == "" 
+        or outStyle < 1 or outStyle > 4) {
         outStyle := 1
     }
     settingsApp.outStyle := outStyle
@@ -876,12 +875,13 @@ gui, Font, s11 cA38D6D
         guicontrol,,customText_cb, % settingsApp.customTextCB
     ; ============================
     ; === custom text input ===
-    customText_width := 113  + 2
-    customText_height := 65 + 2
+    customText_width := 113 + 2
+    customText_height := 125 + 2
     ;text := getImgWidth(A_ScriptDir . "\resources\text.png")
     gui add, picture,  xp+0 y+%offsetForbuttons% w%customText_width% h%customText_height%, resources\text.png
     gui, Font, s11 cA38D6D
-        Gui Add, Edit, xp+1 yp+1 wp-2 hp-2 -E0x200 +BackgroundTrans vcustomText gCustomText_Changed -VScroll, % settingsApp.customText
+        Gui Add, Edit, xp+1 yp+1 wp-2 hp-2 -E0x200 +BackgroundTrans vcustomText gCustomText_Changed, % settingsApp.customText
+        ;-VScroll
     gui, Font, s11 cFFC555
     ; ============================
     GuiControlGet, postAll, HarvestUI:Pos
@@ -1023,6 +1023,53 @@ getNoColorStyleRow(count, craft, price, lvl) {
     return postRowString . "```r`n"
 }
 
+getNitroIconFor(craft) {
+    if (inStr(craft, "Socket") > 0) {
+        return translate("Icon_chromatic")
+    }
+    if (inStr(craft, "Reforge") == 1) {
+        return translate("Icon_chaos")
+    }
+    if (inStr(craft, "Augment") == 1) {
+        return translate("Icon_ex")
+    }
+    if (inStr(craft, "Reroll") == 1) {
+        return translate("Icon_divine")
+    }
+    if (inStr(craft, "Upgrade Magic") == 1) {
+        return translate("Icon_regal")
+    }
+    if (inStr(craft, "Links") > 0) {
+        return translate("Icon_fusing")
+    }
+    if (inStr(craft, "Divination") > 0) {
+        return translate("Icon_divination")
+    }
+    if (inStr(craft, "Enchant") == 1) {
+        return translate("Icon_enchant")
+    }
+    ; if (InStr(craft, "Remove") == 1 and instr(craft, "add") == 0) {
+        ; return translate("Icon_annul")
+    ; }
+    if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
+        return translate("Icon_annul_ex")
+    }
+    return translate("Icon_empty")
+}
+
+getNitroStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
+    
+    postRowString := "   ``" . count . "x" . spaces_count_craft "``" . getNitroIconFor(craft) . "**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
+    }
+    
+    return postRowString . "```r`n"
+}
+
 ; message style with colors, in codeblock but text isnt highlighted in discord search
 getColorStyleRow(count, craft, price, lvl) {
     spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
@@ -1053,16 +1100,11 @@ getElixirStyleRow(count, craft, price, lvl) {
 getPostRow(count, craft, price, group, lvl) {
     price := (price == "") ? " " : price
     ; no colors, no codeblock, but highlighted
-    if (settingsApp.outStyle == 1) { 
-        return getNoColorStyleRow(count, craft, price, lvl)
-    }
-    ; message style with colors, in codeblock but text isnt highlighted in discord search
-    if (settingsApp.outStyle == 2) { 
-        return getColorStyleRow(count, craft, price, lvl)
-    }
-    
-    if (settingsApp.outStyle == 3) { 
-        return getElixirStyleRow(count, craft, price, lvl)
+    styles := {"1": "NoColor", "2": "Color", "3": "Elixir", "4": "Nitro"}
+    for k, style in styles {
+        if (settingsApp.outStyle == k) {
+            return get%style%StyleRow(count, craft, price, lvl)
+        }
     }
     return ""
 }
@@ -1097,7 +1139,7 @@ getPosts(type) {
 }
 
 codeblockWrap(text) {
-    if (settingsApp.outStyle == 1) {
+    if (settingsApp.outStyle == 1 or settingsApp.outStyle == 4) {
         return text
     }
     if (settingsApp.outStyle == 2) {
@@ -1116,7 +1158,28 @@ getNoColorStyleHeader() {
     outString := "**WTS " . tempLeague . "**"
     if (tempName != "") {
         tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
-        outString .= " - IGN: **" . tempName . "**"
+        outString .= " - IGN: **" . tempName . "**" 
+    }
+    outString .= " ``|  generated by HarvestVendor light```r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n   ")
+        outString .= "   " . customText . "`r`n"
+    }
+    if (settingsApp.canStream == 1) {
+        outString .= "   *Can stream if requested*`r`n"
+    }
+    return outString
+}
+
+getNitroStyleHeader() {
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "**WTS " . tempLeague . "**"
+    if (tempName != "") {
+        tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
+        outString .= " - IGN: **" . tempName . "**" 
     }
     outString .= " ``|  generated by HarvestVendor light```r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
@@ -1138,7 +1201,7 @@ getElixirStyleHeader() {
     if (tempName != "") {
         outString .= " IGN: " . tempName
     }
-    outString .= " #generated by HarvestVendor fork`r`n"
+    outString .= " #generated by HarvestVendor light`r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
         customText := StrReplace(settingsApp.customText, "`n", "`r`n  #")
         outString .= "  #" . customText . "`r`n"
@@ -1176,14 +1239,12 @@ createPost(type) {
     maxLengths.craft := getMaxLenghtColunm("craft")
     maxLengths.lvl := getMaxLenghtColunm("lvl")
     header := ""
-    if (settingsApp.outStyle == 1) {
-        header := getNoColorStyleHeader()
-    }
-    if (settingsApp.outStyle == 2) {
-        header := getColorStyleHeader()
-    }
-    if (settingsApp.outStyle == 3) {
-        header := getElixirStyleHeader()
+    styles := {"1": "NoColor", "2": "Color", "3": "Elixir", "4": "Nitro"}
+    for k, style in styles {
+        if (settingsApp.outStyle == k) {
+            header := get%style%StyleHeader()
+            break
+        }
     }
     Clipboard := ""
     Clipboard := codeblockWrap(header . getPosts(type))
@@ -1311,6 +1372,12 @@ sumTypes() {
     GuiControl,HarvestUI:, Refcount, % stats["Ref"]
     GuiControl,HarvestUI:, RAcount, % stats["Rem/Add"]
     GuiControl,HarvestUI:, Ocount, % stats["Other"]
+    if (stats["All"] < 16) {
+        gui, Font, s11 cFFC555 ; normal
+    } else {
+        gui, font, s11 cRed ; red
+    }
+    GuiControl, HarvestUI:Font, CraftsSum
     GuiControl,HarvestUI:, CraftsSum, % stats["All"]
 }
 
