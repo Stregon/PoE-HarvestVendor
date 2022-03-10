@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.3 korean"
+global version := "0.9.4 korean"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -568,10 +568,10 @@ ShowSettingsUI() {
     gui Settings:new,, % "PoE-HarvestVendor -" . translate("Settings")
     gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
         Gui, add, text, xs+5 yp+20, % translate("Output message style:")
-        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3
+        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3|4
         guicontrol, choose, outStyle, % settingsApp.outStyle
         widthT := width - 20
-        Gui, add, text, xs+15 y+5 w%widthT%, % "1 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
+        Gui, add, text, xs+15 y+5 w%widthT%, % "1, 4 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
         Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2, 3 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
     ;calculate a new height for Groupbox
     guiControlGet, mf_Groupbox, Settings:Pos
@@ -597,14 +597,14 @@ ShowSettingsUI() {
     newheight := (lastText2Y + lastText2H) - ms_GroupBoxY + 5
     guiControl, Settings:Move, ms_GroupBox, H%newheight%
     
-    gui, add, groupbox, x5 y+10 w%width% R4.3, % translate("Hotkeys")       
-        Gui, add, text, xp+5 yp+20, % translate("Open Harvest vendor:") 
+    gui, add, groupbox, x5 y+10 w%width% R4.3, % translate("Hotkeys")
+        Gui, add, text, xp+5 yp+20, % translate("Open Harvest vendor:")
         gui,add, hotkey, x+10 yp+0 Section vGuiKeyHotkey, % settingsApp.GuiKey
         
         Gui, add, text, x10 y+5, % translate("Add crafts:") 
         gui, add, hotkey, xs yp+0 vScanKeyHotkey, % settingsApp.ScanKey
         
-        Gui, add, text, x10 y+5, % translate("Add from last area:") 
+        Gui, add, text, x10 y+5, % translate("Add from last area:")
         gui, add, hotkey, xs yp+0 vScanLastAreaHotkey, % settingsApp.ScanLastAreaKey
 
     ;width := width - 10
@@ -673,7 +673,7 @@ SettingsSave_Click() {
     settingsApp.monitor := mon
 
     guiControlGet, sc,,ScaleEdit, value
-    settingsApp.scale := sc
+    settingsApp.scale := (sc == "" or sc < 1) ? 1 : sc
 
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
@@ -795,26 +795,29 @@ initSettings() {
     hotkey, % settingsApp["ScanLastAreaKey"], ScanLastArea
     
     IniRead, outStyle, %SettingsPath%, Other, outStyle
-    if (outStyle == "ERROR" or outStyle == "" or outStyle < 1 or outStyle > 3) {
+    if (outStyle == "ERROR" or outStyle == "" 
+        or outStyle < 1 or outStyle > 4) {
         outStyle := 1
     }
     settingsApp.outStyle := outStyle
 
     iniRead tempMon, %SettingsPath%, Other, mon
-    if (tempMon == "ERROR" or tempMon == "") { 
+    sysGet, monCount, MonitorCount
+    if (tempMon == "ERROR" or tempMon == "" 
+        or tempMon < 1 or tempMon > monCount) {
         tempMon := 1
     }
     settingsApp.monitor := tempMon
 
     iniRead, sc, %SettingsPath%, Other, scale
-    if (sc == "ERROR") {
+    if (sc == "ERROR" or sc == "" or sc < 1) {
         sc := 1
     }
-    settingsApp.scale := sc
+    settingsApp.scale := Format("{:.1f}", sc)
     
     iniRead tempOnTop, %SettingsPath%, Other, alwaysOnTop
-    if (tempOnTop == "ERROR") { 
-        tempOnTop := 0 
+    if (tempOnTop == "ERROR") {
+        tempOnTop := 0
     }
     settingsApp.alwaysOnTop := tempOnTop
     
@@ -975,35 +978,35 @@ newGUI() {
 ; === Text stuff ===
 value_width := 50
 gui, Font, s11 cA38D6D
-        gui add, text, xs yp+5 vValue +BackgroundTrans, % translate("You have:") 
+        gui add, text, xs yp+5 vValue +BackgroundTrans, % translate("You have:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumEx, 0
         gui, Font, s11 cA38D6D
-        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex") 
+        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumChaos, 0
         gui, Font, s11 cA38D6D
-        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c") 
+        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c")
 
-        gui add, text, x+40 yp+0 vcrafts +BackgroundTrans, % translate("Total Crafts:")     
+        gui add, text, x+40 yp+0 vcrafts +BackgroundTrans, % translate("Total Crafts:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% vCraftsSum, 0
         gui, Font, s11 cA38D6D
 
-        gui add, text, xs y+5 +BackgroundTrans, % translate("Augs:")  
+        gui add, text, xs y+5 +BackgroundTrans, % translate("Augs:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vAcount,0
         gui, Font, s11 cA38D6D
 
-        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Reforges:") 
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Reforges:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vRefcount,0
         gui, Font, s11 cA38D6D
-        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Rem/Adds:") 
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Rem/Adds:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vRAcount,0
         gui, Font, s11 cA38D6D
-        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Other:") 
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Other:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vOcount,0
         gui, Font, s11 cA38D6D
@@ -1582,7 +1585,7 @@ Handle_Randomise(craftText, ByRef out) {
             }
         }
         if TemplateExist(craftText, translate("numeric values")) {
-            out.push(["Randomise the numeric values of the random Influence modifiers"
+            out.push(["Randomise values of Influence mods"
                 , getLVL(craftText)
                 , "Other"])
         }
@@ -1713,7 +1716,7 @@ processCrafts(file) {
     WinActivate, ahk_pid %PID%
     Tooltip
 
-    Arrayed := getCraftLines(curtemp) ;getCraftsPlus(temp[2], temp[1])
+    Arrayed := getCraftLines(curtemp)
     outArray := {}
     ;outArrayCount := 0
     for index in Arrayed {  
@@ -1819,7 +1822,6 @@ updateUIRow(rowCounter, parameter:="All") {
     needToChangeModel := True
 }
 
-;added by Stregon#3347
 ;=============================================================================
 getPadding(width, maxWidth) {
     spaces := ""
@@ -1836,6 +1838,53 @@ getNoColorStyleRow(count, craft, price, lvl) {
     spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
     
     postRowString := "   ``" . count . "x" . spaces_count_craft . "``**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
+    }
+    
+    return postRowString . "```r`n"
+}
+
+getNitroIconFor(craft) {
+    if (inStr(craft, "Socket") > 0) {
+        return translate("Icon_chromatic")
+    }
+    if (inStr(craft, "Reforge") == 1) {
+        return translate("Icon_chaos")
+    }
+    if (inStr(craft, "Augment") == 1) {
+        return translate("Icon_ex")
+    }
+    if (inStr(craft, "Reroll") == 1) {
+        return translate("Icon_divine")
+    }
+    if (inStr(craft, "Upgrade Magic") == 1) {
+        return translate("Icon_regal")
+    }
+    if (inStr(craft, "Links") > 0) {
+        return translate("Icon_fusing")
+    }
+    if (inStr(craft, "Divination") > 0) {
+        return translate("Icon_divination")
+    }
+    if (inStr(craft, "Enchant") == 1) {
+        return translate("Icon_enchant")
+    }
+    ; if (InStr(craft, "Remove") == 1 and instr(craft, "add") == 0) {
+        ; return translate("Icon_annul")
+    ; }
+    if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
+        return translate("Icon_annul_ex")
+    }
+    return translate("Icon_empty")
+}
+
+getNitroStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
+    
+    postRowString := "   ``" . count . "x" . spaces_count_craft "``" . getNitroIconFor(craft) . "**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
     if (price != " ") {
         postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
     }
@@ -1873,16 +1922,11 @@ getElixirStyleRow(count, craft, price, lvl) {
 getPostRow(count, craft, price, group, lvl) {
     price := (price == "") ? " " : price
     ; no colors, no codeblock, but highlighted
-    if (settingsApp.outStyle == 1) { 
-        return getNoColorStyleRow(count, craft, price, lvl)
-    }
-    ; message style with colors, in codeblock but text isnt highlighted in discord search
-    if (settingsApp.outStyle == 2) { 
-        return getColorStyleRow(count, craft, price, lvl)
-    }
-    
-    if (settingsApp.outStyle == 3) { 
-        return getElixirStyleRow(count, craft, price, lvl)
+    styles := {"1": "NoColor", "2": "Color", "3": "Elixir", "4": "Nitro"}
+    for k, style in styles {
+        if (settingsApp.outStyle == k) {
+            return get%style%StyleRow(count, craft, price, lvl)
+        }
     }
     return ""
 }
@@ -1917,7 +1961,7 @@ getPosts(type) {
 }
 
 codeblockWrap(text) {
-    if (settingsApp.outStyle == 1) {
+    if (settingsApp.outStyle == 1 or settingsApp.outStyle == 4) {
         return text
     }
     if (settingsApp.outStyle == 2) {
@@ -1929,6 +1973,27 @@ codeblockWrap(text) {
 }
 
 getNoColorStyleHeader() {
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "**WTS " . tempLeague . "**"
+    if (tempName != "") {
+        tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
+        outString .= " - IGN: **" . tempName . "**" 
+    }
+    outString .= " ``|  generated by HarvestVendor korean```r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n   ")
+        outString .= "   " . customText . "`r`n"
+    }
+    if (settingsApp.canStream == 1) {
+        outString .= "   *Can stream if requested*`r`n"
+    }
+    return outString
+}
+
+getNitroStyleHeader() {
     tempName := settingsApp.nick
     tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
     tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
@@ -1996,14 +2061,12 @@ createPost(type) {
     maxLengths.craft := getMaxLenghtColunm("craft")
     maxLengths.lvl := getMaxLenghtColunm("lvl")
     header := ""
-    if (settingsApp.outStyle == 1) {
-        header := getNoColorStyleHeader()
-    }
-    if (settingsApp.outStyle == 2) {
-        header := getColorStyleHeader()
-    }
-    if (settingsApp.outStyle == 3) {
-        header := getElixirStyleHeader()
+    styles := {"1": "NoColor", "2": "Color", "3": "Elixir", "4": "Nitro"}
+    for k, style in styles {
+        if (settingsApp.outStyle == k) {
+            header := get%style%StyleHeader()
+            break
+        }
     }
     Clipboard := ""
     Clipboard := codeblockWrap(header . getPosts(type))
@@ -2124,6 +2187,12 @@ sumTypes() {
     GuiControl,HarvestUI:, Refcount, % stats["Ref"]
     GuiControl,HarvestUI:, RAcount, % stats["Rem/Add"]
     GuiControl,HarvestUI:, Ocount, % stats["Other"]
+    if (stats["All"] < 16) {
+        gui, Font, s11 cFFC555 ; normal
+    } else {
+        gui, font, s11 cRed ; red
+    }
+    GuiControl, HarvestUI:Font, CraftsSum
     GuiControl,HarvestUI:, CraftsSum, % stats["All"]
 }
 
@@ -2276,7 +2345,7 @@ IsGuiVisible(guiName) {
 
 checkFiles() {
     if !FileExist("Capture2Text") {
-        if FileExist("Capture2Text.exe") {
+        if FileExist("Capture2Text_CLI.exe") {
             msgbox, % translate("Looks like you put PoE-HarvestVendor.ahk into the Capture2Text folder") . "`r`n" . translate("This is wrong") . "`r`n" . translate("Take the file out of this folder")
         } else {
             msgbox, % translate("I don't see the Capture2Text folder, did you download the tool ?") . "`r`n" . translate("Link is in the GitHub readme under Getting started section")
