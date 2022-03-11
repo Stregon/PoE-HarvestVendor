@@ -46,6 +46,7 @@ global sessionLoading := False
 global CraftTable := []
 global needToChangeModel := True
 global isLoading := True
+global PathofExile_Title := "Path of Exile"
 global PID := DllCall("Kernel32\GetCurrentProcessId")
 
 EnvGet, dir, USERPROFILE
@@ -66,7 +67,7 @@ FileEncoding, UTF-8
 global LanguageDictionary := {}
 global EnglishDictionary := {}
 global LanguageList := {"English": "English", "Russian": "Русский"
-    , "Korean": "한국어", "Chinese": "Chinese - Simplified"}
+    , "Korean": "한국어", "Chinese": "Chinese(S)"}
 global LanguageReverseList := {}
 for k, v in LanguageList {
     LanguageReverseList[v] := k
@@ -78,12 +79,12 @@ global Messages := {"Korean": "사전을 찾을수 없습니다: "
 global IAutoComplete_Crafts := []
 global CraftList := []
 
-;global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe"
+global TessFile := A_ScriptDir . "\Capture2Text\tessdata\configs\poe"
 global whitelistEn := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+%,. "
 global whitelistRu := "0123456789абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ-+%,. "
 global Capture2TextExe := "Capture2Text\Capture2Text_CLI.exe"
 global Capture2TextOptions := " -o """ . TempPath . """" 
-    ;. " --trim-capture" 
+    . " --trim-capture" 
     ;. " --tess-config-file """ . TessFile . """"
     ; . " --scale-factor " . scale_factor
     ;. " -d --debug-timestamp"
@@ -103,7 +104,6 @@ global CraftNames := ["Randomise"
     , "Augment"
     , "Synthesise"
     , "Improves"
-    , "Add"
     , "Corrupt"
     , "Exchange"
     , "Split"]
@@ -605,10 +605,10 @@ ShowSettingsUI() {
     gui Settings:new,, % "PoE-HarvestVendor fork -" . translate("Settings")
     gui, add, Groupbox, x5 y5 w%width% Section vmf_Groupbox, % translate("Message formatting")
         Gui, add, text, xs+5 yp+20, % translate("Output message style:")
-        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3
+        Gui, add, dropdownList, x+10 yp+0 w30 voutStyle, 1|2|3|4
         guicontrol, choose, outStyle, % settingsApp.outStyle
         widthT := width - 20
-        Gui, add, text, xs+15 y+5 w%widthT%, % "1 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
+        Gui, add, text, xs+15 y+5 w%widthT%, % "1, 4 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
         Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2, 3 - " . translate("Codeblock, Colors - Words aren't highlighetd when using discord search")
     ;calculate a new height for Groupbox
     guiControlGet, mf_Groupbox, Settings:Pos
@@ -820,7 +820,7 @@ initSettings() {
     } else if (settingsApp.Language == "Chinese") {
         whitelist := ""
         language := settingsApp.Language . " - Simplified"
-        aspectRatioForLevel := 0.19
+        aspectRatioForLevel := 0.18
     } else {
         whitelist := " --whitelist """ . whitelistEn . """"
         language := "English"
@@ -834,7 +834,7 @@ initSettings() {
     Capture2TextOptions .= " -l """ . language . """"
         . whitelist
         . " --poe-harvest --level-pattern """ . TemplateForLevel . """"
-        . " --aspectratio-Level """ . aspectRatioForLevel . """"
+        . " --aspectratio-Level """ . Format("{:.2f}", aspectRatioForLevel) . """"
     
     iniRead, MaxRowsCraftTable,  %SettingsPath%, Other, MaxRowsCraftTable
     if (MaxRowsCraftTable == "ERROR" or MaxRowsCraftTable == ""
@@ -889,7 +889,7 @@ initSettings() {
 
     IniRead, outStyle, %SettingsPath%, Other, outStyle
     if (outStyle == "ERROR" or outStyle == "" 
-        or outStyle < 1 or outStyle > 3) {
+        or outStyle < 1 or outStyle > 4) {
         outStyle := 1
     }
     settingsApp.outStyle := outStyle
@@ -1270,14 +1270,14 @@ TemplateExist(text, template) {
 }
 
 Handle_Augment(craftText, ByRef out) {
-    if TemplateExist(craftText, translate("Influenced")) {
+    mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
+    if TemplateExist(craftText, translate("non-Influenced")) {
         augments := [["Caster", "Caster"], ["Physical", "Physical"], ["Fire", "Fire"]
         , ["Attack", "Attack"], ["Life", "Life"], ["Cold", "Cold"]
         , ["Speed", "Speed"], ["Defence", "Defence"], ["Lightning", "Lightning"]
         , ["Chaos", "Chaos"], ["Critical", "Critical"], ["a new modifier", "Non-Influence"]]
         for k, augment in augments {
             if TemplateExist(craftText, translate(augment[1])) {
-                mod := TemplateExist(craftText, translate("Lucky")) ? " Lucky" : ""
                 out.push(["Augment " . augment[2] . mod
                     , getLVL(craftText)
                     , "Aug"])
@@ -1286,23 +1286,17 @@ Handle_Augment(craftText, ByRef out) {
         }
         return
     }
-    if TemplateExist(craftText, translate("Lucky")){
-        out.push(["Augment Influence Lucky"
-            , getLVL(craftText)
-            , "Aug"])
-    } else {
-        out.push(["Augment Influence"
-            , getLVL(craftText)
-            , "Aug"])
-    }
+    out.push(["Augment Influence" . mod
+        , getLVL(craftText)
+        , "Aug"])
 }
 
 Handle_Remove(craftText, ByRef out) {
-    if (TemplateExist(craftText, translate("Influenced"))) {
-        if TemplateExist(craftText, translate("add2")) {
+    if TemplateExist(craftText, translate("add2")) {
+        mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
+        if TemplateExist(craftText, translate("non-Influenced")) {
             removes := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
                 , "Speed", "Defence", "Lightning", "Chaos", "Critical"]
-            mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
             for k, v in removes {
                 if TemplateExist(craftText, translate(v)) {
                     out.push(["Remove " . mod . v . " Add " . v
@@ -1311,22 +1305,8 @@ Handle_Remove(craftText, ByRef out) {
                     return
                 }
             }
-        } else {
-            augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
-                , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
-            for k, augment in augments {
-                if TemplateExist(craftText, translate(augment)) {
-                    out.push(["Remove " . augment
-                        , getLVL(craftText)
-                        , "Rem"])
-                    return
-                }
-            }
+            return
         }
-        return
-    }
-    if TemplateExist(craftText, translate("add2")) {
-        mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
         out.push(["Remove " . mod . "Influence Add Influence"
             , getLVL(craftText)
             , "Rem/Add"])
@@ -1355,10 +1335,10 @@ Handle_Reforge(craftText, ByRef out) {
         return
     }
     ; reforge rares
-    remAddsClean := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
+    refMods := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
         , "Speed", "Defence", "Lightning", "Chaos", "Critical", "Influence"]
-    if TemplateExist(craftText, translate("including")) { ; 'including' text appears only in reforge rares
-        for k, v in remAddsClean {
+    if TemplateExist(craftText, translate("including")) {
+        for k, v in refMods {
             if TemplateExist(craftText, translate(v)) {
                 mod := TemplateExist(craftText, translate("more")) ? " More Common" : ""
                 out.push(["Reforge " . v . mod
@@ -1425,12 +1405,6 @@ Handle_Reforge(craftText, ByRef out) {
                 return
             }
         }
-        return
-    }
-    if TemplateExist(craftText, translate("Influence")) {
-        out.push(["Reforge with Influence mod more common"
-            , getLVL(craftText)
-            , "Ref"])
         return
     }
 }
@@ -1523,7 +1497,6 @@ Handle_Attempt(craftText, ByRef out) {
 }
 
 Handle_Change(craftText, ByRef out) {
-    ; res mods
     if TemplateExist(craftText, translate("Resistance")) {
         firePos := RegExMatch(craftText, translate("ChangeFire"))
         coldPos := RegExMatch(craftText, translate("ChangeCold"))
@@ -1574,8 +1547,7 @@ Handle_Change(craftText, ByRef out) {
             , getLVL(craftText)
             , "Other"])
         return
-    } 
-    ; ignore others ?
+    }
 }
 
 Handle_Sacrifice(craftText, ByRef out) {
@@ -1606,20 +1578,7 @@ Handle_Sacrifice(craftText, ByRef out) {
                 , "Other"])
         }
         return
-        ;skipping this:
-        ;   Sacrifice a stack of Divination Cards for that many different Divination Cards
     }
-    ;ignores the rest of sacrifice crafts:
-        ;Sacrifice or Mortal Fragment into another random Fragment of that type
-        ;Sacrificie Maps for same or lower tier stuff
-        ;Sacrifice maps for missions
-        ;Sacrifice maps for map device infusions
-        ;Sacrifice maps for fragments
-        ;Sacrifice maps for map currency
-        ;Sacrifice maps for scarabs
-        ;sacrifice t14+ map for elder/shaper/synth map
-        ;sacrifice weap/ar to make similiar belt/ring/amulet/jewel
-   
 }
 
 Handle_Improves(craftText, ByRef out) {
@@ -1687,29 +1646,6 @@ Handle_Randomise(craftText, ByRef out) {
                 , "Other"])
         }
         return
-    }
-    augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
-        , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
-    for k, v in augments {
-        if TemplateExist(craftText, translate(v)) {
-            out.push(["Randomise values of " . v . " mods"
-                , getLVL(craftText)
-                , "Other"])
-            return
-        }
-    }
-    return
-}
-
-Handle_Add(craftText, ByRef out) {
-    addInfluence := ["Weapon", "Armour", "Jewellery"]
-    for k, v in addInfluence {
-        if TemplateExist(craftText, translate(v)) {
-            out.push(["Add Influence to " . v
-                , getLVL(craftText)
-                , "Other"])
-            return
-        }
     }
 }
 
@@ -1821,14 +1757,15 @@ getCraftLines(temp) {
 
 processCrafts(file) {
     ; the file parameter is just for the purpose of running a test script with different input files of crafts instead of doing scans
-    WinActivate, Path of Exile
+    WinActivate, % PathofExile_Title
     sleep, 500
-    Tooltip, % translate("Please Wait"), x_end, y_end
+    tt_y := y_end + 10
+    Tooltip, % translate("Please Wait"), x_end, tt_y
     
     screen_rect := " -s """ . x_start . " " . y_start . " " 
         . x_end . " " . y_end . """"
     command := Capture2TextExe . screen_rect . Capture2TextOptions
-    RunWait, %command% ;,,Hide
+    RunWait, %command%,,Hide
     if !FileExist(TempPath) {
         MsgBox, % translate("- We were unable to create temp.txt to store text recognition results.") . "`r`n" . translate("- The tool most likely doesnt have permission to write where it is.") . "`r`n" . translate("- Moving it into a location that isnt write protected, or running as admin will fix this.")
         return false
@@ -1974,6 +1911,53 @@ getNoColorStyleRow(count, craft, price, lvl) {
     return postRowString . "```r`n"
 }
 
+getNitroIconFor(craft) {
+    if (inStr(craft, "Socket") > 0) {
+        return translate("Icon_chromatic")
+    }
+    if (inStr(craft, "Reforge") == 1) {
+        return translate("Icon_chaos")
+    }
+    if (inStr(craft, "Augment") == 1) {
+        return translate("Icon_ex")
+    }
+    if (inStr(craft, "Reroll") == 1) {
+        return translate("Icon_divine")
+    }
+    if (inStr(craft, "Upgrade Magic") == 1) {
+        return translate("Icon_regal")
+    }
+    if (inStr(craft, "Links") > 0) {
+        return translate("Icon_fusing")
+    }
+    if (inStr(craft, "Divination") > 0) {
+        return translate("Icon_divination")
+    }
+    if (inStr(craft, "Enchant") == 1) {
+        return translate("Icon_enchant")
+    }
+    ; if (InStr(craft, "Remove") == 1 and instr(craft, "add") == 0) {
+        ; return translate("Icon_annul")
+    ; }
+    if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
+        return translate("Icon_annul_ex")
+    }
+    return translate("Icon_empty")
+}
+
+getNitroStyleRow(count, craft, price, lvl) {
+    spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
+    spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
+    spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
+    
+    postRowString := "   ``" . count . "x" . spaces_count_craft "``" . getNitroIconFor(craft) . "**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
+    if (price != " ") {
+        postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
+    }
+    
+    return postRowString . "```r`n"
+}
+
 ; message style with colors, in codeblock but text isnt highlighted in discord search
 getColorStyleRow(count, craft, price, lvl) {
     spaces_count_craft := getPadding(StrLen(count), maxLengths.count + 1)
@@ -2004,16 +1988,11 @@ getElixirStyleRow(count, craft, price, lvl) {
 getPostRow(count, craft, price, group, lvl) {
     price := (price == "") ? " " : price
     ; no colors, no codeblock, but highlighted
-    if (settingsApp.outStyle == 1) { 
-        return getNoColorStyleRow(count, craft, price, lvl)
-    }
-    ; message style with colors, in codeblock but text isnt highlighted in discord search
-    if (settingsApp.outStyle == 2) { 
-        return getColorStyleRow(count, craft, price, lvl)
-    }
-    
-    if (settingsApp.outStyle == 3) { 
-        return getElixirStyleRow(count, craft, price, lvl)
+    styles := {"1": "NoColor", "2": "Color", "3": "Elixir", "4": "Nitro"}
+    for k, style in styles {
+        if (settingsApp.outStyle == k) {
+            return get%style%StyleRow(count, craft, price, lvl)
+        }
     }
     return ""
 }
@@ -2048,7 +2027,7 @@ getPosts(type) {
 }
 
 codeblockWrap(text) {
-    if (settingsApp.outStyle == 1) {
+    if (settingsApp.outStyle == 1 or settingsApp.outStyle == 4) {
         return text
     }
     if (settingsApp.outStyle == 2) {
@@ -2068,6 +2047,27 @@ getNoColorStyleHeader() {
     if (tempName != "") {
         tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
         outString .= " - IGN: **" . tempName . "**"
+    }
+    outString .= " ``|  generated by HarvestVendor fork```r`n"
+    if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
+        customText := StrReplace(settingsApp.customText, "`n", "`r`n   ")
+        outString .= "   " . customText . "`r`n"
+    }
+    if (settingsApp.canStream == 1) {
+        outString .= "   *Can stream if requested*`r`n"
+    }
+    return outString
+}
+
+getNitroStyleHeader() {
+    tempName := settingsApp.nick
+    tempLeague := RegExReplace(settingsApp.selectedLeague, "SC", "Softcore")
+    tempLeague := RegExReplace(tempLeague, "HC", "Hardcore")
+    
+    outString := "**WTS " . tempLeague . "**"
+    if (tempName != "") {
+        tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
+        outString .= " - IGN: **" . tempName . "**" 
     }
     outString .= " ``|  generated by HarvestVendor fork```r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
@@ -2127,14 +2127,12 @@ createPost(type) {
     maxLengths.craft := getMaxLenghtColunm("craft")
     maxLengths.lvl := getMaxLenghtColunm("lvl")
     header := ""
-    if (settingsApp.outStyle == 1) {
-        header := getNoColorStyleHeader()
-    }
-    if (settingsApp.outStyle == 2) {
-        header := getColorStyleHeader()
-    }
-    if (settingsApp.outStyle == 3) {
-        header := getElixirStyleHeader()
+    styles := {"1": "NoColor", "2": "Color", "3": "Elixir", "4": "Nitro"}
+    for k, style in styles {
+        if (settingsApp.outStyle == k) {
+            header := get%style%StyleHeader()
+            break
+        }
     }
     Clipboard := ""
     Clipboard := codeblockWrap(header . getSortedPosts(type))
@@ -2264,6 +2262,12 @@ sumTypes() {
     GuiControl,HarvestUI:, Refcount, % stats["Ref"]
     GuiControl,HarvestUI:, RAcount, % stats["Rem/Add"]
     GuiControl,HarvestUI:, Ocount, % stats["Other"]
+    if (stats["All"] < 16) {
+        gui, Font, s11 cFFC555 ; normal
+    } else {
+        gui, font, s11 cRed ; red
+    }
+    GuiControl, HarvestUI:Font, CraftsSum
     GuiControl,HarvestUI:, CraftsSum, % stats["All"]
 }
 

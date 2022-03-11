@@ -1,7 +1,7 @@
 ﻿Level=(Уровень)
 
 Augment=Усилить 
-Influenced=без влияния
+non-Influenced=без влияния
 Caster=чар
 Physical=физическое
 Fire=огня
@@ -103,8 +103,6 @@ Implicit=собственных
 Randomise=Случайным образом
 Jewellery=бижутерии
 numeric values=числовые
-
-Add=Add a random 
 
 Set=Добавить новое
 Prismatic=радужный
@@ -219,3 +217,13 @@ This will update all local prices with TFT discord prices(Only those which are h
 Updating for=Обновление для
 Prices Updated=Цены обновились
 Prices NOT Updated=Цены не обновились
+Icon_chromatic=:chromatic:
+Icon_chaos=:chaos:
+Icon_ex=:ex:
+Icon_divine=:divine:
+Icon_regal=:regal:
+Icon_fusing=:fusing:
+Icon_annul_ex=:annul_ex:
+Icon_divination=:sdeck:
+Icon_enchant=:enchant:
+Icon_empty=:gear:

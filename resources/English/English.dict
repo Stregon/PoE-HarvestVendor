@@ -1,7 +1,7 @@
 Level=(L[BEeOo][vy][BEeOo][lI1])
 
 Augment=Augment 
-Influenced=i)influenced
+non-Influenced=i)influenced
 Caster=Caster
 Physical=Physical
 Fire=Fire
@@ -104,8 +104,6 @@ Randomise=Randomise
 Jewellery=Jewellery
 numeric values=numeric values
 
-Add=Add a random 
-
 Set=Set(a|ai|ta|ca)*? 
 Prismatic=Prismatic
 Abyss/Timeless=Timeless|Abyss
@@ -130,3 +128,14 @@ three random modifiers=three.+random.+modifiers
 four random modifiers=four.+random.+modifiers
 
 Split=Split 
+
+Icon_chromatic=:chromatic:
+Icon_chaos=:chaos:
+Icon_ex=:ex:
+Icon_divine=:divine:
+Icon_regal=:regal:
+Icon_fusing=:fusing:
+Icon_annul_ex=:annul_ex:
+Icon_divination=:sdeck:
+Icon_enchant=:enchant:
+Icon_empty=:gear:
