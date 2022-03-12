@@ -1071,7 +1071,7 @@ newGUI() {
 ; === Text stuff ===
 value_width := 50
 gui, Font, s11 cA38D6D
-        gui add, text, xs yp+5 vValue +BackgroundTrans, % translate("You have:") 
+        gui add, text, xs yp+5 vValue +BackgroundTrans, % translate("You have:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumEx, 0
         gui, Font, s11 cA38D6D
@@ -1081,7 +1081,7 @@ gui, Font, s11 cA38D6D
         gui, Font, s11 cA38D6D
         gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c") 
 
-        gui add, text, x+40 yp+0 vcrafts +BackgroundTrans, % translate("Total Crafts:")     
+        gui add, text, x+40 yp+0 vcrafts +BackgroundTrans, % translate("Total Crafts:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% vCraftsSum, 0
         gui, Font, s11 cA38D6D
@@ -2256,19 +2256,19 @@ sumTypes() {
         if (stats.HasKey(tempType)) {
             stats[tempType] := stats[tempType] + tempAmount
             stats["All"] := stats["All"] + tempAmount
-        }   
+        }
     }
     GuiControl,HarvestUI:, Acount, % stats["Aug"]
     GuiControl,HarvestUI:, Refcount, % stats["Ref"]
     GuiControl,HarvestUI:, RAcount, % stats["Rem/Add"]
     GuiControl,HarvestUI:, Ocount, % stats["Other"]
     if (stats["All"] < 16) {
-        gui, Font, s11 cFFC555 ; normal
+        gui, HarvestUI:Font, s11 cFFC555 ; normal
     } else {
-        gui, font, s11 cRed ; red
+        gui, HarvestUI:Font, s11 cRed ; red
     }
     GuiControl, HarvestUI:Font, CraftsSum
-    GuiControl,HarvestUI:, CraftsSum, % stats["All"]
+    GuiControl, HarvestUI:, CraftsSum, % stats["All"]
 }
 
 buttonHold(buttonV, picture) {
