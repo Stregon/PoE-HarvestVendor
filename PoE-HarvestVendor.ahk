@@ -201,6 +201,7 @@ OpenGui() {
         guicontrol, HarvestUI:Show, versionText
         guicontrol, HarvestUI:Show, versionLink
     }
+    ExPriceUpdate()
     showGUI()
     OnMessage(0x200, "WM_MOUSEMOVE")
 }
@@ -489,7 +490,7 @@ ClearRow_Click() {
 }
 
 updatePricesForUI() {
-    GuiControl,HarvestUI:, ExInchaos, % "(" settingsApp.Ex_price ")"
+    ;GuiControl,HarvestUI:, ExInchaos, % "(" settingsApp.Ex_price ")"
     for k, row in CraftTable {
         craftInGui := row.craft
         if (row.craft == "") {
@@ -523,7 +524,7 @@ GithubPriceUpdate_Click() {
             Tooltip
             return
         }
-        counter := 0
+        ;counter := 0
         for k, v in tftData {
             lowConfidence := v.lowConfidence
             if (lowConfidence) {
@@ -537,12 +538,12 @@ GithubPriceUpdate_Click() {
                 template := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
                 type := "ex"
                 craftPrice := exalt
-                if (counter > 0) {
-                    Ex_price += (chaos / exalt)
-                } else {
-                    Ex_price := chaos / exalt
-                }
-                counter++
+                ; if (counter > 0) {
+                    ; Ex_price += (chaos / exalt)
+                ; } else {
+                    ; Ex_price := chaos / exalt
+                ; }
+                ; counter++
             } else {
                 template := "Oi)^(\d+) *(c|chaos)$"
                 craftPrice := chaos
@@ -556,8 +557,9 @@ GithubPriceUpdate_Click() {
                 iniWrite, %craftPrice%, %PricesPath%, Prices, %craftName%
             }
         }
-        settingsApp.Ex_price := Floor(Ex_price / counter) . "c"
+        ;settingsApp.Ex_price := Floor(Ex_price / counter) . "c"
         updatePricesForUI()
+        ExPriceUpdate()
         ToolTip, % translate("Prices Updated")
         sleep, 1000
         Tooltip
@@ -587,26 +589,40 @@ getTFTPrices() {
     return JSON.Load(tftData).data
 }
 
+getNinjaPrices(type) {
+    leagueCheck := StrReplace(settingsApp.selectedLeague, " SC", "")
+    leagueCheck := StrReplace(leagueCheck, "Standart HC", "Hardcore")
+    leagueCheck := StrReplace(leagueCheck, "Hardcore ", "HC ")
+    url := "https://poe.ninja/api/data/currencyoverview?league=" . leagueCheck . "&type=" . type
+    UrlDownloadToFile, %url%, %tftPrices%
+    if (!FileExist(tftPrices)) {
+        return ""
+    }
+    FileRead, ninjaData, %tftPrices%
+    FileDelete, %tftPrices%
+    return JSON.Load(ninjaData).lines
+}
+
 ExPriceUpdate() {
-    tftData := getTFTPrices()
-    if (tftData == "") {
+    data := getNinjaPrices("Currency") ;getTFTPrices()
+    if (data == "") {
         return
     }
-    counter := 0
-    for k, v in tftData {
-        exalt := v.exalt
-        chaos := v.chaos
-        if (exalt >= 1) {
-            if (counter > 0) {
-                Ex_price += (chaos / exalt)
-            } else {
-                Ex_price := chaos / exalt
-            }
-            counter++
+    Ex_price := ""
+    for k, v in data {
+        if (v.currencyTypeName == "Exalted Orb") {
+            Ex_price := v.receive.value
+            break
         }
     }
-    settingsApp.Ex_price := Floor(Ex_price / counter) . "c"
-    GuiControl,HarvestUI:, ExInchaos, % "(" settingsApp.Ex_price ")"
+    if (Ex_price != "") {
+        settingsApp.Ex_price := Floor(Ex_price) . "c"
+        GuiControl,HarvestUI:, ExInchaos, % "(" settingsApp.Ex_price ")"
+    }
+}
+
+Exalt_Click() {
+    ExPriceUpdate()
 }
 
 createPost_Click() {
@@ -1126,7 +1142,7 @@ gui, Font, s11 cA38D6D
         ;gui, Font, s11 cA38D6D
         ;gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex")
         ;ex_icon := getImgWidth(A_ScriptDir . "\resources\ex.png")
-        gui add, picture, x+2 yp+0 w16 h-1 vEx_i, resources\ex.png
+        gui add, picture, x+2 yp+0 w16 h-1 vEx_i gExalt_Click, resources\ex.png
         gui, Font, s11 cFFC555
         gui add, text, x+2 yp+0 w%value_width% left +BackgroundTrans vExInchaos, % "(" settingsApp.Ex_price ")"
         
