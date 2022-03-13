@@ -25,7 +25,8 @@ global settingsApp := {"GuiKey": ""
     , "gui_position_x": 0
     , "gui_position_y": 0
     , "Language": "English"
-    , "LeagueList": []}
+    , "LeagueList": []
+    , "Ex_price": "-"}
 global outArray := {}
 global canRescan := false
 global x_start := 0
@@ -488,6 +489,7 @@ ClearRow_Click() {
 }
 
 updatePricesForUI() {
+    GuiControl,HarvestUI:, ExInchaos, % "(" settingsApp.Ex_price ")"
     for k, row in CraftTable {
         craftInGui := row.craft
         if (row.craft == "") {
@@ -514,38 +516,36 @@ GithubPriceUpdate_Click() {
         ToolTip, % translate("Updating for") " " leagueCheck
         sleep, 1000
         Tooltip
-        mapLeagues := [["Standard", "std"], ["SC", "lsc"], ["Hardcore", "lhc"]]
-        url := "https://raw.githubusercontent.com/The-Forbidden-Trove/tft-data-prices/master/{league}/harvest.json"
-        for k, league in mapLeagues {
-            if InStr(leagueCheck, league[1]) {
-                url := StrReplace(url, "{league}", league[2])
-                UrlDownloadToFile, %url%, %tftPrices%
-                break
-            }
-        }
-        if (!FileExist(tftPrices)) {
+        tftData := getTFTPrices()
+        if (tftData == "") {
             ToolTip, % translate("Prices NOT Updated")
             sleep, 1000
             Tooltip
             return
         }
-        FileRead, tftData, %tftPrices%
-        parsed := JSON.Load(tftData)
-        for k, v in parsed.data {
+        counter := 0
+        for k, v in tftData {
             lowConfidence := v.lowConfidence
             if (lowConfidence) {
                 continue
             }
             exalt := v.exalt
+            chaos := v.chaos
             craftName := v.name
             iniRead, CheckLocalPrice, %PricesPath%, Prices, %craftName%
             if (exalt >= 1) {
                 template := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
                 type := "ex"
                 craftPrice := exalt
+                if (counter > 0) {
+                    Ex_price += (chaos / exalt)
+                } else {
+                    Ex_price := chaos / exalt
+                }
+                counter++
             } else {
                 template := "Oi)^(\d+) *(c|chaos)$"
-                craftPrice := v.chaos
+                craftPrice := chaos
                 type := "c"
             }
             if (RegExMatch(CheckLocalPrice, template, matchObj) > 0) {
@@ -556,7 +556,7 @@ GithubPriceUpdate_Click() {
                 iniWrite, %craftPrice%, %PricesPath%, Prices, %craftName%
             }
         }
-        FileDelete, %tftPrices%
+        settingsApp.Ex_price := Floor(Ex_price / counter) . "c"
         updatePricesForUI()
         ToolTip, % translate("Prices Updated")
         sleep, 1000
@@ -566,6 +566,47 @@ GithubPriceUpdate_Click() {
     ToolTip, % translate("Prices NOT Updated")
     sleep, 1000
     Tooltip
+}
+
+getTFTPrices() {
+    leagueCheck := settingsApp.selectedLeague
+    mapLeagues := [["Standard", "std"], ["SC", "lsc"], ["Hardcore", "lhc"]]
+    url := "https://raw.githubusercontent.com/The-Forbidden-Trove/tft-data-prices/master/{league}/harvest.json"
+    for k, league in mapLeagues {
+        if InStr(leagueCheck, league[1]) {
+            url := StrReplace(url, "{league}", league[2])
+            UrlDownloadToFile, %url%, %tftPrices%
+            break
+        }
+    }
+    if (!FileExist(tftPrices)) {
+        return ""
+    }
+    FileRead, tftData, %tftPrices%
+    FileDelete, %tftPrices%
+    return JSON.Load(tftData).data
+}
+
+ExPriceUpdate() {
+    tftData := getTFTPrices()
+    if (tftData == "") {
+        return
+    }
+    counter := 0
+    for k, v in tftData {
+        exalt := v.exalt
+        chaos := v.chaos
+        if (exalt >= 1) {
+            if (counter > 0) {
+                Ex_price += (chaos / exalt)
+            } else {
+                Ex_price := chaos / exalt
+            }
+            counter++
+        }
+    }
+    settingsApp.Ex_price := Floor(Ex_price / counter) . "c"
+    GuiControl,HarvestUI:, ExInchaos, % "(" settingsApp.Ex_price ")"
 }
 
 createPost_Click() {
@@ -951,6 +992,11 @@ initSettings() {
         selectedLeague := ""
     }
     settingsApp.selectedLeague := selectedLeague
+    iniRead, Ex_price, %SettingsPath%, Other, Ex_price
+    if (Ex_price == "ERROR" or Ex_price == "") {
+        Ex_price := "-"
+    }
+    settingsApp.Ex_price := Ex_price
 }
 
 saveSettings() {
@@ -976,6 +1022,8 @@ saveSettings() {
     IniWrite, % settingsApp.ScanKey, %SettingsPath%, Other, ScanKey
     IniWrite, % settingsApp.GuiKey, %SettingsPath%, Other, GuiKey
     IniWrite, % settingsApp.ScanLastAreaKey, %SettingsPath%, Other, ScanLastAreaKey
+    
+    iniWrite, % settingsApp.Ex_price, %SettingsPath%, Other, Ex_price
     
     rememberSession()
 }
@@ -1074,32 +1122,40 @@ gui, Font, s11 cA38D6D
         gui add, text, xs yp+5 vValue +BackgroundTrans, % translate("You have:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumEx, 0
-        gui, Font, s11 cA38D6D
-        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex") 
+        
+        ;gui, Font, s11 cA38D6D
+        ;gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex")
+        ;ex_icon := getImgWidth(A_ScriptDir . "\resources\ex.png")
+        gui add, picture, x+2 yp+0 w16 h-1 vEx_i, resources\ex.png
+        gui, Font, s11 cFFC555
+        gui add, text, x+2 yp+0 w%value_width% left +BackgroundTrans vExInchaos, % "(" settingsApp.Ex_price ")"
+        
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumChaos, 0
-        gui, Font, s11 cA38D6D
-        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c") 
+        ;gui, Font, s11 cA38D6D
+        ;gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c")
+        ;chaos_icon := getImgWidth(A_ScriptDir . "\resources\ex.png")
+        gui add, picture, x+2 yp+0 w16 h-1 vchaos_i, resources\chaos.png
 
         gui add, text, x+40 yp+0 vcrafts +BackgroundTrans, % translate("Total Crafts:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% vCraftsSum, 0
         gui, Font, s11 cA38D6D
 
-        gui add, text, xs y+5 +BackgroundTrans, % translate("Augs:")  
+        gui add, text, xs y+5 +BackgroundTrans, % translate("Augs:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vAcount,0
         gui, Font, s11 cA38D6D
 
-        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Reforges:") 
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Reforges:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vRefcount,0
         gui, Font, s11 cA38D6D
-        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Rem/Adds:") 
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Rem/Adds:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vRAcount,0
         gui, Font, s11 cA38D6D
-        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Other:") 
+        gui add, text, x+20 yp+0 +BackgroundTrans, % translate("Other:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% +BackgroundTrans vOcount,0
         gui, Font, s11 cA38D6D
