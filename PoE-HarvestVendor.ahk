@@ -24,7 +24,8 @@ global settingsApp := {"GuiKey": ""
     , "scale": 1
     , "gui_position_x": 0
     , "gui_position_y": 0
-    , "LeagueList": []}
+    , "LeagueList": []
+    , "Ex_price": "-"}
 global outArray := {}
 global canRescan := false
 global x_start := 0
@@ -62,6 +63,7 @@ global LogPath := RoamingDir . "\log.csv"
 global TempPath := RoamingDir . "\temp.txt"
 global tftPrices := RoamingDir . "\tftprices.json"
 
+global Ex_price := ""
 FileEncoding, UTF-8
 global Language := "Korean"
 global LanguageDictionary := {}
@@ -191,6 +193,7 @@ OpenGui() {
         guicontrol, HarvestUI:Show, versionText
         guicontrol, HarvestUI:Show, versionLink
     }
+    ExPriceUpdate()
     showGUI()
     OnMessage(0x200, "WM_MOUSEMOVE")
 }
@@ -279,7 +282,7 @@ setScreenRect() {
 }
 
 AddCrafts_Click() {
-	hotkey, % settingsApp["ScanKey"], off
+    hotkey, % settingsApp["ScanKey"], off
     buttonHold("addCrafts", "resources\addCrafts")
     hideGUI()
     if (!setScreenRect()) {
@@ -453,6 +456,7 @@ ClearRow_Click() {
 }
 
 updatePricesForUI() {
+    ;GuiControl,HarvestUI:, ExInchaos, % "(" settingsApp.Ex_price ")"
     for k, row in CraftTable {
         craftInGui := row.craft
         if (row.craft == "") {
@@ -479,38 +483,36 @@ GithubPriceUpdate_Click() {
         ToolTip, % translate("Updating for") " " leagueCheck
         sleep, 1000
         Tooltip
-        mapLeagues := [["Standard", "std"], ["SC", "lsc"], ["Hardcore", "lhc"]]
-        url := "https://raw.githubusercontent.com/The-Forbidden-Trove/tft-data-prices/master/{league}/harvest.json"
-        for k, league in mapLeagues {
-            if InStr(leagueCheck, league[1]) {
-                url := StrReplace(url, "{league}", league[2])
-                UrlDownloadToFile, %url%, %tftPrices%
-                break
-            }
-        }
-        if (!FileExist(tftPrices)) {
+        tftData := getTFTPrices()
+        if (tftData == "") {
             ToolTip, % translate("Prices NOT Updated")
             sleep, 1000
             Tooltip
             return
         }
-        FileRead, tftData, %tftPrices%
-        parsed := JSON.Load(tftData)
-        for k, v in parsed.data {
+        ;counter := 0
+        for k, v in tftData {
             lowConfidence := v.lowConfidence
             if (lowConfidence) {
                 continue
             }
             exalt := v.exalt
+            chaos := v.chaos
             craftName := v.name
             iniRead, CheckLocalPrice, %PricesPath%, Prices, %craftName%
             if (exalt >= 1) {
                 template := "Oi)^(\d*[\.,]{0,1}?\d+) *(ex|exa|exalt)$"
                 type := "ex"
                 craftPrice := exalt
+                ; if (counter > 0) {
+                    ; Ex_price += (chaos / exalt)
+                ; } else {
+                    ; Ex_price := chaos / exalt
+                ; }
+                ; counter++
             } else {
                 template := "Oi)^(\d+) *(c|chaos)$"
-                craftPrice := v.chaos
+                craftPrice := chaos
                 type := "c"
             }
             if (RegExMatch(CheckLocalPrice, template, matchObj) > 0) {
@@ -521,8 +523,9 @@ GithubPriceUpdate_Click() {
                 iniWrite, %craftPrice%, %PricesPath%, Prices, %craftName%
             }
         }
-        FileDelete, %tftPrices%
+        ;settingsApp.Ex_price := Floor(Ex_price / counter) . "c"
         updatePricesForUI()
+        ExPriceUpdate()
         ToolTip, % translate("Prices Updated")
         sleep, 1000
         Tooltip
@@ -531,6 +534,61 @@ GithubPriceUpdate_Click() {
     ToolTip, % translate("Prices NOT Updated")
     sleep, 1000
     Tooltip
+}
+
+getTFTPrices() {
+    leagueCheck := settingsApp.selectedLeague
+    mapLeagues := [["Standard", "std"], ["SC", "lsc"], ["Hardcore", "lhc"]]
+    url := "https://raw.githubusercontent.com/The-Forbidden-Trove/tft-data-prices/master/{league}/harvest.json"
+    for k, league in mapLeagues {
+        if InStr(leagueCheck, league[1]) {
+            url := StrReplace(url, "{league}", league[2])
+            UrlDownloadToFile, %url%, %tftPrices%
+            break
+        }
+    }
+    if (!FileExist(tftPrices)) {
+        return ""
+    }
+    FileRead, tftData, %tftPrices%
+    FileDelete, %tftPrices%
+    return JSON.Load(tftData).data
+}
+
+getNinjaPrices(type) {
+    leagueCheck := StrReplace(settingsApp.selectedLeague, " SC", "")
+    leagueCheck := StrReplace(leagueCheck, "Standart HC", "Hardcore")
+    leagueCheck := StrReplace(leagueCheck, "Hardcore ", "HC ")
+    url := "https://poe.ninja/api/data/currencyoverview?league=" . leagueCheck . "&type=" . type
+    UrlDownloadToFile, %url%, %tftPrices%
+    if (!FileExist(tftPrices)) {
+        return ""
+    }
+    FileRead, ninjaData, %tftPrices%
+    FileDelete, %tftPrices%
+    return JSON.Load(ninjaData).lines
+}
+
+ExPriceUpdate() {
+    data := getNinjaPrices("Currency") ;getTFTPrices()
+    if (data == "") {
+        return
+    }
+    Ex_price := ""
+    for k, v in data {
+        if (v.currencyTypeName == "Exalted Orb") {
+            Ex_price := v.receive.value
+            break
+        }
+    }
+    if (Ex_price != "") {
+        settingsApp.Ex_price := Floor(Ex_price) . "c"
+        GuiControl,HarvestUI:, ExInchaos, % "(" settingsApp.Ex_price ")"
+    }
+}
+
+Exalt_Click() {
+    ExPriceUpdate()
 }
 
 createPost_Click() {
@@ -601,7 +659,7 @@ ShowSettingsUI() {
         Gui, add, text, xp+5 yp+20, % translate("Open Harvest vendor:")
         gui,add, hotkey, x+10 yp+0 Section vGuiKeyHotkey, % settingsApp.GuiKey
         
-        Gui, add, text, x10 y+5, % translate("Add crafts:") 
+        Gui, add, text, x10 y+5, % translate("Add crafts:")
         gui, add, hotkey, xs yp+0 vScanKeyHotkey, % settingsApp.ScanKey
         
         Gui, add, text, x10 y+5, % translate("Add from last area:")
@@ -673,7 +731,7 @@ SettingsSave_Click() {
     settingsApp.monitor := mon
 
     guiControlGet, sc,,ScaleEdit, value
-    settingsApp.scale := (sc == "" or sc < 1) ? 1 : sc
+    settingsApp.scale := (sc == "" or sc < 1) ? 1 : Format("{:.1f}", sc)
 
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
@@ -816,7 +874,7 @@ initSettings() {
     settingsApp.scale := Format("{:.1f}", sc)
     
     iniRead tempOnTop, %SettingsPath%, Other, alwaysOnTop
-    if (tempOnTop == "ERROR") {
+    if (tempOnTop == "ERROR" or tempOnTop == "") {
         tempOnTop := 0
     }
     settingsApp.alwaysOnTop := tempOnTop
@@ -859,6 +917,11 @@ initSettings() {
         selectedLeague := ""
     }
     settingsApp.selectedLeague := selectedLeague
+    iniRead, Ex_price, %SettingsPath%, Other, Ex_price
+    if (Ex_price == "ERROR" or Ex_price == "") {
+        Ex_price := "-"
+    }
+    settingsApp.Ex_price := Ex_price
 }
 
 saveSettings() {
@@ -883,6 +946,8 @@ saveSettings() {
     IniWrite, % settingsApp.ScanKey, %SettingsPath%, Other, ScanKey
     IniWrite, % settingsApp.GuiKey, %SettingsPath%, Other, GuiKey
     IniWrite, % settingsApp.ScanLastAreaKey, %SettingsPath%, Other, ScanLastAreaKey
+    
+    iniWrite, % settingsApp.Ex_price, %SettingsPath%, Other, Ex_price
     
     rememberSession()
 }
@@ -981,12 +1046,20 @@ gui, Font, s11 cA38D6D
         gui add, text, xs yp+5 vValue +BackgroundTrans, % translate("You have:")
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumEx, 0
-        gui, Font, s11 cA38D6D
-        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex")
+        
+        ;gui, Font, s11 cA38D6D
+        ;gui add, text, x+2 yp+0 +BackgroundTrans, % translate("ex")
+        ;ex_icon := getImgWidth(A_ScriptDir . "\resources\ex.png")
+        gui add, picture, x+2 yp+0 w16 h-1 vEx_i gExalt_Click, resources\ex.png
+        gui, Font, s11 cFFC555
+        gui add, text, x+2 yp+0 w%value_width% left +BackgroundTrans vExInchaos, % "(" settingsApp.Ex_price ")"
+        
         gui, Font, s11 cFFC555
         gui add, text, x+10 yp+0 w%value_width% right +BackgroundTrans vsumChaos, 0
-        gui, Font, s11 cA38D6D
-        gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c")
+        ;gui, Font, s11 cA38D6D
+        ;gui add, text, x+2 yp+0 +BackgroundTrans, % translate("c")
+        ;chaos_icon := getImgWidth(A_ScriptDir . "\resources\ex.png")
+        gui add, picture, x+2 yp+0 w16 h-1 vchaos_i, resources\chaos.png
 
         gui add, text, x+40 yp+0 vcrafts +BackgroundTrans, % translate("Total Crafts:")
         gui, Font, s11 cFFC555
@@ -1499,7 +1572,7 @@ Handle_Sacrifice(craftText, ByRef out) {
         for k, v in gemPerc {
             if TemplateExist(craftText, v) {
                 if TemplateExist(craftText, translate("quality")) {
-                    out.push(["Sacrifice Gem, " . v . " qual As GCP"
+                    out.push(["Sacrifice Gem, " . v . " Quality As GCP"
                         , getLVL(craftText)
                         , "Other"])
                 } else if TemplateExist(craftText, translate("experience")) {
@@ -1962,7 +2035,8 @@ getPosts(type) {
 
 codeblockWrap(text) {
     if (settingsApp.outStyle == 1 or settingsApp.outStyle == 4) {
-        return text
+        ;Ex_price := "   " . translate("Icon_ex") . "=" . settingsApp.Ex_price . "c"
+        return text ; . Ex_price . "`r`n"
     }
     if (settingsApp.outStyle == 2) {
         return "``````md`r`n" . text . "``````"
@@ -1982,7 +2056,8 @@ getNoColorStyleHeader() {
         tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
         outString .= " - IGN: **" . tempName . "**" 
     }
-    outString .= " ``|  generated by HarvestVendor korean```r`n"
+    Ex_price := "  " . translate("Icon_ex") . "=" . settingsApp.Ex_price
+    outString .= " ``|  generated by HarvestVendor korean``" . Ex_price . "`r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
         customText := StrReplace(settingsApp.customText, "`n", "`r`n   ")
         outString .= "   " . customText . "`r`n"
@@ -2003,7 +2078,8 @@ getNitroStyleHeader() {
         tempName := RegExReplace(tempName, "\\*?_", "\_") ;fix for discord
         outString .= " - IGN: **" . tempName . "**" 
     }
-    outString .= " ``|  generated by HarvestVendor korean```r`n"
+    Ex_price := "  " . translate("Icon_ex") . "=" . settingsApp.Ex_price
+    outString .= " ``|  generated by HarvestVendor korean``" . Ex_price . "`r`n"
     if (settingsApp.CustomTextCB == 1 and settingsApp.customText != "") {
         customText := StrReplace(settingsApp.customText, "`n", "`r`n   ")
         outString .= "   " . customText . "`r`n"
@@ -2181,19 +2257,19 @@ sumTypes() {
         if (stats.HasKey(tempType)) {
             stats[tempType] := stats[tempType] + tempAmount
             stats["All"] := stats["All"] + tempAmount
-        }   
+        }
     }
     GuiControl,HarvestUI:, Acount, % stats["Aug"]
     GuiControl,HarvestUI:, Refcount, % stats["Ref"]
     GuiControl,HarvestUI:, RAcount, % stats["Rem/Add"]
     GuiControl,HarvestUI:, Ocount, % stats["Other"]
     if (stats["All"] < 16) {
-        gui, Font, s11 cFFC555 ; normal
+        gui, HarvestUI:Font, s11 cFFC555 ; normal
     } else {
-        gui, font, s11 cRed ; red
+        gui, HarvestUI:Font, s11 cRed ; red
     }
     GuiControl, HarvestUI:Font, CraftsSum
-    GuiControl,HarvestUI:, CraftsSum, % stats["All"]
+    GuiControl, HarvestUI:, CraftsSum, % stats["All"]
 }
 
 buttonHold(buttonV, picture) {
