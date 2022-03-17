@@ -593,6 +593,7 @@ Exalt_Click() {
 
 createPost_Click() {
     buttonHold("postAll", "resources\createPost")
+    ExPriceUpdate()
     createPost("All")
 }
 
