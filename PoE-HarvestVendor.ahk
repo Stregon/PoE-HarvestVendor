@@ -627,6 +627,7 @@ Exalt_Click() {
 
 createPost_Click() {
     buttonHold("postAll", "resources\" . settingsApp["Language"] . "\createPost")
+    ExPriceUpdate()
     createPost("All")
 }
 
