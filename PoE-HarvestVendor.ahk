@@ -8,6 +8,7 @@ global version := "0.9"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
+#include <monitor>
 ; === some global variables ===
 global settingsApp := {"GuiKey": ""
     , "ScanKey": ""
@@ -688,6 +689,9 @@ ShowSettingsUI() {
 
         gui, add, text, x10 y+5, % translate("Scale") 
         gui, add, edit, xs yp+0 w30 vScaleEdit, % settingsApp.scale
+        
+        gui, add, button, x+5 yp+0 h+3 gAutoDetect_Click, % translate("AutoDetect")
+        
         text := translate("use this when you are using Other than 100% scale in windows display settings")
         Gui, add, text, x20 y+5 w%widthT%, % "- " . text
         Gui, add, text, xp+0 y+5 wp+0 vlastText2, % "- 100`% = 1, 150`% = 1.5 " . translate("and so on")
@@ -740,6 +744,22 @@ ShowSettingsUI() {
 OpenSettingsFolder_Click() {
     explorerpath := "explorer " . RoamingDir
     Run, %explorerpath%
+}
+
+AutoDetect_Click() {
+    SetTitleMatchMode, 3 ; A window's title must exactly match WinTitle to be a match.
+    if not WinExist(PathofExile_Title) {
+        SetTitleMatchMode, 1 ; default mode
+        MsgBox, % translate(PathofExile_Title . " not found")
+        return
+    }
+    poeScaleFactor := Format("{:.2f}", getPoeScaleFactor())
+    GuiControl, Settings:, ScaleEdit, % poeScaleFactor
+    
+    monitor := getPoeMonitor()
+    guicontrol, choose, MonitorsDDL, % monitor
+    
+    SetTitleMatchMode, 1 ; default mode
 }
 
 SettingsSave_Click() {
@@ -2661,6 +2681,41 @@ Options: (White space separated)
     Gui, Select:Destroy
     Gui, HarvestUI:Default
     return areaRect
+}
+
+getPoeScaleFactor() {
+    SetTitleMatchMode, 3 ; A window's title must exactly match WinTitle to be a match.
+    WinGet, hwnd, ID, % PathofExile_Title
+    SetTitleMatchMode, 1 ; default mode
+    hMonitor := getMonitorFromWindow(hwnd)
+    if (!hMonitor) {
+        MsgBox, Cant get a monitor for %PathofExile_Title%
+        return 1
+    }
+    dpi := getDpiForMonitor(hMonitor)
+    return dpi ? dpi.X / 96 : 1
+}
+
+getPoeMonitor() {
+    SetTitleMatchMode, 3 ; A window's title must exactly match WinTitle to be a match.
+    WinGet, hwnd, ID, % PathofExile_Title
+    SetTitleMatchMode, 1 ; default mode
+    hMonitor := getMonitorFromWindow(hwnd)
+    if (!hMonitor) {
+        MsgBox, Cant get a monitor for %PathofExile_Title%
+        return 1
+    }
+    monitorInfo := getMonitorInfo(hMonitor)
+    ;return monitorInfo ? monitorInfo.Name : "invalid"
+    monitorInfoName := monitorInfo.Name
+    sysGet, monCount, MonitorCount
+    loop, %monCount% {
+        SysGet, MonitorName, MonitorName, %A_Index%
+        if (monitorInfoName == MonitorName) {
+            return A_Index
+        }
+    }
+    return 1
 }
 
 WM_MOUSEMOVE() {
