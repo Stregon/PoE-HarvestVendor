@@ -198,8 +198,12 @@ OpenGui() {
         return
     }
     loadLastSession()
-    if (version != getVersion()) {
+    serverVersion := getVersion()
+    if (version != serverVersion) {
         guicontrol, HarvestUI:Show, versionText
+        GithubLink := "<a href=""http://github.com/Stregon/PoE-HarvestVendor/releases/tag/" 
+            . serverVersion . """>Github Link</a>"
+        GuiControl, HarvestUI:, versionLink, % GithubLink
         guicontrol, HarvestUI:Show, versionLink
     }
     ExPriceUpdate()
@@ -2024,7 +2028,7 @@ getNitroStyleRow(count, craft, price, lvl) {
     spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
     spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
     
-    postRowString := "   ``" . count . "x" . spaces_count_craft "``" . getNitroIconFor(craft) . "**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
+    postRowString := "   ``" . count . "x" . spaces_count_craft . "``" . getNitroIconFor(craft) . "**``" . craft . "``**``" . spaces_craft_lvl . "[" . lvl . "]" 
     if (price != " ") {
         postRowString .= spaces_lvl_price . "<``**``" . price . "``**``>"
     }
@@ -2038,7 +2042,7 @@ getColorStyleRow(count, craft, price, lvl) {
     spaces_craft_lvl := getPadding(StrLen(craft), maxLengths.craft + 1)
     spaces_lvl_price := getPadding(StrLen(lvl), maxLengths.lvl + 2)
 
-    postRowString := "  " . count . "x" . spaces_count_craft . "[" . craft . spaces_craft_lvl . "]" . "[" . lvl . "]" 
+    postRowString := "  " . count . "x" . spaces_count_craft . "[" . craft . spaces_craft_lvl . "]" . "[" . lvl . "]"
     if (price != " ") {
         postRowString .= spaces_lvl_price . "< " . price . " >"
     }
@@ -2052,7 +2056,7 @@ getElixirStyleRow(count, craft, price, lvl) {
     specChar := Chr(10008) ; Format("{:i}", "0x9755")
     LvlChar := Chr(9409) ;
     priceChar := "$ " ;Chr(128176) ;
-    postRowString := "  " . count . specChar . "" . spaces_count_craft . """" . craft . """" spaces_craft_lvl . LvlChar . "" . lvl
+    postRowString := "  " . count . specChar . "" . spaces_count_craft . """" . craft . """" . spaces_craft_lvl . LvlChar . "" . lvl
     if (price != " ") {
         postRowString .= spaces_lvl_price . priceChar . "" . price
     }
