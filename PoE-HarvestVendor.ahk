@@ -1732,23 +1732,23 @@ Handle_Exchange(craftText, ByRef out) {
 Handle_Upgrade(craftText, ByRef out) {
     if TemplateExist(craftText, translate("Normal")) {
         if TemplateExist(craftText, translate("one random ")) {
-            out.push(["Upgrade Normal to Magic, 1 high-tier mod"
+            out.push(["Upgrade Normal to Magic 1 High Tier Mod"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, translate("two random ")) {
-            out.push(["Upgrade Normal to Magic, 2 high-tier mods"
+            out.push(["Upgrade Normal to Magic 2 High Tier Mod"
                 , getLVL(craftText)
                 , "Other"])
         }
         return
     }
     if TemplateExist(craftText, translate("Rare")) {
-        mods := [["two random high-tier modifiers", "Upgrade Magic to Rare, 2 high-tier mods"]
-            , ["two random modifiers", "Upgrade Magic to Rare, 2 mods"]
-            , ["three random high-tier modifiers", "Upgrade Magic to Rare, 3 high-tier mods"]
-            , ["three random modifiers", "Upgrade Magic to Rare, 3 mods"]
-            , ["four random high-tier modifiers", "Upgrade Magic to Rare, 4 high-tier mods"]
-            , ["four random modifiers", "Upgrade Magic to Rare, 4 mods"]]
+        mods := [["two random high-tier modifiers", "Upgrade Magic to Rare 2 High Tier Mod"]
+            , ["two random modifiers", "Upgrade Magic to Rare 2 Mod"]
+            , ["three random high-tier modifiers", "Upgrade Magic to Rare 3 High Tier Mod"]
+            , ["three random modifiers", "Upgrade Magic to Rare 3 Mod"]
+            , ["four random high-tier modifiers", "Upgrade Magic to Rare 4 High Tier Mod"]
+            , ["four random modifiers", "Upgrade Magic to Rare 4 Mod"]]
             
         for k, v in mods {
             if TemplateExist(craftText, translate(v[1])) {
