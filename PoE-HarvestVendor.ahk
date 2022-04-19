@@ -1784,17 +1784,17 @@ Handle_Exchange(craftText, ByRef out) {
 
 Handle_Upgrade(craftText, ByRef out) {
     if TemplateExist(craftText, translate("Rare")) {
-        mod_tier := TemplateExist(craftText, translate("high-tier")) ? "high-tier " : ""
+        mod_tier := TemplateExist(craftText, translate("high-tier")) ? "High Tier " : ""
         if TemplateExist(craftText, translate("two random modifiers")) {
-            out.push(["Upgrade Magic to Rare, 2 " . mod_tier . "mods"
+            out.push(["Upgrade Magic to Rare 2 " . mod_tier . "Mod"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, translate("three random modifiers")) {
-            out.push(["Upgrade Magic to Rare, 3 " . mod_tier . "mods"
+            out.push(["Upgrade Magic to Rare 3 " . mod_tier . "Mod"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, translate("four random modifiers")) {
-            out.push(["Upgrade Magic to Rare, 4 " . mod_tier . "mods"
+            out.push(["Upgrade Magic to Rare 4 " . mod_tier . "Mod"
                 , getLVL(craftText)
                 , "Other"])
         }
@@ -1802,11 +1802,11 @@ Handle_Upgrade(craftText, ByRef out) {
     }
     if TemplateExist(craftText, translate("Normal")) {
         if TemplateExist(craftText, translate("one random")) {
-            out.push(["Upgrade Normal to Magic, 1 high-tier mod"
+            out.push(["Upgrade Normal to Magic 1 High Tier Mod"
                 , getLVL(craftText)
                 , "Other"])
         } else if TemplateExist(craftText, translate("two random")) {
-            out.push(["Upgrade Normal to Magic, 2 high-tier mods"
+            out.push(["Upgrade Normal to Magic 2 High Tier Mod"
                 , getLVL(craftText)
                 , "Other"])
         }
@@ -2689,7 +2689,7 @@ getPoeScaleFactor() {
     SetTitleMatchMode, 1 ; default mode
     hMonitor := getMonitorFromWindow(hwnd)
     if (!hMonitor) {
-        MsgBox, Cant get a monitor for %PathofExile_Title%
+        MsgBox, % translate("Cant get a monitor for " . PathofExile_Title)
         return 1
     }
     dpi := getDpiForMonitor(hMonitor)
@@ -2702,11 +2702,10 @@ getPoeMonitor() {
     SetTitleMatchMode, 1 ; default mode
     hMonitor := getMonitorFromWindow(hwnd)
     if (!hMonitor) {
-        MsgBox, Cant get a monitor for %PathofExile_Title%
+        MsgBox, % translate("Cant get a monitor for " . PathofExile_Title)
         return 1
     }
     monitorInfo := getMonitorInfo(hMonitor)
-    ;return monitorInfo ? monitorInfo.Name : "invalid"
     monitorInfoName := monitorInfo.Name
     sysGet, monCount, MonitorCount
     loop, %monCount% {
