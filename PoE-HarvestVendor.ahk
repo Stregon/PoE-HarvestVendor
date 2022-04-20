@@ -750,7 +750,7 @@ AutoDetect_Click() {
     SetTitleMatchMode, 3 ; A window's title must exactly match WinTitle to be a match.
     if not WinExist(PathofExile_Title) {
         SetTitleMatchMode, 1 ; default mode
-        MsgBox, % translate(PathofExile_Title . " not found")
+        MsgBox, % translate("The ""Path of Exile"" is not running")
         return
     }
     poeScaleFactor := Format("{:.2f}", getPoeScaleFactor())
@@ -2687,13 +2687,7 @@ getPoeScaleFactor() {
     SetTitleMatchMode, 3 ; A window's title must exactly match WinTitle to be a match.
     WinGet, hwnd, ID, % PathofExile_Title
     SetTitleMatchMode, 1 ; default mode
-    hMonitor := getMonitorFromWindow(hwnd)
-    if (!hMonitor) {
-        MsgBox, % translate("Cant get a monitor for " . PathofExile_Title)
-        return 1
-    }
-    dpi := getDpiForMonitor(hMonitor)
-    return dpi ? dpi.X / 96 : 1
+    return getDpiForWindow(hwnd) / 96
 }
 
 getPoeMonitor() {
@@ -2701,10 +2695,6 @@ getPoeMonitor() {
     WinGet, hwnd, ID, % PathofExile_Title
     SetTitleMatchMode, 1 ; default mode
     hMonitor := getMonitorFromWindow(hwnd)
-    if (!hMonitor) {
-        MsgBox, % translate("Cant get a monitor for " . PathofExile_Title)
-        return 1
-    }
     monitorInfo := getMonitorInfo(hMonitor)
     monitorInfoName := monitorInfo.Name
     sysGet, monCount, MonitorCount

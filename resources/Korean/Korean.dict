@@ -221,6 +221,8 @@ This will update all local prices with TFT discord prices(Only those which are h
 Updating for=업데이트
 Prices Updated=TFT 정가 업데이트
 Prices NOT Updated=TFT 정가 업데이트 하지않음
+AutoDetect=자동감지
+The "Path of Exile" is not running=패스오브엑자일이 실행중이 아닙니다
 Icon_chromatic=:chromatic:
 Icon_chaos=:chaos:
 Icon_ex=:ex:

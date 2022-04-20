@@ -216,6 +216,8 @@ This will update all local prices with TFT discord prices(Only those which are h
 Updating for=Updating for
 Prices Updated=Prices Updated
 Prices NOT Updated=Prices NOT Updated
+AutoDetect=AutoDetect
+The "Path of Exile" is not running=The "Path of Exile" is not running
 Icon_chromatic=:chromatic:
 Icon_chaos=:chaos:
 Icon_ex=:ex:

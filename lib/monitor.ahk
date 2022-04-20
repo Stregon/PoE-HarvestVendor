@@ -1,10 +1,12 @@
-getWindowDpi(hwnd) {
-    return DllCall("User32.dll\GetDpiForWindow", "Ptr", hwnd)
-}
-
-getWindowScaleFactor(hwnd) {
-    ;return A_ScreenDPI / getWindowDpi(hwnd)
-    return getWindowDpi(hwnd) / 96
+getDpiForWindow(hwnd) {
+    osv := StrSplit(A_OSVersion, ".")
+    ;10.0.14393
+    if (osv[1] >= 10 and osv[3] >= 14393) {
+        return DllCall("User32.dll\GetDpiForWindow", "Ptr", hwnd)
+    }
+    hMonitor := getMonitorFromWindow(hwnd)
+    dpi := getDpiForMonitor(hMonitor)
+    return dpi ? dpi.X : 96
 }
 
 getMonitorFromWindow(Hwnd := 0) {
