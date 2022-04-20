@@ -4,10 +4,11 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.4b korean"
+global version := "0.9.5 korean"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
+#include <monitor>
 ; === some global variables ===
 global settingsApp := {"GuiKey": ""
     , "ScanKey": ""
@@ -48,6 +49,7 @@ global sessionLoading := False
 global CraftTable := []
 global needToChangeModel := True
 global isLoading := True
+global PathofExile_Title := "Path of Exile"
 global PID := DllCall("Kernel32\GetCurrentProcessId")
 
 EnvGet, dir, USERPROFILE
@@ -649,8 +651,11 @@ ShowSettingsUI() {
             global MonitorsDDL_TT := translate("For when you aren't running PoE on main monitor")
         guicontrol, choose, MonitorsDDL, % settingsApp.monitor
 
-        gui, add, text, x10 y+5, % translate("Scale") 
-        gui, add, edit, xs yp+0 w30 vScaleEdit, % settingsApp.scale
+        gui, add, text, x10 y+5, % translate("Scale")
+        gui, add, edit, xs yp+0 vScaleEdit, % settingsApp.scale
+        
+        gui, add, button, x+5 yp+0 h+3 gAutoDetect_Click, % translate("AutoDetect")
+        
         text := translate("use this when you are using Other than 100% scale in windows display settings")
         Gui, add, text, x20 y+5 w%widthT%, % "- " . text
         Gui, add, text, xp+0 y+5 wp+0 vlastText2, % "- 100`% = 1, 150`% = 1.5 " . translate("and so on")
@@ -688,6 +693,22 @@ ShowSettingsUI() {
 OpenSettingsFolder_Click() {
     explorerpath := "explorer " . RoamingDir
     Run, %explorerpath%
+}
+
+AutoDetect_Click() {
+    SetTitleMatchMode, 3 ; A window's title must exactly match WinTitle to be a match.
+    if not WinExist(PathofExile_Title) {
+        SetTitleMatchMode, 1 ; default mode
+        MsgBox, % translate("The ""Path of Exile"" is not running")
+        return
+    }
+    poeScaleFactor := Format("{:.2f}", getPoeScaleFactor())
+    GuiControl, Settings:, ScaleEdit, % poeScaleFactor
+    
+    monitor := getPoeMonitor()
+    guicontrol, choose, MonitorsDDL, % monitor
+    
+    SetTitleMatchMode, 1 ; default mode
 }
 
 SettingsSave_Click() {
@@ -736,7 +757,7 @@ SettingsSave_Click() {
     settingsApp.monitor := mon
 
     guiControlGet, sc,,ScaleEdit, value
-    settingsApp.scale := (sc == "" or sc < 1) ? 1 : Format("{:.1f}", sc)
+    settingsApp.scale := (sc == "" or sc < 1) ? 1 : Format("{:.2f}", sc)
 
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
@@ -876,7 +897,7 @@ initSettings() {
     if (sc == "ERROR" or sc == "" or sc < 1) {
         sc := 1
     }
-    settingsApp.scale := Format("{:.1f}", sc)
+    settingsApp.scale := Format("{:.2f}", sc)
     
     iniRead tempOnTop, %SettingsPath%, Other, alwaysOnTop
     if (tempOnTop == "ERROR" or tempOnTop == "") {
@@ -1778,7 +1799,7 @@ getCraftLines(temp) {
 ; === my functions ===
 processCrafts(file) {
     ; the file parameter is just for the purpose of running a test script with different input files of crafts instead of doing scans
-    WinActivate, Path of Exile
+    WinActivate, % PathofExile_Title
     sleep, 500
     Tooltip, % translate("Please Wait"), x_end, y_end
     
@@ -2585,6 +2606,30 @@ Options: (White space separated)
     Gui, Select:Destroy
     Gui, HarvestUI:Default
     return areaRect
+}
+
+getPoeScaleFactor() {
+    SetTitleMatchMode, 3 ; A window's title must exactly match WinTitle to be a match.
+    WinGet, hwnd, ID, % PathofExile_Title
+    SetTitleMatchMode, 1 ; default mode
+    return getDpiForWindow(hwnd) / 96
+}
+
+getPoeMonitor() {
+    SetTitleMatchMode, 3 ; A window's title must exactly match WinTitle to be a match.
+    WinGet, hwnd, ID, % PathofExile_Title
+    SetTitleMatchMode, 1 ; default mode
+    hMonitor := getMonitorFromWindow(hwnd)
+    monitorInfo := getMonitorInfo(hMonitor)
+    monitorInfoName := monitorInfo.Name
+    sysGet, monCount, MonitorCount
+    loop, %monCount% {
+        SysGet, MonitorName, MonitorName, %A_Index%
+        if (monitorInfoName == MonitorName) {
+            return A_Index
+        }
+    }
+    return 1
 }
 
 WM_MOUSEMOVE() {
