@@ -1945,7 +1945,7 @@ getNoColorStyleRow(count, craft, price, lvl) {
 }
 
 getNitroIconFor(craft) {
-    if (inStr(craft, "Socket") > 0) {
+    if (RegExMatch(craft, "Red|Blue|Green") > 0) {
         return translate("Icon_chromatic")
     }
     if (inStr(craft, "Reforge") == 1) {
