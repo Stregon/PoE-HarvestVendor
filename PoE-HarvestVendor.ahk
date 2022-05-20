@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.6 light"
+global version := "0.8.7 light"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -32,6 +32,8 @@ global CraftTable := []
 global needToChangeModel := True
 global isLoading := True
 global PID := DllCall("Kernel32\GetCurrentProcessId")
+global SlowModeInterval := 10 * 60 * 1000
+global timer_Post := new TimerPost
 
 EnvGet, dir, USERPROFILE
 global RoamingDir := dir . "\AppData\Roaming\PoE-HarvestVendor"
@@ -491,7 +493,7 @@ Exalt_Click() {
 
 createPost_Click() {
     buttonHold("postAll", "resources\" . settingsApp["Language"] . "\createPost")
-	ExPriceUpdate()
+    ExPriceUpdate()
     createPost("All")
 }
 
@@ -717,6 +719,7 @@ saveSettings() {
 }
 
 ExitFunc(ExitReason, ExitCode) {
+    timer_Post.Stop()
     for k, v in IAutoComplete_Crafts {
         v.Disable()
         IAutoComplete_Crafts[k] := ""
@@ -1100,7 +1103,7 @@ getNoColorStyleRow(count, craft, price, lvl) {
 }
 
 getNitroIconFor(craft) {
-    if (inStr(craft, "Socket") > 0) {
+    if (RegExMatch(craft, "Red|Blue|Green") > 0) {
         return translate("Icon_chromatic")
     }
     if (inStr(craft, "Reforge") == 1) {
@@ -1324,9 +1327,48 @@ createPost(type) {
             break
         }
     }
+    if GetKeyState("Ctrl") {
+        timer_Post.Start()
+    }
     Clipboard := ""
     Clipboard := codeblockWrap(header . getPosts(type))
     readyTT()
+    
+}
+
+class TimerPost {
+    __New() {
+        this.interval := -SlowModeInterval ; 15min 
+        this.isRuning := false
+        ; Tick() has an implicit parameter "this" which is a reference to
+        ; the object, so we need to create a function which encapsulates
+        ; "this" and the method to call:
+        this.timer := ObjBindMethod(this, "Tick")
+    }
+    Start() {
+        this.Stop()
+        ; Known limitation: SetTimer requires a plain variable reference.
+        timer := this.timer
+        SetTimer % timer, % this.interval
+        this.isRuning := true
+        ;ToolTip % "Counter started"
+    }
+    Stop() {
+        ; To turn off the timer, we must pass the same object as before:
+        if (!this.isRuning) {
+            return
+        }
+        timer := this.timer
+        SetTimer % timer, Off
+        this.isRuning := false
+    }
+    ; In this example, the timer calls this method:
+    Tick() {
+        this.Stop()
+        ToolTip % "You need to update the post!!!"
+        sleep, 10000
+        Tooltip,,,,1
+    }
 }
 
 readyTT() {
