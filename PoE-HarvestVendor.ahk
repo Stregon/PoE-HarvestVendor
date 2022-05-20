@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.1"
+global version := "0.9.2"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -973,7 +973,7 @@ initSettings() {
     IniRead, outStyle, %SettingsPath%, Other, outStyle
     if (outStyle == "ERROR" or outStyle == "" 
         or outStyle < 1 or outStyle > 4) {
-        outStyle := 1
+        outStyle := 4
     }
     settingsApp.outStyle := outStyle
 
@@ -1676,6 +1676,18 @@ Handle_Sacrifice(craftText, ByRef out) {
                 , "Other"])
         }
         return
+    }
+    
+    if TemplateExist(craftText, translate("Weapon or Armour")) {
+        items := ["Belt", "Ring", "Amulet", "Jewel"]
+        for k, item in items {
+            if TemplateExist(craftText, translate(item)) {
+                out.push(["Sacrifice Weapon/Armour to " . item
+                    , getLVL(craftText)
+                    , "Other"])
+                return
+            }
+        }
     }
 }
 

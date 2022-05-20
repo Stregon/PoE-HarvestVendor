@@ -89,6 +89,11 @@ quality=quality
 experience=experience
 Divination=Divination
 half a stack=half.+a.+stack
+Weapon or Armour=Weapon|Armour
+Belt=Belt
+Ring=Ring
+Amulet=Amulet
+Jewel=Jewel
 
 Improves=Improves 
 
