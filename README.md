@@ -58,7 +58,7 @@
 
 ## Settings
 - if you game on monitor thats not primary in windows you can change it in settings
-- if you use display scaling in wodnwos, you need to change it in settings
+- if you use display scaling in windows, you need to change it in settings
 - if you don't like the default keys, surprise, you can change them in settings
 
 ## List of features
