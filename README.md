@@ -2,6 +2,7 @@
 **English UI**
 
 ![English UI](examples/PoE-HarvestVendor%20fork%20v0.9.2(s).png)
+
 **Russian UI**
 
 ![Russian UI](examples/PoE-HarvestVendor%20fork%20v0.9.2(rus).png)
