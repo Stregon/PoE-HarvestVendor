@@ -76,17 +76,17 @@
 - Outputs Log.csv of sold crafts (entry triggered by Shift+click on the rows delete button)
  
  ## Features of the fork version:
--Hotkey(Ctrl + Shift + F) for button "Add from last area"
--Function "autocomplete" for crafts
--Support Russian and Korean language for UI and function "autocomplete"
--Auto translate for Russian OCR crafts into English crafts
--Auto translate Russian and Korean crafts into English for autocomplete
--Support OCR for Russian client
--Support OCR for Chinese client(Poedb translation and Chinese - Simplified) [WIP]
--Improved OCR quality
--Function AutoDetect for parameters "scale" and "monitor"(in Settings)
--New style(4) with icons for crafts
--Icons for "exalt"/"chaos" and a price for exalt(I take it from poe.ninja) (изменено)
+- Hotkey(Ctrl + Shift + F) for button "Add from last area"
+- Function "autocomplete" for crafts
+- Support Russian and Korean language for UI and function "autocomplete"
+- Auto translate for Russian OCR crafts into English crafts
+- Auto translate Russian and Korean crafts into English for autocomplete
+- Support OCR for Russian client
+- Support OCR for Chinese client(Poedb translation and Chinese - Simplified) [WIP]
+- Improved OCR quality
+- Function AutoDetect for parameters "scale" and "monitor"(in Settings)
+- New style(4) with icons for crafts
+- Icons for "exalt"/"chaos" and a price for exalt(I take it from poe.ninja)
 
 ## FAQ
 **Q. Why does it show lv00?**  
