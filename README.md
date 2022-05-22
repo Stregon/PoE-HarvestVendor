@@ -1,5 +1,5 @@
 # PoE-HarvestVendor fork
-
+![](examples/PoE-HarvestVendor%20fork%20v0.9.2.png)
 ## A little status update (15.7.2021)
 - i think the tool as envisioned now is essentially feature complete
     - adding things like WTB section, or tech like sorting would require major reworks and rethinking both visually and technically
