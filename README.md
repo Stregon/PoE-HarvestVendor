@@ -60,7 +60,7 @@
 - select your league and so on
 - click Create Posting for the section you wish to
 - now you have a Discord formatted message in clipboard  
-![](examples/exampleMessage.png)
+![](examples/message(style%204).png)
 
 ## Settings
 - if you game on monitor thats not primary in windows you can change it in settings
