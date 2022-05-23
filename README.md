@@ -1,5 +1,11 @@
-# PoE-HarvestVendor
+# PoE-HarvestVendor fork
+**English UI**
 
+![English UI](examples/PoE-HarvestVendor%20fork%20v0.9.2(s).png)
+
+**Russian UI**
+
+![Russian UI](examples/PoE-HarvestVendor%20fork%20v0.9.2(rus).png)
 ## A little status update (15.7.2021)
 - i think the tool as envisioned now is essentially feature complete
     - adding things like WTB section, or tech like sorting would require major reworks and rethinking both visually and technically
@@ -13,7 +19,7 @@
 
 - Bigger resolution = more fucked up UI design because i don't know how to handle windows display scaling properly.
 ```
-# [DOWNLOAD HERE](https://github.com/esge/PoE-HarvestVendor/releases/latest)
+# [DOWNLOAD HERE](https://github.com/Stregon/PoE-HarvestVendor/releases/latest)
 
 # [HOW TO USE - YT video](https://www.youtube.com/watch?v=l2syzeQ0YZQ)
 
@@ -54,11 +60,11 @@
 - select your league and so on
 - click Create Posting for the section you wish to
 - now you have a Discord formatted message in clipboard  
-![](examples/exampleMessage.png)
+![](examples/message(style%204).png)
 
 ## Settings
 - if you game on monitor thats not primary in windows you can change it in settings
-- if you use display scaling in wodnwos, you need to change it in settings
+- if you use display scaling in windows, you need to change it in settings
 - if you don't like the default keys, surprise, you can change them in settings
 
 ## List of features
@@ -74,6 +80,19 @@
 - Remembers prices
 - Remembers loaded crafts
 - Outputs Log.csv of sold crafts (entry triggered by Shift+click on the rows delete button)
+ 
+ ## Features of the fork version:
+- Hotkey(Ctrl + Shift + F) for button "Add from last area"
+- Function "autocomplete" for crafts
+- Support Russian and Korean language for UI and function "autocomplete"
+- Auto translate for Russian OCR crafts into English crafts
+- Auto translate Russian and Korean crafts into English for autocomplete
+- Support OCR for Russian client
+- Support OCR for Chinese client(Poedb translation and Chinese - Simplified) [WIP]
+- Improved OCR quality
+- Function AutoDetect for parameters "scale" and "monitor"(in Settings)
+- New style(4) with icons for crafts
+- Icons for "exalt"/"chaos" and a price for exalt(I take it from poe.ninja)
 
 ## FAQ
 **Q. Why does it show lv00?**  
@@ -119,5 +138,3 @@ Once you've sorted out the folder structure, try restarting the application to s
 - https://github.com/cocobelgica/AutoHotkey-JSON jxon function embeded in the main file
 
 ---
-### If you got all the way here and want to throw some beer money my way
-[PayPal.me link](https://www.paypal.com/paypalme/Esge1)
