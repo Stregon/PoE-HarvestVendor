@@ -59,7 +59,7 @@
 - set prices if you wish
 - select your league and so on
 - click Create Posting for the section you wish to
-- now you have a Discord formatted message in clipboard  
+- now you have a Discord formatted message in clipboard(style 4)
 ![](examples/message(style%204).png)
 
 ## Settings
