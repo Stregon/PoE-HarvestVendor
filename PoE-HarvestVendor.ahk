@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.2"
+global version := "0.9.2a"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -633,8 +633,8 @@ Exalt_Click() {
 
 createPost_Click() {
     buttonHold("postAll", "resources\" . settingsApp["Language"] . "\createPost")
-    ExPriceUpdate()
     createPost("All")
+    SetTimer, ExPriceUpdate, -100 ;ExPriceUpdate()
 }
 
 League_Changed() {
@@ -2051,6 +2051,9 @@ getNitroIconFor(craft) {
     ; }
     if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
         return translate("Icon_annul_ex")
+    }
+    if (inStr(craft, "Fracture") == 1) {
+        return translate("Icon_fracture")
     }
     return translate("Icon_empty")
 }
