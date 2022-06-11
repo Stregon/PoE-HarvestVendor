@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.6 korean"
+global version := "0.9.6a korean"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -1991,6 +1991,9 @@ getNitroIconFor(craft) {
     ; }
     if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
         return translate("Icon_annul_ex")
+    }
+    if (inStr(craft, "Fracture") == 1) {
+        return translate("Icon_fracture")
     }
     return translate("Icon_empty")
 }
