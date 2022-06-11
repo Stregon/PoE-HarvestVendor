@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.7 light"
+global version := "0.8.7a light"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -1103,7 +1103,7 @@ getNoColorStyleRow(count, craft, price, lvl) {
 }
 
 getNitroIconFor(craft) {
-    if (RegExMatch(craft, "Red|Blue|Green") > 0) {
+    if (RegExMatch(craft, "Red|Blue|Green|White") > 0) {
         return translate("Icon_chromatic")
     }
     if (inStr(craft, "Reforge") == 1) {
@@ -1132,6 +1132,9 @@ getNitroIconFor(craft) {
     ; }
     if (inStr(craft, "Remove") == 1 and instr(craft, "add") > 0) {
         return translate("Icon_annul_ex")
+    }
+    if (inStr(craft, "Fracture") == 1) {
+        return translate("Icon_fracture")
     }
     return translate("Icon_empty")
 }
