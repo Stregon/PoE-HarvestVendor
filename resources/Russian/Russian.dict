@@ -180,6 +180,7 @@ Message formatting=Формат сообщения
 Output message style:=Стиль сообщения
 No Colors, No codeblock - Words are highlighted when using discord search=Обычный - Слова подсвечиваются при поиске
 Codeblock, Colors - Words aren't highlighted when using discord search=Цветной - Слова не подсвечиваются при поиске
+Auto sorting crafts=Автосортировка крафтов
 Localization=Настройки языка
 Language:=Язык:
 Need to restart the program for using a new language!=Требуется перегрузить программу для использования нового языка!

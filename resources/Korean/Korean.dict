@@ -180,6 +180,7 @@ Message formatting=메시지형식
 Output message style:=메시지 스타일
 No Colors, No codeblock - Words are highlighted when using discord search=글자색없음 , no codeblock - 키워드 검색시 키워드가 강조됨
 Codeblock, Colors - Words aren't highlighted when using discord search=글자색있음 , codeblock - 키워드 검색시 키워드가 강조되지않음
+Auto sorting crafts=Auto sorting crafts
 Monitor Settings=모니터 설정
 Select monitor:=모니터 선택
 Scale=화면배율

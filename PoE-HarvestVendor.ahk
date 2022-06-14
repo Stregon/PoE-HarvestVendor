@@ -14,6 +14,7 @@ global settingsApp := {"GuiKey": ""
     , "ScanKey": ""
     , "ScanLastAreaKey": ""
     , "outStyle": 1
+    , "needToSortList" : 1
     , "canStream": 0
     , "CustomTextCB": 0
     , "customText": ""
@@ -40,6 +41,7 @@ global langDDL := ""
 global Vivid_Scalefruit := 0
 global MonitorsDDL := ""
 global ScaleEdit := ""
+global needToSortList := 1
 global GuiKeyHotkey := ""
 global ScanKeyHotkey := ""
 global ScanLastAreaHotkey := ""
@@ -484,11 +486,15 @@ ClearRow_Click() {
             CraftTable[tempRow].count := row.count - 1
         } else {
             clearRowData(tempRow)
-            sortCraftTable()
+            if (settingsApp.needToSortList) {
+                sortCraftTable()
+            }
         }
     } else {
         clearRowData(tempRow)
-        sortCraftTable()
+        if (settingsApp.needToSortList) {
+            sortCraftTable()
+        }
     }
     updateUIRow(tempRow)
     sumTypes()
@@ -635,6 +641,12 @@ createPost_Click() {
     buttonHold("postAll", "resources\" . settingsApp["Language"] . "\createPost")
     createPost("All")
     SetTimer, ExPriceUpdate, -100 ;ExPriceUpdate()
+    
+    ;test feature
+    ;SetTitleMatchMode, 2
+    ;discord_title := "Discord"
+    ;WinActivate, % discord_title
+    ;SetTitleMatchMode, 1
 }
 
 League_Changed() {
@@ -673,7 +685,10 @@ ShowSettingsUI() {
         guicontrol, choose, outStyle, % settingsApp.outStyle
         widthT := width - 20
         Gui, add, text, xs+15 y+5 w%widthT%, % "1, 4 - " . translate("No Colors, No codeblock - Words are highlighted when using discord search")
-        Gui, add, text, xs+15 y+5 wp+0 vlastText1, % "2, 3 - " . translate("Codeblock, Colors - Words aren't highlighted when using discord search")
+        Gui, add, text, xs+15 y+5 wp+0, % "2, 3 - " . translate("Codeblock, Colors - Words aren't highlighted when using discord search")
+        needToSortList := settingsApp.needToSortList
+        Gui add, Checkbox, xs+5 y+10 wp+0 vneedToSortList Checked%needToSortList%, % translate("Auto sorting crafts")
+        Gui, add, text, xs+5 y+0 wp+0 vlastText1, % ""
     ;calculate a new height for Groupbox
     guiControlGet, mf_Groupbox, Settings:Pos
     guiControlGet, lastText1, Settings:Pos
@@ -813,7 +828,10 @@ SettingsSave_Click() {
 
     guiControlGet, sc,,ScaleEdit, value
     settingsApp.scale := (sc == "" or sc < 1) ? 1 : Format("{:.2f}", sc)
-
+    
+    guiControlGet, sl,,needToSortList, value
+    settingsApp.needToSortList := sl
+    
     Gui, Settings:Destroy
     Gui, HarvestUI:Default
 }
@@ -976,6 +994,13 @@ initSettings() {
         outStyle := 4
     }
     settingsApp.outStyle := outStyle
+    
+    IniRead, needToSortList, %SettingsPath%, Other, needToSortList
+    if (needToSortList == "ERROR" or needToSortList == "" 
+        or needToSortList < 0 or needToSortList > 1) {
+        needToSortList := 1
+    }
+    settingsApp.needToSortList := needToSortList
 
     iniRead tempMon, %SettingsPath%, Other, mon
     sysGet, monCount, MonitorCount
@@ -1055,6 +1080,7 @@ saveSettings() {
     iniWrite, % settingsApp.alwaysOnTop, %SettingsPath%, Other, alwaysOnTop
     iniWrite, % settingsApp.scale, %SettingsPath%, Other, scale
     iniWrite, % settingsApp.outStyle, %SettingsPath%, Other, outStyle
+    iniWrite, % settingsApp.needToSortList, %SettingsPath%, Other, needToSortList
     iniWrite, % settingsApp.nick, %SettingsPath%, IGN, n
     iniWrite, % settingsApp.monitor, %SettingsPath%, Other, mon
 
@@ -1935,12 +1961,15 @@ updateCraftTable(ar) {
             }
             if (row.craft == "") {
                 insertIntoRow(k, tempC, tempLvl, tempType)
+                if (!settingsApp.needToSortList) {
+                    updateUIRow(k)
+                }
                 isNeedSort := True
                 break
             }
         }
     }
-    if (isNeedSort) {
+    if (isNeedSort and settingsApp.needToSortList) {
         sortCraftTable()
     } else {
         for k, v in uiRows {
@@ -2248,10 +2277,15 @@ createPost(type) {
         }
     }
     Clipboard := ""
-    if GetKeyState("Shift") {
-        Clipboard := codeblockWrap(getSortedPosts(type))
+    if (settingsApp.needToSortList) {
+        craftList := getSortedPosts(type)
     } else {
-        Clipboard := codeblockWrap(header . getSortedPosts(type))
+        craftList := getPosts(type)
+    }
+    if GetKeyState("Shift") {
+        Clipboard := codeblockWrap(craftList)
+    } else {
+        Clipboard := codeblockWrap(header . craftList)
     }
     readyTT()
 }

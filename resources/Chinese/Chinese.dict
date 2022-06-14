@@ -179,6 +179,7 @@ Message formatting=Message formatting
 Output message style:=Output message style:
 No Colors, No codeblock - Words are highlighted when using discord search=No Colors, No codeblock - Words are highlighted when using discord search
 Codeblock, Colors - Words aren't highlighted when using discord search=Codeblock, Colors - Words aren't highlighetd when using discord search
+Auto sorting crafts=Auto sorting crafts
 Localization=Localization
 Language:=Language:
 Need to restart the program for using a new language!=Need to restart the program for using a new language!
