@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.7 korean"
+global version := "0.9.7a korean"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -1307,42 +1307,20 @@ Handle_Augment(craftText, ByRef out) {
 }
 
 Handle_Remove(craftText, ByRef out) {
-    if TemplateExist(craftText, translate("Influenced")) {
+    if TemplateExist(craftText, translate("non-Influenced")) {
         if TemplateExist(craftText, translate("add")) {
             removes := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
-                , "Speed", "Defence", "Lightning", "Chaos", "Critical"]
-            mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
+                , "Speed", "Defence", "Lightning", "Chaos", "Critical", "Influence"]
             for k, v in removes {
                 if TemplateExist(craftText, translate(v)) {
-                    out.push(["Remove " . mod . v . " Add " . v
+                    out.push(["Remove Non-" . v . " Add " . v
                         , getLVL(craftText)
                         , "Rem/Add"])
                     return
                 }
             }
-        } else {
-            augments := ["Caster", "Physical", "Fire", "Attack", "Life", "Cold"
-                , "Speed", "Defence", "Lightning", "Chaos", "Critical", "a new modifier"]
-            for k, v in augments {
-                if TemplateExist(craftText, translate(v)) {
-                    out.push(["Remove " . v
-                        , getLVL(craftText)
-                        , "Rem"])
-                    return
-                }
-            }
-        }
+         }
         return
-    }
-    if TemplateExist(craftText, translate("add")) {
-        mod := TemplateExist(craftText, translate("non")) ? "Non-" : ""
-        out.push(["Remove " . mod . "Influence add Influence"
-            , getLVL(craftText)
-            , "Rem/Add"])
-    } else {
-        out.push(["Remove Influence"
-            , getLVL(craftText)
-            , "Rem"])
     }
 }
 
