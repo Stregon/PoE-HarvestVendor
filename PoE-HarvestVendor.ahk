@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.6a korean"
+global version := "0.9.7 korean"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -1617,14 +1617,14 @@ Handle_Sacrifice(craftText, ByRef out) {
         return
     }
     ;div cards gambling
-    if TemplateExist(craftText, translate("Divination")) { 
-        if TemplateExist(craftText, translate("half a stack")) {
-            out.push(["Sacrifice Divination Card 0-2x"
-                , getLVL(craftText)
-                , "Other"])
-        }
-        return
-    }
+    ; if TemplateExist(craftText, translate("Divination")) { 
+        ; if TemplateExist(craftText, translate("half a stack")) {
+            ; out.push(["Sacrifice Divination Card 0-2x"
+                ; , getLVL(craftText)
+                ; , "Other"])
+        ; }
+        ; return
+    ; }
     
     if TemplateExist(craftText, translate("Weapon or Armour")) {
         items := ["Belt", "Ring", "Amulet", "Jewel"]
