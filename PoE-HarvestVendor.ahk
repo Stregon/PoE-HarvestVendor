@@ -1796,7 +1796,8 @@ processCrafts(file) {
     ; the file parameter is just for the purpose of running a test script with different input files of crafts instead of doing scans
     WinActivate, % PathofExile_Title
     sleep, 500
-    Tooltip, % translate("Please Wait"), x_end, y_end
+    tt_y := y_end + 10
+    Tooltip, % translate("Please Wait"), x_end, tt_y
     
     screen_rect := " -s """ . x_start . " " . y_start . " " 
         . x_end . " " . y_end . """"
@@ -2033,6 +2034,7 @@ getSortedPosts(type) {
     postsArr := []
     for k, row in CraftTable {
         if ((row.count != "" and row.count > 0)
+            and (row.craft != "")
             and (row.type == type or type == "All")) {
             postsArr.push(row)
         }
@@ -2049,6 +2051,7 @@ getPosts(type) {
     posts := ""
     for k, row in CraftTable {
         if ((row.count != "" and row.count > 0)
+            and (row.craft != "")
             and (row.type == type or type == "All")) {
             posts .= getPostRow(row.count, row.craft, row.price
                 , row.type, row.lvl)
