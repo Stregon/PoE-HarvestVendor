@@ -1434,11 +1434,12 @@ Handle_Remove(craftText, ByRef out) {
         out.push(["Remove " . mod . "Influence Add Influence"
             , getLVL(craftText)
             , "Rem/Add"])
-    } else {
-        out.push(["Remove Influence"
-            , getLVL(craftText)
-            , "Rem"])
-    }
+    } ;else {
+        ;legacy craft
+        ; out.push(["Remove Influence"
+            ; , getLVL(craftText)
+            ; , "Rem"])
+    ; }
 }
 
 Handle_Reforge(craftText, ByRef out) {
@@ -2144,6 +2145,7 @@ getSortedPosts(type) {
     postsArr := []
     for k, row in CraftTable {
         if ((row.count != "" and row.count > 0)
+            and (row.craft != "")
             and (row.type == type or type == "All")) {
             postsArr.push(row)
         }
@@ -2160,6 +2162,7 @@ getPosts(type) {
     posts := ""
     for k, row in CraftTable {
         if ((row.count != "" and row.count > 0)
+            and (row.craft != "")
             and (row.type == type or type == "All")) {
             posts .= getPostRow(row.count, row.craft, row.price
                 , row.type, row.lvl)
@@ -2491,6 +2494,7 @@ getLeagues() {
         oWhr.Open("GET", leagueAPIurl, false)
         oWhr.SetRequestHeader("Content-Type", "application/json")
         oWhr.Send()
+        ;oWhr.WaitForResponse(5)
         response := oWhr.ResponseText
     }
     if (oWhr.Status == "200" or FileExist("curl.exe")) {
@@ -2559,6 +2563,7 @@ getVersion() {
         ver.Open("GET", versionUrl, false)
         ver.SetRequestHeader("Content-Type", "application/json")
         ver.Send()
+        ;ver.WaitForResponse(5)
         response := ver.ResponseText
     }
     return StrReplace(StrReplace(response, "`r"), "`n")
