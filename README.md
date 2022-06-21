@@ -19,7 +19,7 @@
 
 - Bigger resolution = more fucked up UI design because i don't know how to handle windows display scaling properly.
 ```
-# [DOWNLOAD HERE](https://github.com/Stregon/PoE-HarvestVendor/releases/latest)
+# [DOWNLOAD HERE](https://github.com/Stregon/PoE-HarvestVendor/releases)
 
 # [HOW TO USE - YT video](https://www.youtube.com/watch?v=l2syzeQ0YZQ)
 
