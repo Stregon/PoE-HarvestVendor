@@ -2085,6 +2085,9 @@ getNitroIconFor(craft) {
     if (inStr(craft, "Fracture") == 1) {
         return translate("Icon_fracture")
     }
+    if (inStr(craft, "Synthesise") == 1) {
+        return translate("Icon_synthesise")
+    }
     return translate("Icon_empty")
 }
 
