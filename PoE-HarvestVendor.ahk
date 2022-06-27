@@ -2,7 +2,7 @@
 #SingleInstance Force
 SetBatchLines -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.8.7a light"
+global version := "0.8.7b light"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
