@@ -1,1 +1,1 @@
-0.8.7a light
+0.8.7b light
