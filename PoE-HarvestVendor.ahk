@@ -4,7 +4,7 @@ SetBatchLines -1
 ;SetWinDelay, -1
 ;SetMouseDelay, -1
 SetWorkingDir %A_ScriptDir% 
-global version := "0.9.3"
+global version := "0.9.3a"
 #include <class_iAutoComplete>
 #include <sortby>
 #include <JSON>
@@ -643,10 +643,13 @@ createPost_Click() {
     SetTimer, ExPriceUpdate, -100 ;ExPriceUpdate()
     
     ;test feature
-    ;SetTitleMatchMode, 2
-    ;discord_title := "Discord"
-    ;WinActivate, % discord_title
-    ;SetTitleMatchMode, 1
+    ;SetTimer, activateDiscordWindow, -10 ;activateDiscordWindow()
+}
+
+activateDiscordWindow(discord_title="Discord") {
+    SetTitleMatchMode, 2
+    WinActivate, % discord_title
+    SetTitleMatchMode, 1
 }
 
 League_Changed() {
